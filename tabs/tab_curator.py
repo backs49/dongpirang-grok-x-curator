@@ -1,5 +1,7 @@
 import streamlit as st
 
+from utils import generate_tweet_intent_url
+
 
 def render_curator_tab(grok):
     st.subheader("Personalized Feed Curator")
@@ -7,7 +9,7 @@ def render_curator_tab(grok):
 
     interests = st.text_input(
         "관심사 입력",
-        placeholder="예: 머신러닝, 웹개발, 한국 테크 뉴스",
+        placeholder="예: 한국 테크 뉴스, AI 프로그래밍, 스타트업 트렌드",
         key="curator_interests",
         on_change=lambda: st.session_state.update(run_curator=True),
     )
@@ -35,5 +37,28 @@ def render_curator_tab(grok):
         with st.container(border=True):
             st.markdown(f"**추천 #{i + 1}**")
             st.markdown(rec.get("summary", ""))
-            st.caption(f"💡 추천 이유: {rec.get('why_recommended', '')}")
-            st.caption(f"🤝 {rec.get('engagement_hint', '')}")
+
+            with st.expander("💡 왜 추천했나요?"):
+                st.write(rec.get("why_recommended", ""))
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if rec.get("original_url"):
+                    st.link_button(
+                        "🐦 원본 포스트 보기",
+                        rec["original_url"],
+                        use_container_width=True,
+                    )
+            with col2:
+                suggested = rec.get("suggested_reply", "")
+                if suggested:
+                    st.link_button(
+                        "💬 바로 리플 달기",
+                        generate_tweet_intent_url(suggested),
+                        use_container_width=True,
+                    )
+
+            if suggested:
+                st.code(suggested, language="")
+
+            st.caption(f"💡 {rec.get('engagement_hint', '')}")
