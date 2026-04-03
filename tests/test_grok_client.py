@@ -1,4 +1,5 @@
 import json
+import openai
 from unittest.mock import MagicMock, patch
 from grok_client import GrokClient
 
@@ -88,6 +89,7 @@ class TestCurateFeed:
                 {"summary": "Post 3", "why_recommended": "Popular"},
             ]
         })
+        mock_response.choices[0].message.tool_calls = None
         mock_client.chat.completions.create.return_value = mock_response
 
         grok = GrokClient(api_key="test", model="grok-4.1-fast-reasoning")
@@ -102,7 +104,7 @@ class TestErrorHandling:
     def test_api_error_returns_error_dict(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
-        mock_client.chat.completions.create.side_effect = Exception("API Error")
+        mock_client.chat.completions.create.side_effect = openai.OpenAIError("API Error")
 
         grok = GrokClient(api_key="test", model="grok-4.1-fast-reasoning")
         result = grok.optimize_post("test")

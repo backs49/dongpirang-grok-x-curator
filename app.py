@@ -48,9 +48,14 @@ if not api_key:
     st.stop()
 
 # ─── Grok 클라이언트 초기화 ───
-if "grok_client" not in st.session_state or st.session_state.get("_model") != model:
+if (
+    "grok_client" not in st.session_state
+    or st.session_state.get("_model") != model
+    or st.session_state.get("_api_key") != api_key
+):
     st.session_state.grok_client = GrokClient(api_key=api_key, model=model)
     st.session_state._model = model
+    st.session_state._api_key = api_key
 
 grok: GrokClient = st.session_state.grok_client
 
