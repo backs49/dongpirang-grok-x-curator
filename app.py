@@ -1,67 +1,32 @@
 import streamlit as st
+from streamlit_js_eval import streamlit_js_eval
 from grok_client import GrokClient
 from utils import (
     generate_tweet_intent_url,
     generate_follow_url,
     append_viral_tag,
 )
-import streamlit.components.v1 as components
 
-# ─── 페이지 설정 (이게 제일 먼저 와야 합니다!) ───
+# ─── 페이지 설정 ───
 st.set_page_config(
     page_title="동피랑 Grok X 추천기",
     page_icon="🔥",
     layout="wide",
 )
 
-# ─── localStorage 키 기억하기 (JS) ───
-components.html(
-    """
-    <script>
-    const STORAGE_KEY = "dongpirang_grok_api_key";
-
-    function syncKey() {
-        const input = document.querySelector('input[type="password"]');
-        const checkbox = document.querySelector('input[type="checkbox"]');
-        
-        if (!input || !checkbox) return;
-
-        // 저장된 키 불러오기
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            input.value = saved;
-            checkbox.checked = true;
-        }
-
-        // 입력 변경 시 저장
-        input.addEventListener('input', () => {
-            if (checkbox.checked) {
-                localStorage.setItem(STORAGE_KEY, input.value);
-            }
-        });
-
-        // 체크박스 변경 시 저장/삭제
-        checkbox.addEventListener('change', () => {
-            if (checkbox.checked) {
-                localStorage.setItem(STORAGE_KEY, input.value || '');
-            } else {
-                localStorage.removeItem(STORAGE_KEY);
-            }
-        });
-    }
-
-    // Streamlit이 렌더링된 후 실행
-    setTimeout(syncKey, 1200);
-    // 탭 전환 등 리렌더링 대비
-    const observer = new MutationObserver(syncKey);
-    observer.observe(document.body, { childList: true, subtree: true });
-    </script>
-    """,
-    height=0,
-)
-
 APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
 VIRAL_TAG = "동피랑 Grok X 추천기로 최적화됨 🔥 @mangodaon"
+STORAGE_KEY = "dongpirang_grok_api_key"
+
+# ─── localStorage에서 저장된 키 불러오기 ───
+if "loaded_key" not in st.session_state:
+    saved = streamlit_js_eval(
+        js_expressions=f"localStorage.getItem('{STORAGE_KEY}')",
+        key="load_api_key",
+    )
+    if saved:
+        st.session_state.saved_api_key = saved
+    st.session_state.loaded_key = True
 
 # ─── 사이드바 ───
 with st.sidebar:
@@ -81,7 +46,7 @@ with st.sidebar:
 
     remember_key = st.checkbox(
         "🔑 API 키를 브라우저에 기억하기",
-        value=st.session_state.get("remember_key", False),
+        value=bool(st.session_state.get("saved_api_key")),
         help="다음에 앱을 열 때 자동으로 채워집니다. (당신 브라우저에만 저장)"
     )
 
@@ -99,13 +64,19 @@ with st.sidebar:
     follow_url = generate_follow_url("mangodaon")
     st.link_button("🐦 @mangodaon 팔로우하기", follow_url, use_container_width=True)
 
-# ─── API 키 처리 ───
-if remember_key:
+# ─── API 키 localStorage 저장/삭제 ───
+if remember_key and api_key:
     st.session_state.saved_api_key = api_key
-    st.session_state.remember_key = True
-else:
+    streamlit_js_eval(
+        js_expressions=f"localStorage.setItem('{STORAGE_KEY}', '{api_key}')",
+        key="save_api_key",
+    )
+elif not remember_key:
     st.session_state.saved_api_key = ""
-    st.session_state.remember_key = False
+    streamlit_js_eval(
+        js_expressions=f"localStorage.removeItem('{STORAGE_KEY}')",
+        key="remove_api_key",
+    )
 
 # ─── API 키 검증 ───
 if not api_key:
