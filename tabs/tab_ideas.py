@@ -43,9 +43,6 @@ def render_ideas_tab(grok):
                 content = idea.get("content", "")
                 st.markdown(content)
 
-                with st.expander("📋 복사하기"):
-                    st.code(content, language="")
-
                 intent_url = generate_tweet_intent_url(content)
                 st.link_button("𝕏 에 게시", intent_url, use_container_width=True)
 
