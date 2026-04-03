@@ -139,6 +139,27 @@ grok: GrokClient = st.session_state.grok_client
 st.title("🔥 동피랑 Grok X 추천기")
 st.caption("x-algorithm의 Phoenix Scorer & Candidate Pipeline 원리 기반")
 
+# ─── 엔터키로 트리거된 작업을 탭 렌더링 전에 처리 ───
+if st.session_state.pop("run_ideas", False):
+    kw = st.session_state.get("keywords_input", "")
+    if kw.strip():
+        with st.spinner("Grok이 x-algorithm 최적화 아이디어 생성 중..."):
+            _result = grok.generate_ideas(kw)
+        if "error" not in _result:
+            st.session_state.ideas_result = _result
+        else:
+            st.session_state.ideas_error = _result["error"]
+
+if st.session_state.pop("run_curator", False):
+    inp = st.session_state.get("curator_interests", "")
+    if inp.strip():
+        with st.spinner("Grok이 X에서 실시간 검색 중..."):
+            _result = grok.curate_feed(inp)
+        if "error" not in _result:
+            st.session_state.curator_result = _result
+        else:
+            st.session_state.curator_error = _result["error"]
+
 # ─── 탭 ───
 tab1, tab2, tab3 = st.tabs(["📝 포스트 최적화", "💡 아이디어 생성", "🔍 피드 큐레이터"])
 
@@ -220,19 +241,14 @@ with tab2:
     st.subheader("오늘 올릴 포스트 아이디어 5개")
     st.caption("x-algorithm 최적화된 포스트 아이디어를 생성합니다")
 
-    def _on_keywords_enter():
-        st.session_state.run_ideas = True
-
     keywords = st.text_input(
         "관심사 / 키워드",
         placeholder="예: AI, 프로그래밍, 스타트업, 한국 여행",
         key="keywords_input",
-        on_change=_on_keywords_enter,
+        on_change=lambda: st.session_state.update(run_ideas=True),
     )
 
-    run_ideas = st.button("💡 아이디어 생성", use_container_width=True, type="primary") or st.session_state.pop("run_ideas", False)
-
-    if run_ideas:
+    if st.button("💡 아이디어 생성", use_container_width=True, type="primary"):
         if not keywords.strip():
             st.warning("관심사나 키워드를 입력해주세요.")
         else:
@@ -243,6 +259,9 @@ with tab2:
                 st.error(result["error"])
             else:
                 st.session_state.ideas_result = result
+
+    if "ideas_error" in st.session_state:
+        st.error(st.session_state.pop("ideas_error"))
 
     if "ideas_result" in st.session_state:
         ideas = st.session_state.ideas_result.get("ideas", [])
@@ -272,19 +291,14 @@ with tab3:
     st.subheader("Personalized Feed Curator")
     st.caption("Grok의 실시간 검색으로 관심사 기반 추천 포스트를 찾습니다")
 
-    def _on_interests_enter():
-        st.session_state.run_curator = True
-
     interests = st.text_input(
         "관심사 입력",
         placeholder="예: 머신러닝, 웹개발, 한국 테크 뉴스",
         key="curator_interests",
-        on_change=_on_interests_enter,
+        on_change=lambda: st.session_state.update(run_curator=True),
     )
 
-    run_curator = st.button("🔍 실시간 추천", use_container_width=True, type="primary") or st.session_state.pop("run_curator", False)
-
-    if run_curator:
+    if st.button("🔍 실시간 추천", use_container_width=True, type="primary"):
         if not interests.strip():
             st.warning("관심사를 입력해주세요.")
         else:
@@ -295,6 +309,9 @@ with tab3:
                 st.error(result["error"])
             else:
                 st.session_state.curator_result = result
+
+    if "curator_error" in st.session_state:
+        st.error(st.session_state.pop("curator_error"))
 
     if "curator_result" in st.session_state:
         recs = st.session_state.curator_result.get("recommendations", [])
