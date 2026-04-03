@@ -77,18 +77,18 @@ IDEAS_SYSTEM_PROMPT = """\
 
 반드시 다음 JSON 형식으로만 응답하세요:
 
-{
+{{
   "ideas": [
-    {
+    {{
       "title": "클릭을 유발하는 간결한 제목",
       "content": "실제 X에 바로 복사해서 사용할 수 있는 본문 (280자 이내)",
       "strategy": "x-algorithm에서 높은 점수를 받는 이유 (구체적)",
       "engagement_level": "Very High" | "High" | "Medium",
       "best_time": "2026년 4월 기준 최적 게시 시간대 (예: 오전 8-9시)",
       "target_actions": ["reply", "repost"]
-    }
+    }}
   ]
-}
+}}
 
 절대 2024년, 2025년 표현을 쓰지 마세요. 오늘({current_date_kr}) 기준 최신 정보를 반영하세요.
 반드시 JSON만 출력하세요.
