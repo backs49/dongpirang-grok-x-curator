@@ -147,22 +147,19 @@ with tab1:
     st.subheader("포스트 Optimizer & Engagement Predictor")
     st.caption("x-algorithm의 Multi-Action Prediction 원리로 포스트를 분석합니다")
 
-    with st.form("optimizer_form"):
-        post_text = st.text_area(
-            "포스트 내용",
-            height=120,
-            placeholder="분석하고 싶은 포스트 내용을 입력하세요...",
-        )
+    post_text = st.text_area(
+        "포스트 내용",
+        height=120,
+        placeholder="분석하고 싶은 포스트 내용을 입력하세요...",
+    )
 
-        col1, col2 = st.columns(2)
-        with col1:
-            image_desc = st.text_input("🖼️ 이미지 설명 (선택)", placeholder="예: 일몰 사진, 코드 스크린샷")
-        with col2:
-            hashtags = st.text_input("#️⃣ 해시태그 (선택)", placeholder="예: #AI #개발 #Python")
+    col1, col2 = st.columns(2)
+    with col1:
+        image_desc = st.text_input("🖼️ 이미지 설명 (선택)", placeholder="예: 일몰 사진, 코드 스크린샷")
+    with col2:
+        hashtags = st.text_input("#️⃣ 해시태그 (선택)", placeholder="예: #AI #개발 #Python")
 
-        optimizer_submitted = st.form_submit_button("🔍 x-algorithm 분석", use_container_width=True, type="primary")
-
-    if optimizer_submitted:
+    if st.button("🔍 x-algorithm 분석", use_container_width=True, type="primary"):
         if not post_text.strip():
             st.warning("포스트 내용을 입력해주세요.")
         else:
@@ -223,14 +220,19 @@ with tab2:
     st.subheader("오늘 올릴 포스트 아이디어 5개")
     st.caption("x-algorithm 최적화된 포스트 아이디어를 생성합니다")
 
-    with st.form("ideas_form"):
-        keywords = st.text_input(
-            "관심사 / 키워드",
-            placeholder="예: AI, 프로그래밍, 스타트업, 한국 여행",
-        )
-        ideas_submitted = st.form_submit_button("💡 아이디어 생성", use_container_width=True, type="primary")
+    def _on_keywords_enter():
+        st.session_state.run_ideas = True
 
-    if ideas_submitted:
+    keywords = st.text_input(
+        "관심사 / 키워드",
+        placeholder="예: AI, 프로그래밍, 스타트업, 한국 여행",
+        key="keywords_input",
+        on_change=_on_keywords_enter,
+    )
+
+    run_ideas = st.button("💡 아이디어 생성", use_container_width=True, type="primary") or st.session_state.pop("run_ideas", False)
+
+    if run_ideas:
         if not keywords.strip():
             st.warning("관심사나 키워드를 입력해주세요.")
         else:
@@ -270,14 +272,19 @@ with tab3:
     st.subheader("Personalized Feed Curator")
     st.caption("Grok의 실시간 검색으로 관심사 기반 추천 포스트를 찾습니다")
 
-    with st.form("curator_form"):
-        interests = st.text_input(
-            "관심사 입력",
-            placeholder="예: 머신러닝, 웹개발, 한국 테크 뉴스",
-        )
-        curator_submitted = st.form_submit_button("🔍 실시간 추천", use_container_width=True, type="primary")
+    def _on_interests_enter():
+        st.session_state.run_curator = True
 
-    if curator_submitted:
+    interests = st.text_input(
+        "관심사 입력",
+        placeholder="예: 머신러닝, 웹개발, 한국 테크 뉴스",
+        key="curator_interests",
+        on_change=_on_interests_enter,
+    )
+
+    run_curator = st.button("🔍 실시간 추천", use_container_width=True, type="primary") or st.session_state.pop("run_curator", False)
+
+    if run_curator:
         if not interests.strip():
             st.warning("관심사를 입력해주세요.")
         else:
