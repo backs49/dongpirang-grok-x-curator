@@ -37,9 +37,10 @@ class GrokClient:
 
     def generate_ideas(self, keywords: str) -> dict:
         from datetime import datetime
-        # 현재 날짜를 한국어 형식으로 동적으로 주입 (무조건 최신!)
+        # 2026년 4월 3일 현재를 강제로 주입
         current_date_kr = datetime.now().strftime("%Y년 %m월 %d일")
 
+        # placeholder를 실제 날짜로 치환
         system_prompt = IDEAS_SYSTEM_PROMPT.format(current_date_kr=current_date_kr)
 
         try:
