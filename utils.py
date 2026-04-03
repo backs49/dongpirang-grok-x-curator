@@ -34,7 +34,7 @@ def parse_grok_json(response_text: str) -> dict:
 
 def parse_thread_text(raw_text: str) -> list[str]:
     text = raw_text.replace("\r\n", "\n")
-    parts = re.split(r"\n\s*---\s*\n|\n{3,}", text)
+    parts = re.split(r"\n\s*---\s*\n|\n{2,}", text)
     return [p.strip() for p in parts if p.strip()]
 
 
