@@ -1,6 +1,6 @@
 import streamlit as st
 
-from utils import generate_tweet_intent_url
+from utils import generate_search_url
 
 
 def render_curator_tab(grok):
@@ -41,24 +41,17 @@ def render_curator_tab(grok):
             with st.expander("💡 왜 추천했나요?"):
                 st.write(rec.get("why_recommended", ""))
 
-            col1, col2 = st.columns(2)
-            with col1:
-                if rec.get("original_url"):
-                    st.link_button(
-                        "🐦 원본 포스트 보기",
-                        rec["original_url"],
-                        use_container_width=True,
-                    )
-            with col2:
-                suggested = rec.get("suggested_reply", "")
-                if suggested:
-                    st.link_button(
-                        "💬 바로 리플 달기",
-                        generate_tweet_intent_url(suggested),
-                        use_container_width=True,
-                    )
+            search_kw = rec.get("search_keywords", "")
+            if search_kw:
+                st.link_button(
+                    "🔍 X에서 관련 포스트 검색",
+                    generate_search_url(search_kw),
+                    use_container_width=True,
+                )
 
+            suggested = rec.get("suggested_reply", "")
             if suggested:
+                st.caption("💬 추천 리플 (복사해서 사용하세요)")
                 st.code(suggested, language="")
 
             st.caption(f"💡 {rec.get('engagement_hint', '')}")

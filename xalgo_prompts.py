@@ -194,14 +194,14 @@ CURATOR_SYSTEM_PROMPT = """\
       "summary": "포스트의 핵심 내용을 3-5문장으로 구체적으로 요약 (단순 제목이 아니라 실제 인사이트를 충분히 설명)",
       "why_recommended": "x-algorithm 관점에서 왜 이 포스트를 추천하는지 (Reply, Repost, Bookmark 수치 등 포함)",
       "engagement_hint": "이 포스트에 어떻게 상호작용하면 좋은지 간단히 설명",
-      "original_url": "실제 X 포스트 전체 URL (https://x.com/... 형식)",
+      "search_keywords": "이 주제의 포스트를 X에서 찾을 수 있는 검색 키워드 (예: '미국 이란 유가 전망')",
       "suggested_reply": "바로 복사해서 사용할 수 있는 자연스러운 리플 예시 (한국어로, 친근하고 대화가 이어질 수 있게)"
     }
   ]
 }
 
 최소 3개, 최대 5개의 추천 포스트를 제공하세요.
-모든 필드는 반드시 채워주세요. original_url과 suggested_reply는 특히 중요합니다.
+모든 필드는 반드시 채워주세요.
 반드시 JSON만 출력하세요. 다른 텍스트는 절대 포함하지 마세요.\
 """
 

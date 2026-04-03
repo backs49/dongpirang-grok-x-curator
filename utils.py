@@ -8,6 +8,11 @@ def generate_tweet_intent_url(text: str) -> str:
     return f"https://twitter.com/intent/tweet?text={encoded}"
 
 
+def generate_search_url(query: str) -> str:
+    encoded = quote(query, safe="")
+    return f"https://x.com/search?q={encoded}&src=typed_query"
+
+
 def generate_follow_url(username: str) -> str:
     clean = username.lstrip("@")
     return f"https://twitter.com/intent/follow?screen_name={clean}"
