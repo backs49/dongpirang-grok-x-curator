@@ -5,12 +5,59 @@ from utils import (
     generate_follow_url,
     append_viral_tag,
 )
+import streamlit.components.v1 as components
 
-# ─── 페이지 설정 ───
+# ─── 페이지 설정 (이게 제일 먼저 와야 합니다!) ───
 st.set_page_config(
     page_title="동피랑 Grok X 추천기",
     page_icon="🔥",
     layout="wide",
+)
+
+# ─── localStorage 키 기억하기 (JS) ───
+components.html(
+    """
+    <script>
+    const STORAGE_KEY = "dongpirang_grok_api_key";
+
+    function syncKey() {
+        const input = document.querySelector('input[type="password"]');
+        const checkbox = document.querySelector('input[type="checkbox"]');
+        
+        if (!input || !checkbox) return;
+
+        // 저장된 키 불러오기
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            input.value = saved;
+            checkbox.checked = true;
+        }
+
+        // 입력 변경 시 저장
+        input.addEventListener('input', () => {
+            if (checkbox.checked) {
+                localStorage.setItem(STORAGE_KEY, input.value);
+            }
+        });
+
+        // 체크박스 변경 시 저장/삭제
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) {
+                localStorage.setItem(STORAGE_KEY, input.value || '');
+            } else {
+                localStorage.removeItem(STORAGE_KEY);
+            }
+        });
+    }
+
+    // Streamlit이 렌더링된 후 실행
+    setTimeout(syncKey, 1200);
+    // 탭 전환 등 리렌더링 대비
+    const observer = new MutationObserver(syncKey);
+    observer.observe(document.body, { childList: true, subtree: true });
+    </script>
+    """,
+    height=0,
 )
 
 APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
@@ -28,18 +75,37 @@ with st.sidebar:
         type="password",
         help="console.x.ai에서 발급받으세요",
         placeholder="xai-...",
+        value=st.session_state.get("saved_api_key", ""),
+        key="api_key_input"
     )
 
+    remember_key = st.checkbox(
+        "🔑 API 키를 브라우저에 기억하기",
+        value=st.session_state.get("remember_key", False),
+        help="다음에 앱을 열 때 자동으로 채워집니다. (당신 브라우저에만 저장)"
+    )
+
+    st.caption("⚠️ Grok API Key는 한 번만 보여집니다.\n생성 즉시 저장하세요!")
+
+    # 모델 선택
     model = st.selectbox(
         "모델 선택",
-        ["grok-4.1-fast-reasoning", "grok-4.20-reasoning"],
-        help="grok-4.1-fast-reasoning: 빠른 응답 / grok-4.20-reasoning: 깊은 분석",
+        ["grok-4-1-fast-reasoning", "grok-4.20-reasoning"],
+        help="grok-4-1-fast-reasoning: 빠른 응답 / grok-4.20-reasoning: 깊은 분석",
     )
 
     st.divider()
 
     follow_url = generate_follow_url("mangodaon")
     st.link_button("🐦 @mangodaon 팔로우하기", follow_url, use_container_width=True)
+
+# ─── API 키 처리 ───
+if remember_key:
+    st.session_state.saved_api_key = api_key
+    st.session_state.remember_key = True
+else:
+    st.session_state.saved_api_key = ""
+    st.session_state.remember_key = False
 
 # ─── API 키 검증 ───
 if not api_key:
