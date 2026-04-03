@@ -60,56 +60,38 @@ class GrokClient:
             return {"error": f"Grok API 오류: {str(e)}"}
 
     def curate_feed(self, interests: str) -> dict:
-        messages = [
-            {"role": "system", "content": CURATOR_SYSTEM_PROMPT},
-            {"role": "user", "content": f"관심사: {interests}"},
-        ]
-        tools = [{
-            "type": "function",
-            "function": {
-                "name": "live_search",
-                "description": "Search for live information on X/Twitter",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "Search query",
-                        }
-                    },
-                    "required": ["query"],
-                },
-            },
-        }]
+        from datetime import datetime, timedelta
+        current_date_kr = datetime.now().strftime("%Y년 %m월 %d일")
+        system_prompt = CURATOR_SYSTEM_PROMPT.format(current_date_kr=current_date_kr)
+
+        today = datetime.now()
+        from_date = (today - timedelta(days=7)).strftime("%Y-%m-%d")
+        to_date = today.strftime("%Y-%m-%d")
 
         try:
-            response = self.client.chat.completions.create(
+            response = self.client.responses.create(
                 model=self.model,
-                messages=messages,
-                response_format={"type": "json_object"},
-                tools=tools,
+                input=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"관심사: {interests}"},
+                ],
+                tools=[{
+                    "type": "x_search",
+                    "from_date": from_date,
+                    "to_date": to_date,
+                }],
+                text={"format": {"type": "json_object"}},
             )
-            msg = response.choices[0].message
 
-            # Handle tool call loop: if model requests live_search,
-            # send back tool results and get final response
-            while msg.tool_calls:
-                messages.append(msg)
-                for tool_call in msg.tool_calls:
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tool_call.id,
-                        "content": f"Search results for: {tool_call.function.arguments}",
-                    })
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    response_format={"type": "json_object"},
-                    tools=tools,
-                )
-                msg = response.choices[0].message
+            # Responses API에서 텍스트 추출
+            text_content = ""
+            for item in response.output:
+                if getattr(item, "type", None) == "message":
+                    for part in getattr(item, "content", []):
+                        if hasattr(part, "text"):
+                            text_content = part.text
 
-            return parse_grok_json(msg.content or "")
+            return parse_grok_json(text_content)
         except openai.OpenAIError as e:
             return {"error": f"Grok API 오류: {str(e)}"}
 

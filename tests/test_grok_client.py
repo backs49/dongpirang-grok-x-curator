@@ -80,17 +80,23 @@ class TestCurateFeed:
     def test_returns_recommendations(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = json.dumps({
+
+        # Responses API mock
+        mock_text_part = MagicMock()
+        mock_text_part.type = "output_text"
+        mock_text_part.text = json.dumps({
             "recommendations": [
                 {"summary": "Post 1", "why_recommended": "Trending"},
                 {"summary": "Post 2", "why_recommended": "Relevant"},
                 {"summary": "Post 3", "why_recommended": "Popular"},
             ]
         })
-        mock_response.choices[0].message.tool_calls = None
-        mock_client.chat.completions.create.return_value = mock_response
+        mock_message = MagicMock()
+        mock_message.type = "message"
+        mock_message.content = [mock_text_part]
+        mock_response = MagicMock()
+        mock_response.output = [mock_message]
+        mock_client.responses.create.return_value = mock_response
 
         grok = GrokClient(api_key="test", model="grok-4.1-fast-reasoning")
         result = grok.curate_feed("AI")
