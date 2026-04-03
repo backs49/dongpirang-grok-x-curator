@@ -1,5 +1,7 @@
 import streamlit as st
 
+from utils import generate_tweet_intent_url
+
 
 def render_ideas_tab(grok):
     st.subheader("오늘 올릴 포스트 아이디어 5개")
@@ -38,7 +40,11 @@ def render_ideas_tab(grok):
                 st.markdown(f"### #{i + 1}")
             with col_content:
                 st.markdown(f"**{idea.get('title', '')}**")
-                st.markdown(idea.get("content", ""))
+                content = idea.get("content", "")
+                st.code(content, language="")
+
+                intent_url = generate_tweet_intent_url(content)
+                st.link_button("𝕏 에 게시", intent_url, use_container_width=True)
 
                 detail_col1, detail_col2, detail_col3 = st.columns(3)
                 with detail_col1:
