@@ -1,6 +1,4 @@
-import json
 import streamlit as st
-import streamlit.components.v1 as components
 from grok_client import GrokClient
 from utils import (
     generate_tweet_intent_url,
@@ -17,61 +15,6 @@ st.set_page_config(
 
 APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
 VIRAL_TAG = "동피랑 Grok X 추천기로 최적화됨 🔥 @mangodaon"
-STORAGE_KEY = "dongpirang_grok_api_key"
-
-
-def _load_key_from_localstorage():
-    """localStorage에서 API 키를 읽어 query_params로 전달하는 JS 삽입."""
-    components.html(
-        f"""
-        <script>
-        const key = localStorage.getItem("{STORAGE_KEY}");
-        if (key && !window.location.search.includes("saved_key=")) {{
-            const url = new URL(window.parent.location);
-            url.searchParams.set("saved_key", key);
-            window.parent.history.replaceState({{}}, "", url);
-            window.parent.location.reload();
-        }}
-        </script>
-        """,
-        height=0,
-    )
-
-
-def _save_key_to_localstorage(api_key: str):
-    """localStorage에 API 키 저장."""
-    escaped = json.dumps(api_key)
-    components.html(
-        f"""
-        <script>
-        localStorage.setItem("{STORAGE_KEY}", {escaped});
-        </script>
-        """,
-        height=0,
-    )
-
-
-def _remove_key_from_localstorage():
-    """localStorage에서 API 키 삭제."""
-    components.html(
-        f"""
-        <script>
-        localStorage.removeItem("{STORAGE_KEY}");
-        </script>
-        """,
-        height=0,
-    )
-
-
-# ─── localStorage → query_params → session_state ───
-params = st.query_params
-if "saved_key" in params:
-    st.session_state.saved_api_key = params["saved_key"]
-    # query_params에서 키 제거 (URL에 노출 방지)
-    del params["saved_key"]
-elif "loaded_key" not in st.session_state:
-    _load_key_from_localstorage()
-    st.session_state.loaded_key = True
 
 # ─── 사이드바 ───
 with st.sidebar:
@@ -85,19 +28,10 @@ with st.sidebar:
         type="password",
         help="console.x.ai에서 발급받으세요",
         placeholder="xai-...",
-        value=st.session_state.get("saved_api_key", ""),
-        key="api_key_input"
-    )
-
-    remember_key = st.checkbox(
-        "🔑 API 키를 브라우저에 기억하기",
-        value=bool(st.session_state.get("saved_api_key")),
-        help="다음에 앱을 열 때 자동으로 채워집니다. (당신 브라우저에만 저장)"
     )
 
     st.caption("⚠️ Grok API Key는 한 번만 보여집니다.\n생성 즉시 저장하세요!")
 
-    # 모델 선택
     model = st.selectbox(
         "모델 선택",
         ["grok-4-1-fast-reasoning", "grok-4.20-reasoning"],
@@ -108,14 +42,6 @@ with st.sidebar:
 
     follow_url = generate_follow_url("mangodaon")
     st.link_button("🐦 @mangodaon 팔로우하기", follow_url, use_container_width=True)
-
-# ─── API 키 localStorage 저장/삭제 ───
-if remember_key and api_key:
-    st.session_state.saved_api_key = api_key
-    _save_key_to_localstorage(api_key)
-elif not remember_key:
-    st.session_state.saved_api_key = ""
-    _remove_key_from_localstorage()
 
 # ─── API 키 검증 ───
 if not api_key:
@@ -139,7 +65,7 @@ grok: GrokClient = st.session_state.grok_client
 st.title("🔥 동피랑 Grok X 추천기")
 st.caption("x-algorithm의 Phoenix Scorer & Candidate Pipeline 원리 기반")
 
-# ─── 엔터키로 트리거된 작업을 탭 렌더링 전에 처리 ───
+# ─── 엔터키로 트리거된 작업 처리 (탭 렌더링 전) ───
 if st.session_state.pop("run_ideas", False):
     kw = st.session_state.get("keywords_input", "")
     if kw.strip():
@@ -195,7 +121,6 @@ with tab1:
     if "optimize_result" in st.session_state:
         result = st.session_state.optimize_result
 
-        # 점수 & 등급
         col_score, col_level = st.columns([1, 2])
         with col_score:
             score = result.get("score", 0)
@@ -207,17 +132,14 @@ with tab1:
             }
             st.metric("참여 예측 등급", f"{level_colors.get(level, '⚪')} {level}")
 
-        # 분석 이유
         with st.expander("📊 분석 이유", expanded=True):
             for reason in result.get("reasons", []):
                 st.markdown(f"- {reason}")
 
-        # 개선 제안
         with st.expander("💡 개선 제안", expanded=True):
             for suggestion in result.get("suggestions", []):
                 st.markdown(f"- {suggestion}")
 
-        # 최적화된 포스트
         st.subheader("✨ 최적화된 포스트")
         optimized = result.get("optimized_post", "")
 
@@ -231,7 +153,6 @@ with tab1:
 
         st.code(optimized, language=None)
 
-        # X에 공유하기
         share_text = f"이 포스트를 동피랑 Grok X 추천기로 분석했더니 점수 {score}/100! 🔥\n\n{APP_URL}\n\n@mangodaon"
         share_url = generate_tweet_intent_url(share_text)
         st.link_button("🐦 X에 공유하기", share_url, use_container_width=True)
