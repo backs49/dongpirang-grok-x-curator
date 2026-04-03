@@ -1,4 +1,5 @@
 import json
+import re
 from urllib.parse import quote
 
 
@@ -24,6 +25,12 @@ def parse_grok_json(response_text: str) -> dict:
         return json.loads(text)
     except json.JSONDecodeError:
         return {"error": "JSON 파싱 실패", "raw": response_text}
+
+
+def parse_thread_text(raw_text: str) -> list[str]:
+    text = raw_text.replace("\r\n", "\n")
+    parts = re.split(r"\n\s*---\s*\n|\n{3,}", text)
+    return [p.strip() for p in parts if p.strip()]
 
 
 def append_viral_tag(text: str, tag: str) -> str:

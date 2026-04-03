@@ -4,6 +4,7 @@ from utils import (
     generate_follow_url,
     parse_grok_json,
     append_viral_tag,
+    parse_thread_text,
 )
 
 
@@ -57,6 +58,45 @@ class TestParseGrokJson:
     def test_empty_string(self):
         result = parse_grok_json("")
         assert "error" in result
+
+
+class TestParseThreadText:
+    def test_split_by_triple_dash(self):
+        text = "Tweet 1\n---\nTweet 2\n---\nTweet 3"
+        result = parse_thread_text(text)
+        assert len(result) == 3
+        assert result[0] == "Tweet 1"
+        assert result[2] == "Tweet 3"
+
+    def test_split_by_blank_lines(self):
+        text = "Tweet 1\n\n\nTweet 2\n\n\nTweet 3"
+        result = parse_thread_text(text)
+        assert len(result) == 3
+
+    def test_mixed_separators(self):
+        text = "Tweet 1\n---\nTweet 2\n\n\nTweet 3"
+        result = parse_thread_text(text)
+        assert len(result) == 3
+
+    def test_single_tweet(self):
+        result = parse_thread_text("Just one tweet")
+        assert len(result) == 1
+        assert result[0] == "Just one tweet"
+
+    def test_empty_input(self):
+        result = parse_thread_text("")
+        assert len(result) == 0
+
+    def test_strips_whitespace(self):
+        text = "  Tweet 1  \n---\n  Tweet 2  "
+        result = parse_thread_text(text)
+        assert result[0] == "Tweet 1"
+        assert result[1] == "Tweet 2"
+
+    def test_ignores_empty_segments(self):
+        text = "Tweet 1\n---\n\n---\nTweet 2"
+        result = parse_thread_text(text)
+        assert len(result) == 2
 
 
 class TestAppendViralTag:

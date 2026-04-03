@@ -1,10 +1,14 @@
 import streamlit as st
 import extra_streamlit_components as stx
 from grok_client import GrokClient
-from utils import (
-    generate_tweet_intent_url,
-    generate_follow_url,
-    append_viral_tag,
+from utils import generate_tweet_intent_url, generate_follow_url
+from tabs import (
+    render_optimizer_tab,
+    render_ideas_tab,
+    render_curator_tab,
+    render_thread_tab,
+    render_scheduler_tab,
+    render_ab_compare_tab,
 )
 
 # ─── 페이지 설정 ───
@@ -108,161 +112,27 @@ if st.session_state.pop("run_curator", False):
             st.session_state.curator_error = _result["error"]
 
 # ─── 탭 ───
-tab1, tab2, tab3 = st.tabs(["📝 포스트 최적화", "💡 아이디어 생성", "🔍 피드 큐레이터"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "📝 포스트 최적화",
+    "💡 아이디어 생성",
+    "🔍 피드 큐레이터",
+    "🧵 스레드 최적화",
+    "📅 포스팅 스케줄러",
+    "⚖️ A/B 비교",
+])
 
-# ━━━ Tab 1: 포스트 최적화 ━━━
 with tab1:
-    st.subheader("포스트 Optimizer & Engagement Predictor")
-    st.caption("x-algorithm의 Multi-Action Prediction 원리로 포스트를 분석합니다")
-
-    post_text = st.text_area(
-        "포스트 내용",
-        height=120,
-        placeholder="분석하고 싶은 포스트 내용을 입력하세요...",
-    )
-
-    col1, col2 = st.columns(2)
-    with col1:
-        image_desc = st.text_input("🖼️ 이미지 설명 (선택)", placeholder="예: 일몰 사진, 코드 스크린샷")
-    with col2:
-        hashtags = st.text_input("#️⃣ 해시태그 (선택)", placeholder="예: #AI #개발 #Python")
-
-    if st.button("🔍 x-algorithm 분석", use_container_width=True, type="primary"):
-        if not post_text.strip():
-            st.warning("포스트 내용을 입력해주세요.")
-        else:
-            with st.spinner("Grok이 x-algorithm 분석 중..."):
-                result = grok.optimize_post(post_text, image_desc, hashtags)
-
-            if "error" in result:
-                st.error(result["error"])
-            else:
-                st.session_state.optimize_result = result
-
-    if "optimize_result" in st.session_state:
-        result = st.session_state.optimize_result
-
-        col_score, col_level = st.columns([1, 2])
-        with col_score:
-            score = result.get("score", 0)
-            st.metric("x-algorithm 점수", f"{score}/100")
-        with col_level:
-            level = result.get("engagement_level", "Unknown")
-            level_colors = {
-                "Very High": "🟢", "High": "🔵", "Medium": "🟡", "Low": "🔴"
-            }
-            st.metric("참여 예측 등급", f"{level_colors.get(level, '⚪')} {level}")
-
-        with st.expander("📊 분석 이유", expanded=True):
-            for reason in result.get("reasons", []):
-                st.markdown(f"- {reason}")
-
-        with st.expander("💡 개선 제안", expanded=True):
-            for suggestion in result.get("suggestions", []):
-                st.markdown(f"- {suggestion}")
-
-        st.subheader("✨ 최적화된 포스트")
-        optimized = result.get("optimized_post", "")
-
-        add_viral = st.checkbox(
-            f"최적화된 포스트에 '{VIRAL_TAG}' 자동 추가",
-            value=False,
-        )
-
-        if add_viral:
-            optimized = append_viral_tag(optimized, VIRAL_TAG)
-
-        st.code(optimized, language=None)
-
-        share_text = f"이 포스트를 동피랑 Grok X 추천기로 분석했더니 점수 {score}/100! 🔥\n\n{APP_URL}\n\n@mangodaon"
-        share_url = generate_tweet_intent_url(share_text)
-        st.link_button("🐦 X에 공유하기", share_url, use_container_width=True)
-
-# ━━━ Tab 2: 아이디어 생성 ━━━
+    render_optimizer_tab(grok, APP_URL, VIRAL_TAG)
 with tab2:
-    st.subheader("오늘 올릴 포스트 아이디어 5개")
-    st.caption("x-algorithm 최적화된 포스트 아이디어를 생성합니다")
-
-    keywords = st.text_input(
-        "관심사 / 키워드",
-        placeholder="예: AI, 프로그래밍, 스타트업, 한국 여행",
-        key="keywords_input",
-        on_change=lambda: st.session_state.update(run_ideas=True),
-    )
-
-    if st.button("💡 아이디어 생성", use_container_width=True, type="primary"):
-        if not keywords.strip():
-            st.warning("관심사나 키워드를 입력해주세요.")
-        else:
-            with st.spinner("Grok이 x-algorithm 최적화 아이디어 생성 중..."):
-                result = grok.generate_ideas(keywords)
-
-            if "error" in result:
-                st.error(result["error"])
-            else:
-                st.session_state.ideas_result = result
-
-    if "ideas_error" in st.session_state:
-        st.error(st.session_state.pop("ideas_error"))
-
-    if "ideas_result" in st.session_state:
-        ideas = st.session_state.ideas_result.get("ideas", [])
-        for i, idea in enumerate(ideas):
-            with st.container(border=True):
-                col_num, col_content = st.columns([1, 10])
-                with col_num:
-                    st.markdown(f"### #{i + 1}")
-                with col_content:
-                    st.markdown(f"**{idea.get('title', '')}**")
-                    st.markdown(idea.get("content", ""))
-
-                    detail_col1, detail_col2, detail_col3 = st.columns(3)
-                    with detail_col1:
-                        st.caption(f"📊 {idea.get('engagement_level', '')}")
-                    with detail_col2:
-                        st.caption(f"⏰ {idea.get('best_time', '')}")
-                    with detail_col3:
-                        actions = ", ".join(idea.get("target_actions", []))
-                        st.caption(f"🎯 {actions}")
-
-                    with st.expander("전략 보기"):
-                        st.markdown(idea.get("strategy", ""))
-
-# ━━━ Tab 3: 피드 큐레이터 ━━━
+    render_ideas_tab(grok)
 with tab3:
-    st.subheader("Personalized Feed Curator")
-    st.caption("Grok의 실시간 검색으로 관심사 기반 추천 포스트를 찾습니다")
-
-    interests = st.text_input(
-        "관심사 입력",
-        placeholder="예: 머신러닝, 웹개발, 한국 테크 뉴스",
-        key="curator_interests",
-        on_change=lambda: st.session_state.update(run_curator=True),
-    )
-
-    if st.button("🔍 실시간 추천", use_container_width=True, type="primary"):
-        if not interests.strip():
-            st.warning("관심사를 입력해주세요.")
-        else:
-            with st.spinner("Grok이 X에서 실시간 검색 중..."):
-                result = grok.curate_feed(interests)
-
-            if "error" in result:
-                st.error(result["error"])
-            else:
-                st.session_state.curator_result = result
-
-    if "curator_error" in st.session_state:
-        st.error(st.session_state.pop("curator_error"))
-
-    if "curator_result" in st.session_state:
-        recs = st.session_state.curator_result.get("recommendations", [])
-        for i, rec in enumerate(recs):
-            with st.container(border=True):
-                st.markdown(f"**추천 #{i + 1}**")
-                st.markdown(rec.get("summary", ""))
-                st.caption(f"💡 추천 이유: {rec.get('why_recommended', '')}")
-                st.caption(f"🤝 {rec.get('engagement_hint', '')}")
+    render_curator_tab(grok)
+with tab4:
+    render_thread_tab(grok, APP_URL, VIRAL_TAG)
+with tab5:
+    render_scheduler_tab(grok)
+with tab6:
+    render_ab_compare_tab(grok, APP_URL, VIRAL_TAG)
 
 # ─── 하단 Footer ───
 st.divider()
