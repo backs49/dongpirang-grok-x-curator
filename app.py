@@ -18,12 +18,8 @@ APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
 VIRAL_TAG = "동피랑 Grok X 추천기로 최적화됨 🔥 @mangodaon"
 COOKIE_KEY = "dongpirang_grok_api_key"
 
-# ─── 쿠키 매니저 (한 번만 생성) ───
-@st.cache_resource
-def get_cookie_manager():
-    return stx.CookieManager()
-
-cookie_manager = get_cookie_manager()
+# ─── 쿠키 매니저 ───
+cookie_manager = stx.CookieManager()
 
 # ─── 쿠키에서 저장된 키 불러오기 ───
 saved_key = cookie_manager.get(COOKIE_KEY) or ""
