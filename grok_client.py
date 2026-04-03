@@ -36,11 +36,17 @@ class GrokClient:
             return {"error": f"Grok API 오류: {str(e)}"}
 
     def generate_ideas(self, keywords: str) -> dict:
+        from datetime import datetime
+        # 현재 날짜를 한국어 형식으로 동적으로 주입 (무조건 최신!)
+        current_date_kr = datetime.now().strftime("%Y년 %m월 %d일")
+
+        system_prompt = IDEAS_SYSTEM_PROMPT.format(current_date_kr=current_date_kr)
+
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": IDEAS_SYSTEM_PROMPT},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"관심사/키워드: {keywords}"},
                 ],
                 response_format={"type": "json_object"},
