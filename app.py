@@ -1,5 +1,6 @@
+import json
 import streamlit as st
-from streamlit_js_eval import streamlit_js_eval
+import streamlit.components.v1 as components
 from grok_client import GrokClient
 from utils import (
     generate_tweet_intent_url,
@@ -18,14 +19,58 @@ APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
 VIRAL_TAG = "동피랑 Grok X 추천기로 최적화됨 🔥 @mangodaon"
 STORAGE_KEY = "dongpirang_grok_api_key"
 
-# ─── localStorage에서 저장된 키 불러오기 ───
-if "loaded_key" not in st.session_state:
-    saved = streamlit_js_eval(
-        js_expressions=f"localStorage.getItem('{STORAGE_KEY}')",
-        key="load_api_key",
+
+def _load_key_from_localstorage():
+    """localStorage에서 API 키를 읽어 query_params로 전달하는 JS 삽입."""
+    components.html(
+        f"""
+        <script>
+        const key = localStorage.getItem("{STORAGE_KEY}");
+        if (key && !window.location.search.includes("saved_key=")) {{
+            const url = new URL(window.parent.location);
+            url.searchParams.set("saved_key", key);
+            window.parent.history.replaceState({{}}, "", url);
+            window.parent.location.reload();
+        }}
+        </script>
+        """,
+        height=0,
     )
-    if saved:
-        st.session_state.saved_api_key = saved
+
+
+def _save_key_to_localstorage(api_key: str):
+    """localStorage에 API 키 저장."""
+    escaped = json.dumps(api_key)
+    components.html(
+        f"""
+        <script>
+        localStorage.setItem("{STORAGE_KEY}", {escaped});
+        </script>
+        """,
+        height=0,
+    )
+
+
+def _remove_key_from_localstorage():
+    """localStorage에서 API 키 삭제."""
+    components.html(
+        f"""
+        <script>
+        localStorage.removeItem("{STORAGE_KEY}");
+        </script>
+        """,
+        height=0,
+    )
+
+
+# ─── localStorage → query_params → session_state ───
+params = st.query_params
+if "saved_key" in params:
+    st.session_state.saved_api_key = params["saved_key"]
+    # query_params에서 키 제거 (URL에 노출 방지)
+    del params["saved_key"]
+elif "loaded_key" not in st.session_state:
+    _load_key_from_localstorage()
     st.session_state.loaded_key = True
 
 # ─── 사이드바 ───
@@ -67,16 +112,10 @@ with st.sidebar:
 # ─── API 키 localStorage 저장/삭제 ───
 if remember_key and api_key:
     st.session_state.saved_api_key = api_key
-    streamlit_js_eval(
-        js_expressions=f"localStorage.setItem('{STORAGE_KEY}', '{api_key}')",
-        key="save_api_key",
-    )
+    _save_key_to_localstorage(api_key)
 elif not remember_key:
     st.session_state.saved_api_key = ""
-    streamlit_js_eval(
-        js_expressions=f"localStorage.removeItem('{STORAGE_KEY}')",
-        key="remove_api_key",
-    )
+    _remove_key_from_localstorage()
 
 # ─── API 키 검증 ───
 if not api_key:
