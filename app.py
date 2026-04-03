@@ -1,4 +1,5 @@
 import streamlit as st
+import extra_streamlit_components as stx
 from grok_client import GrokClient
 from utils import (
     generate_tweet_intent_url,
@@ -15,6 +16,17 @@ st.set_page_config(
 
 APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
 VIRAL_TAG = "동피랑 Grok X 추천기로 최적화됨 🔥 @mangodaon"
+COOKIE_KEY = "dongpirang_grok_api_key"
+
+# ─── 쿠키 매니저 (한 번만 생성) ───
+@st.cache_resource
+def get_cookie_manager():
+    return stx.CookieManager()
+
+cookie_manager = get_cookie_manager()
+
+# ─── 쿠키에서 저장된 키 불러오기 ───
+saved_key = cookie_manager.get(COOKIE_KEY) or ""
 
 # ─── 사이드바 ───
 with st.sidebar:
@@ -28,7 +40,20 @@ with st.sidebar:
         type="password",
         help="console.x.ai에서 발급받으세요",
         placeholder="xai-...",
+        value=saved_key,
     )
+
+    remember_key = st.checkbox(
+        "🔑 API 키 기억하기",
+        value=bool(saved_key),
+        help="브라우저 쿠키에 저장. 새로고침해도 유지됩니다.",
+    )
+
+    # 쿠키 저장/삭제 (값이 변경될 때만)
+    if remember_key and api_key and api_key != saved_key:
+        cookie_manager.set(COOKIE_KEY, api_key, key="save_cookie")
+    elif not remember_key and saved_key:
+        cookie_manager.delete(COOKIE_KEY, key="delete_cookie")
 
     st.caption("⚠️ Grok API Key는 한 번만 보여집니다.\n생성 즉시 저장하세요!")
 
