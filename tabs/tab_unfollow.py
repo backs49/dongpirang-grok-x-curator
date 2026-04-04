@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import streamlit as st
 from datetime import datetime
 from utils import parse_followers_file, compare_followers
