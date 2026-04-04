@@ -2,16 +2,14 @@ import streamlit as st
 import extra_streamlit_components as stx
 from grok_client import GrokClient
 from utils import generate_tweet_intent_url, generate_follow_url
-from tabs import (
-    render_optimizer_tab,
-    render_ideas_tab,
-    render_curator_tab,
-    render_thread_tab,
-    render_scheduler_tab,
-    render_ab_compare_tab,
-    render_unfollow_tab,
-    render_risk_check_tab,
-)
+from tabs.tab_optimizer import render_optimizer_tab
+from tabs.tab_ideas import render_ideas_tab
+from tabs.tab_curator import render_curator_tab
+from tabs.tab_thread import render_thread_tab
+from tabs.tab_scheduler import render_scheduler_tab
+from tabs.tab_ab_compare import render_ab_compare_tab
+from tabs.tab_unfollow import render_unfollow_tab
+from tabs.tab_risk_check import render_risk_check_tab
 
 # ─── 페이지 설정 ───
 st.set_page_config(
