@@ -4,6 +4,7 @@ from tabs.tab_curator import render_curator_tab
 from tabs.tab_thread import render_thread_tab
 from tabs.tab_scheduler import render_scheduler_tab
 from tabs.tab_ab_compare import render_ab_compare_tab
+from tabs.tab_unfollow import render_unfollow_tab
 
 __all__ = [
     "render_optimizer_tab",
@@ -12,4 +13,5 @@ __all__ = [
     "render_thread_tab",
     "render_scheduler_tab",
     "render_ab_compare_tab",
+    "render_unfollow_tab",
 ]

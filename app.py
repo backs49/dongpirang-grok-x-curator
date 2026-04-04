@@ -9,6 +9,7 @@ from tabs import (
     render_thread_tab,
     render_scheduler_tab,
     render_ab_compare_tab,
+    render_unfollow_tab,
 )
 
 # ─── 페이지 설정 ───
@@ -68,30 +69,27 @@ with st.sidebar:
     follow_url = generate_follow_url("mangodaon")
     st.link_button("🐦 @mangodaon 팔로우하기", follow_url, use_container_width=True)
 
-# ─── API 키 검증 ───
-if not api_key:
-    st.warning("⚠️ API 키를 입력해주세요. 사이드바에서 Grok API Key를 입력하면 시작됩니다.")
-    st.info("👉 [console.x.ai](https://console.x.ai)에서 Grok API Key를 발급받을 수 있습니다.")
-    st.stop()
+# ─── API 키 검증 & Grok 클라이언트 초기화 ───
+grok = None
+if api_key:
+    if (
+        "grok_client" not in st.session_state
+        or st.session_state.get("_model") != model
+        or st.session_state.get("_api_key") != api_key
+    ):
+        st.session_state.grok_client = GrokClient(api_key=api_key, model=model)
+        st.session_state._model = model
+        st.session_state._api_key = api_key
+    grok = st.session_state.grok_client
 
-# ─── Grok 클라이언트 초기화 ───
-if (
-    "grok_client" not in st.session_state
-    or st.session_state.get("_model") != model
-    or st.session_state.get("_api_key") != api_key
-):
-    st.session_state.grok_client = GrokClient(api_key=api_key, model=model)
-    st.session_state._model = model
-    st.session_state._api_key = api_key
-
-grok: GrokClient = st.session_state.grok_client
+_API_MSG = "⚠️ 이 기능을 사용하려면 사이드바에서 Grok API 키를 입력해주세요. 👉 [console.x.ai](https://console.x.ai)"
 
 # ─── 메인 타이틀 ───
 st.title("🔥 동피랑 Grok X 추천기")
 st.caption("x-algorithm의 Phoenix Scorer & Candidate Pipeline 원리 기반")
 
 # ─── 엔터키로 트리거된 작업 처리 (탭 렌더링 전) ───
-if st.session_state.pop("run_ideas", False):
+if grok and st.session_state.pop("run_ideas", False):
     kw = st.session_state.get("keywords_input", "")
     if kw.strip():
         with st.spinner("Grok이 x-algorithm 최적화 아이디어 생성 중..."):
@@ -101,7 +99,7 @@ if st.session_state.pop("run_ideas", False):
         else:
             st.session_state.ideas_error = _result["error"]
 
-if st.session_state.pop("run_curator", False):
+if grok and st.session_state.pop("run_curator", False):
     inp = st.session_state.get("curator_interests", "")
     if inp.strip():
         with st.spinner("Grok이 X에서 실시간 검색 중..."):
@@ -112,27 +110,48 @@ if st.session_state.pop("run_curator", False):
             st.session_state.curator_error = _result["error"]
 
 # ─── 탭 ───
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "📝 포스트 최적화",
     "💡 아이디어 생성",
     "🔍 피드 큐레이터",
     "🧵 스레드 최적화",
     "📅 포스팅 스케줄러",
     "⚖️ A/B 비교",
+    "🔄 언팔 추적",
 ])
 
 with tab1:
-    render_optimizer_tab(grok, APP_URL, VIRAL_TAG)
+    if grok:
+        render_optimizer_tab(grok, APP_URL, VIRAL_TAG)
+    else:
+        st.info(_API_MSG)
 with tab2:
-    render_ideas_tab(grok)
+    if grok:
+        render_ideas_tab(grok)
+    else:
+        st.info(_API_MSG)
 with tab3:
-    render_curator_tab(grok)
+    if grok:
+        render_curator_tab(grok)
+    else:
+        st.info(_API_MSG)
 with tab4:
-    render_thread_tab(grok, APP_URL, VIRAL_TAG)
+    if grok:
+        render_thread_tab(grok, APP_URL, VIRAL_TAG)
+    else:
+        st.info(_API_MSG)
 with tab5:
-    render_scheduler_tab(grok)
+    if grok:
+        render_scheduler_tab(grok)
+    else:
+        st.info(_API_MSG)
 with tab6:
-    render_ab_compare_tab(grok, APP_URL, VIRAL_TAG)
+    if grok:
+        render_ab_compare_tab(grok, APP_URL, VIRAL_TAG)
+    else:
+        st.info(_API_MSG)
+with tab7:
+    render_unfollow_tab()
 
 # ─── 하단 Footer ───
 st.divider()
