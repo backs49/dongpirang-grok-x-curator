@@ -1,24 +1,25 @@
 import streamlit as st
 
 from utils import generate_search_url
+from i18n import t
 
 
 def render_curator_tab(grok):
-    st.subheader("Personalized Feed Curator")
-    st.caption("Grok의 실시간 검색으로 관심사 기반 추천 포스트를 찾습니다")
+    st.subheader(t("cur_subheader"))
+    st.caption(t("cur_caption"))
 
     interests = st.text_input(
-        "관심사 입력",
-        placeholder="예: 한국 테크 뉴스, AI 프로그래밍, 스타트업 트렌드",
+        t("cur_interest_label"),
+        placeholder=t("cur_interest_placeholder"),
         key="curator_interests",
         on_change=lambda: st.session_state.update(run_curator=True),
     )
 
-    if st.button("🔍 실시간 추천", use_container_width=True, type="primary"):
+    if st.button(t("cur_search_btn"), use_container_width=True, type="primary"):
         if not interests.strip():
-            st.warning("관심사를 입력해주세요.")
+            st.warning(t("cur_enter_interest"))
         else:
-            with st.spinner("Grok이 X에서 실시간 검색 중..."):
+            with st.spinner(t("cur_spinner")):
                 result = grok.curate_feed(interests)
 
             if "error" in result:
@@ -35,23 +36,23 @@ def render_curator_tab(grok):
     recs = st.session_state.curator_result.get("recommendations", [])
     for i, rec in enumerate(recs):
         with st.container(border=True):
-            st.markdown(f"**추천 #{i + 1}**")
+            st.markdown(f"**#{i + 1}**")
             st.markdown(rec.get("summary", ""))
 
-            with st.expander("💡 왜 추천했나요?"):
+            with st.expander(t("cur_why")):
                 st.write(rec.get("why_recommended", ""))
 
             search_kw = rec.get("search_keywords", "")
             if search_kw:
                 st.link_button(
-                    "🔍 X에서 관련 포스트 검색",
+                    t("cur_search_x"),
                     generate_search_url(search_kw),
                     use_container_width=True,
                 )
 
             suggested = rec.get("suggested_reply", "")
             if suggested:
-                st.caption("💬 추천 리플 (복사해서 사용하세요)")
+                st.caption(t("cur_reply_caption"))
                 st.code(suggested, language="")
 
             st.caption(f"💡 {rec.get('engagement_hint', '')}")

@@ -2,6 +2,7 @@ import streamlit as st
 import extra_streamlit_components as stx
 from grok_client import GrokClient
 from utils import generate_tweet_intent_url, generate_follow_url
+from i18n import t, LANGUAGES
 from tabs.tab_optimizer import render_optimizer_tab
 from tabs.tab_ideas import render_ideas_tab
 from tabs.tab_curator import render_curator_tab
@@ -30,23 +31,40 @@ saved_key = cookie_manager.get(COOKIE_KEY) or ""
 
 # ─── 사이드바 ───
 with st.sidebar:
-    st.title("🔥 동피랑 Grok X 추천기")
-    st.caption("x-algorithm 기반 X 포스트 최적화")
+    st.title(t("app_title"))
+    st.caption(t("app_caption"))
+
+    # ─── 언어 선택 ───
+    lang_options = list(LANGUAGES.keys())
+    lang_labels = list(LANGUAGES.values())
+    current_lang = st.session_state.get("lang", "ko")
+    lang_idx = lang_options.index(current_lang) if current_lang in lang_options else 0
+
+    selected_lang = st.selectbox(
+        t("lang_label"),
+        lang_options,
+        format_func=lambda k: LANGUAGES[k],
+        index=lang_idx,
+        key="lang_select",
+    )
+    if selected_lang != st.session_state.get("lang", "ko"):
+        st.session_state.lang = selected_lang
+        st.rerun()
 
     st.divider()
 
     api_key = st.text_input(
-        "🔑 Grok API Key 입력",
+        t("api_key_label"),
         type="password",
-        help="console.x.ai에서 발급받으세요",
+        help=t("api_key_help"),
         placeholder="xai-...",
         value=saved_key,
     )
 
     remember_key = st.checkbox(
-        "🔑 API 키 기억하기",
+        t("api_key_remember"),
         value=bool(saved_key),
-        help="브라우저 쿠키에 저장. 새로고침해도 유지됩니다.",
+        help=t("api_key_remember_help"),
     )
 
     # 쿠키 저장/삭제 (값이 변경될 때만)
@@ -55,18 +73,18 @@ with st.sidebar:
     elif not remember_key and saved_key:
         cookie_manager.delete(COOKIE_KEY, key="delete_cookie")
 
-    st.caption("⚠️ Grok API Key는 한 번만 보여집니다.\n생성 즉시 저장하세요!")
+    st.caption(t("api_key_warning"))
 
     model = st.selectbox(
-        "모델 선택",
+        t("model_select"),
         ["grok-4-1-fast-reasoning", "grok-4.20-reasoning"],
-        help="grok-4-1-fast-reasoning: 빠른 응답 / grok-4.20-reasoning: 깊은 분석",
+        help=t("model_help"),
     )
 
     st.divider()
 
     follow_url = generate_follow_url("mangodaon")
-    st.link_button("🐦 @mangodaon 팔로우하기", follow_url, use_container_width=True)
+    st.link_button(t("follow_btn"), follow_url, use_container_width=True)
 
 # ─── API 키 검증 & Grok 클라이언트 초기화 ───
 grok = None
@@ -81,17 +99,17 @@ if api_key:
         st.session_state._api_key = api_key
     grok = st.session_state.grok_client
 
-_API_MSG = "⚠️ 이 기능을 사용하려면 사이드바에서 Grok API 키를 입력해주세요. 👉 [console.x.ai](https://console.x.ai)"
+_API_MSG = t("api_required")
 
 # ─── 메인 타이틀 ───
-st.title("🔥 동피랑 Grok X 추천기")
-st.caption("x-algorithm의 Phoenix Scorer & Candidate Pipeline 원리 기반")
+st.title(t("app_title"))
+st.caption(t("app_caption_main"))
 
 # ─── 엔터키로 트리거된 작업 처리 (탭 렌더링 전) ───
 if grok and st.session_state.pop("run_ideas", False):
     kw = st.session_state.get("keywords_input", "")
     if kw.strip():
-        with st.spinner("Grok이 x-algorithm 최적화 아이디어 생성 중..."):
+        with st.spinner(t("ideas_spinner")):
             _result = grok.generate_ideas(kw)
         if "error" not in _result:
             st.session_state.ideas_result = _result
@@ -101,7 +119,7 @@ if grok and st.session_state.pop("run_ideas", False):
 if grok and st.session_state.pop("run_curator", False):
     inp = st.session_state.get("curator_interests", "")
     if inp.strip():
-        with st.spinner("Grok이 X에서 실시간 검색 중..."):
+        with st.spinner(t("cur_spinner")):
             _result = grok.curate_feed(inp)
         if "error" not in _result:
             st.session_state.curator_result = _result
@@ -110,14 +128,14 @@ if grok and st.session_state.pop("run_curator", False):
 
 # ─── 탭 ───
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-    "📝 포스트 최적화",
-    "💡 아이디어 생성",
-    "🔍 피드 큐레이터",
-    "🧵 스레드 최적화",
-    "📅 포스팅 스케줄러",
-    "⚖️ A/B 비교",
-    "⚠️ 리스크 체크",
-    "🔄 언팔 추적",
+    t("tab_optimizer"),
+    t("tab_ideas"),
+    t("tab_curator"),
+    t("tab_thread"),
+    t("tab_scheduler"),
+    t("tab_ab"),
+    t("tab_risk"),
+    t("tab_unfollow"),
 ])
 
 with tab1:
@@ -164,14 +182,14 @@ st.divider()
 footer_col1, footer_col2, footer_col3 = st.columns(3)
 
 with footer_col1:
-    st.markdown("**동피랑 Grok X 추천기** 🔥")
-    st.caption("x-algorithm 기반 X 포스트 최적화 도구")
+    st.markdown(t("footer_title"))
+    st.caption(t("footer_caption"))
 
 with footer_col2:
     promo_text = f"동피랑 Grok X 추천기로 X 포스트를 최적화하고 있어요! 🔥\nx-algorithm 기반 무료 분석\n\n{APP_URL}\n\n@mangodaon"
     promo_url = generate_tweet_intent_url(promo_text)
-    st.link_button("🐦 이 앱을 X에 공유하기", promo_url, use_container_width=True)
+    st.link_button(t("footer_share"), promo_url, use_container_width=True)
 
 with footer_col3:
     follow_url = generate_follow_url("mangodaon")
-    st.link_button("👤 이 앱 만든 사람 팔로우하기 @mangodaon", follow_url, use_container_width=True)
+    st.link_button(t("footer_follow"), follow_url, use_container_width=True)

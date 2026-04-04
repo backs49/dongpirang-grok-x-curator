@@ -3,50 +3,39 @@ from __future__ import annotations
 import streamlit as st
 from datetime import datetime
 from utils import parse_followers_file, compare_followers
+from i18n import t
 
 
 def render_unfollow_tab():
-    st.subheader("🔄 언팔 추적")
-    st.caption("팔로워 리스트를 비교하여 언팔/신규 팔로워를 추적합니다")
+    st.subheader(t("unf_subheader"))
+    st.caption(t("unf_caption"))
 
     # ─── 안전한 방법 안내 ───
-    st.info(
-        "**📋 안전한 방법: X 공식 데이터 아카이브**\n\n"
-        "1. [X 설정](https://x.com/settings/download_your_data) → '데이터 아카이브 요청'\n"
-        "2. 24~48시간 후 다운로드 링크 이메일 수신\n"
-        "3. 압축 해제 후 `data/follower.js` 파일을 여기에 업로드\n\n"
-        "이 방법은 X 공식 기능이므로 계정 정지 위험이 **전혀 없습니다**."
-    )
+    st.info(t("unf_safe_info"))
 
-    with st.expander("⚡ 더 빠르게 하고 싶다면 (주의)"):
-        st.warning(
-            "⚠️ **Chrome 확장 프로그램 사용 시 주의사항**\n\n"
-            "- 비공식 도구는 X 이용약관 위반으로 **계정 정지** 위험이 있습니다.\n"
-            "- 단시간 대량 요청 시 일시/영구 정지될 수 있습니다.\n"
-            "- 사용 시 CSV로 내보내기 후 여기에 업로드하세요.\n\n"
-            "**권장:** X 공식 아카이브를 이용하세요."
-        )
+    with st.expander(t("unf_fast_expander")):
+        st.warning(t("unf_fast_warning"))
 
     st.divider()
 
     # ─── 파일 업로드 ───
-    st.subheader("📂 팔로워 리스트 업로드")
+    st.subheader(t("unf_upload_title"))
 
     col_followers, col_following = st.columns(2)
 
     with col_followers:
         followers_file = st.file_uploader(
-            "팔로워 파일 (필수)",
+            t("unf_followers_file"),
             type=["js", "csv"],
-            help="follower.js 또는 팔로워 CSV 파일",
+            help=t("unf_followers_help"),
             key="followers_upload",
         )
 
     with col_following:
         following_file = st.file_uploader(
-            "팔로잉 파일 (선택 — 맞팔 구분용)",
+            t("unf_following_file"),
             type=["js", "csv"],
-            help="following.js 또는 팔로잉 CSV 파일",
+            help=t("unf_following_help"),
             key="following_upload",
         )
 
@@ -57,25 +46,25 @@ def render_unfollow_tab():
     following = parse_followers_file(following_file) if following_file else set()
 
     if not followers:
-        st.error("파일에서 팔로워를 찾을 수 없습니다. 파일 형식을 확인해주세요.")
+        st.error(t("unf_parse_error"))
         return
 
-    st.success(f"팔로워 **{len(followers)}**명 감지")
+    st.success(t("unf_detected", n=len(followers)))
     if following:
         mutual = followers & following
-        st.success(f"팔로잉 **{len(following)}**명 감지 (맞팔: **{len(mutual)}**명)")
+        st.success(t("unf_following_detected", n=len(following), m=len(mutual)))
 
     # ─── 스냅샷 저장 ───
     if "unfollow_snapshots" not in st.session_state:
         st.session_state.unfollow_snapshots = []
 
     label = st.text_input(
-        "스냅샷 라벨",
+        t("unf_snapshot_label"),
         value=datetime.now().strftime("%Y-%m-%d %H:%M"),
         key="snapshot_label",
     )
 
-    if st.button("📸 스냅샷 저장", use_container_width=True, type="primary"):
+    if st.button(t("unf_save_btn"), use_container_width=True, type="primary"):
         snapshot = {
             "label": label,
             "date": datetime.now().isoformat(),
@@ -85,7 +74,7 @@ def render_unfollow_tab():
         snapshots = st.session_state.unfollow_snapshots
         snapshots.insert(0, snapshot)
         st.session_state.unfollow_snapshots = snapshots[:10]
-        st.success(f"스냅샷 '{label}' 저장 완료 (팔로워 {len(followers)}명)")
+        st.success(t("unf_saved", label=label, n=len(followers)))
         st.rerun()
 
     # ─── CSV 다운로드 ───
@@ -93,7 +82,7 @@ def render_unfollow_tab():
     csv_lines.extend(sorted(followers))
     csv_data = "\n".join(csv_lines)
     st.download_button(
-        "📥 팔로워 리스트 CSV 다운로드",
+        t("unf_csv_download"),
         data=csv_data,
         file_name=f"followers_{datetime.now().strftime('%Y%m%d')}.csv",
         mime="text/csv",
@@ -103,43 +92,39 @@ def render_unfollow_tab():
     st.divider()
 
     # ─── 스냅샷 비교 ───
-    st.subheader("📊 스냅샷 비교")
+    st.subheader(t("unf_compare_title"))
 
     snapshots = st.session_state.get("unfollow_snapshots", [])
 
     if len(snapshots) < 2:
-        st.info(
-            f"현재 저장된 스냅샷: **{len(snapshots)}개**\n\n"
-            "비교하려면 **최소 2개의 스냅샷**이 필요합니다.\n"
-            "서로 다른 시점의 팔로워 파일을 업로드하고 저장하세요."
-        )
+        st.info(t("unf_need_snapshots", n=len(snapshots)))
         return
 
     snapshot_labels = [
-        f"{s['label']} ({len(s['followers'])}명)" for s in snapshots
+        f"{s['label']} ({len(s['followers'])})" for s in snapshots
     ]
 
     col_old, col_new = st.columns(2)
     with col_old:
         old_idx = st.selectbox(
-            "이전 스냅샷",
+            t("unf_old_snapshot"),
             range(len(snapshots)),
             format_func=lambda i: snapshot_labels[i],
             index=min(1, len(snapshots) - 1),
         )
     with col_new:
         new_idx = st.selectbox(
-            "현재 스냅샷",
+            t("unf_new_snapshot"),
             range(len(snapshots)),
             format_func=lambda i: snapshot_labels[i],
             index=0,
         )
 
     if old_idx == new_idx:
-        st.warning("서로 다른 스냅샷을 선택하세요.")
+        st.warning(t("unf_diff_warning"))
         return
 
-    if st.button("🔍 비교하기", use_container_width=True, type="primary"):
+    if st.button(t("unf_compare_btn"), use_container_width=True, type="primary"):
         old_snap = snapshots[old_idx]
         new_snap = snapshots[new_idx]
         result = compare_followers(old_snap["followers"], new_snap["followers"])
@@ -160,17 +145,17 @@ def render_unfollow_tab():
     # ─── 결과 요약 ───
     col1, col2, col3 = st.columns(3)
     col1.metric(
-        "😢 언팔",
-        f"{len(result['unfollowed'])}명",
+        t("unf_unfollowed"),
+        f"{len(result['unfollowed'])}",
         delta=f"-{len(result['unfollowed'])}",
         delta_color="inverse",
     )
     col2.metric(
-        "🎉 새 팔로워",
-        f"{len(result['new_followers'])}명",
+        t("unf_new_followers"),
+        f"{len(result['new_followers'])}",
         delta=f"+{len(result['new_followers'])}",
     )
-    col3.metric("🤝 유지", f"{len(result['unchanged'])}명")
+    col3.metric(t("unf_unchanged"), f"{len(result['unchanged'])}")
 
     unfollowed = result["unfollowed"]
 
@@ -183,19 +168,19 @@ def render_unfollow_tab():
             simple_unf = unfollowed
 
         if mutual_unf:
-            st.subheader(f"💔 맞팔이었다가 언팔한 사람 ({len(mutual_unf)}명)")
-            st.caption("내가 팔로우 중인데 상대가 언팔한 사람들")
+            st.subheader(t("unf_mutual_unf", n=len(mutual_unf)))
+            st.caption(t("unf_mutual_caption"))
             _render_user_table(mutual_unf)
 
         if simple_unf:
-            st.subheader(f"👋 단순 언팔한 사람 ({len(simple_unf)}명)")
+            st.subheader(t("unf_simple_unf", n=len(simple_unf)))
             _render_user_table(simple_unf)
     else:
-        st.success("🎉 언팔한 사람이 없습니다!")
+        st.success(t("unf_no_unfollows"))
 
     new_followers = result["new_followers"]
     if new_followers:
-        st.subheader(f"🎉 새로 팔로우한 사람 ({len(new_followers)}명)")
+        st.subheader(t("unf_new_title", n=len(new_followers)))
         _render_user_table(new_followers)
 
 
@@ -205,15 +190,15 @@ def _render_user_table(users: list[str]):
     for u in users:
         if u.isdigit():
             link = f"https://x.com/intent/user?user_id={u}"
-            rows.append(f"| `{u}` | [X에서 보기]({link}) |")
+            rows.append(f"| `{u}` | [{t('unf_view_on_x')}]({link}) |")
         else:
-            rows.append(f"| [@{u}](https://x.com/{u}) | [X에서 보기](https://x.com/{u}) |")
+            rows.append(f"| [@{u}](https://x.com/{u}) | [{t('unf_view_on_x')}](https://x.com/{u}) |")
 
     visible = rows[:50]
-    table = "| 사용자 | 프로필 |\n|---|---|\n" + "\n".join(visible)
+    table = f"| {t('unf_table_user')} | {t('unf_table_profile')} |\n|---|---|\n" + "\n".join(visible)
     st.markdown(table)
 
     if len(rows) > 50:
-        with st.expander(f"나머지 {len(rows) - 50}명 더 보기"):
-            rest = "| 사용자 | 프로필 |\n|---|---|\n" + "\n".join(rows[50:])
+        with st.expander(t("unf_show_more", n=len(rows) - 50)):
+            rest = f"| {t('unf_table_user')} | {t('unf_table_profile')} |\n|---|---|\n" + "\n".join(rows[50:])
             st.markdown(rest)

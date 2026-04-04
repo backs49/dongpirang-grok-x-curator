@@ -9,6 +9,7 @@ from xalgo_prompts import (
     RISK_CHECK_SYSTEM_PROMPT,
 )
 from utils import parse_grok_json, parse_thread_text
+from i18n import get_lang_instruction
 
 
 class GrokClient:
@@ -30,7 +31,7 @@ class GrokClient:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": OPTIMIZER_SYSTEM_PROMPT},
+                    {"role": "system", "content": OPTIMIZER_SYSTEM_PROMPT + get_lang_instruction()},
                     {"role": "user", "content": user_content},
                 ],
                 response_format={"type": "json_object"},
@@ -51,7 +52,7 @@ class GrokClient:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": system_prompt + get_lang_instruction()},
                     {"role": "user", "content": f"관심사/키워드: {keywords}"},
                 ],
                 response_format={"type": "json_object"},
@@ -73,7 +74,7 @@ class GrokClient:
             response = self.client.responses.create(
                 model=self.model,
                 input=[
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": system_prompt + get_lang_instruction()},
                     {"role": "user", "content": f"관심사: {interests}"},
                 ],
                 tools=[{
@@ -108,7 +109,7 @@ class GrokClient:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": THREAD_SYSTEM_PROMPT},
+                    {"role": "system", "content": THREAD_SYSTEM_PROMPT + get_lang_instruction()},
                     {"role": "user", "content": user_content},
                 ],
                 response_format={"type": "json_object"},
@@ -137,7 +138,7 @@ class GrokClient:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": system_prompt + get_lang_instruction()},
                     {"role": "user", "content": user_content},
                 ],
                 response_format={"type": "json_object"},
@@ -155,7 +156,7 @@ class GrokClient:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": RISK_CHECK_SYSTEM_PROMPT},
+                    {"role": "system", "content": RISK_CHECK_SYSTEM_PROMPT + get_lang_instruction()},
                     {"role": "user", "content": user_content},
                 ],
                 response_format={"type": "json_object"},
@@ -171,7 +172,7 @@ class GrokClient:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": AB_COMPARE_SYSTEM_PROMPT},
+                    {"role": "system", "content": AB_COMPARE_SYSTEM_PROMPT + get_lang_instruction()},
                     {"role": "user", "content": user_content},
                 ],
                 response_format={"type": "json_object"},

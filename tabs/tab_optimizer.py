@@ -1,40 +1,29 @@
 import streamlit as st
 from utils import generate_tweet_intent_url, append_viral_tag
-
-ACTION_LABELS_KR = {
-    "reply": "💬 답글",
-    "repost": "🔄 리포스트",
-    "like": "❤️ 좋아요",
-    "quote": "💭 인용",
-    "bookmark": "🔖 북마크",
-    "follow": "👤 팔로우",
-    "dwell_time": "⏱️ 체류시간",
-    "share": "📤 공유",
-    "photo_expansion": "🖼️ 이미지 확대",
-}
+from i18n import t, get_action_labels
 
 
 def render_optimizer_tab(grok, app_url, viral_tag):
-    st.subheader("포스트 Optimizer & Engagement Predictor")
-    st.caption("x-algorithm의 Multi-Action Prediction 원리로 포스트를 분석합니다")
+    st.subheader(t("opt_subheader"))
+    st.caption(t("opt_caption"))
 
     post_text = st.text_area(
-        "포스트 내용",
+        t("post_label"),
         height=120,
-        placeholder="분석하고 싶은 포스트 내용을 입력하세요...",
+        placeholder=t("post_placeholder"),
     )
 
     col1, col2 = st.columns(2)
     with col1:
-        image_desc = st.text_input("🖼️ 이미지 설명 (선택)", placeholder="예: 일몰 사진, 코드 스크린샷")
+        image_desc = st.text_input(t("image_desc_label"), placeholder=t("image_desc_placeholder"))
     with col2:
-        hashtags = st.text_input("#️⃣ 해시태그 (선택)", placeholder="예: #AI #개발 #Python")
+        hashtags = st.text_input(t("opt_hashtag_label"), placeholder=t("opt_hashtag_placeholder"))
 
-    if st.button("🔍 x-algorithm 분석", use_container_width=True, type="primary"):
+    if st.button(t("opt_analyze_btn"), use_container_width=True, type="primary"):
         if not post_text.strip():
-            st.warning("포스트 내용을 입력해주세요.")
+            st.warning(t("enter_post"))
         else:
-            with st.spinner("Grok이 x-algorithm 분석 중..."):
+            with st.spinner(t("opt_spinner")):
                 result = grok.optimize_post(post_text, image_desc, hashtags)
 
             if "error" in result:
@@ -50,31 +39,31 @@ def render_optimizer_tab(grok, app_url, viral_tag):
     col_score, col_level = st.columns([1, 2])
     with col_score:
         score = result.get("score", 0)
-        st.metric("x-algorithm 점수", f"{score}/100")
+        st.metric(t("opt_score"), f"{score}/100")
     with col_level:
         level = result.get("engagement_level", "Unknown")
         level_colors = {
             "Very High": "🟢", "High": "🔵", "Medium": "🟡", "Low": "🔴"
         }
-        st.metric("참여 예측 등급", f"{level_colors.get(level, '⚪')} {level}")
+        st.metric(t("opt_engagement"), f"{level_colors.get(level, '⚪')} {level}")
 
     # ─── Multi-Action 점수 대시보드 ───
     if "action_breakdown" in result:
         _render_action_dashboard(result["action_breakdown"])
 
-    with st.expander("📊 분석 이유", expanded=True):
+    with st.expander(t("opt_reasons"), expanded=True):
         for reason in result.get("reasons", []):
             st.markdown(f"- {reason}")
 
-    with st.expander("💡 개선 제안", expanded=True):
+    with st.expander(t("opt_suggestions"), expanded=True):
         for suggestion in result.get("suggestions", []):
             st.markdown(f"- {suggestion}")
 
-    st.subheader("✨ 최적화된 포스트")
+    st.subheader(t("opt_optimized"))
     optimized = result.get("optimized_post", "")
 
     add_viral = st.checkbox(
-        f"최적화된 포스트에 '{viral_tag}' 자동 추가",
+        f"{t('opt_viral_tag')} '{viral_tag}'",
         value=False,
     )
 
@@ -84,12 +73,14 @@ def render_optimizer_tab(grok, app_url, viral_tag):
     st.code(optimized, language=None)
 
     post_url = generate_tweet_intent_url(optimized)
-    st.link_button("𝕏 에 게시", post_url, use_container_width=True)
+    st.link_button(t("post_to_x"), post_url, use_container_width=True)
 
 
 def _render_action_dashboard(breakdown):
-    with st.expander("📊 Multi-Action 점수 분석", expanded=True):
-        st.caption("각 행동 유형별 예측 확률과 가중 기여도")
+    action_labels = get_action_labels()
+
+    with st.expander(t("opt_action_analysis"), expanded=True):
+        st.caption(t("opt_action_caption"))
 
         sorted_actions = sorted(
             breakdown.items(),
@@ -98,7 +89,7 @@ def _render_action_dashboard(breakdown):
         )
 
         for action_name, data in sorted_actions:
-            label = ACTION_LABELS_KR.get(action_name, action_name)
+            label = action_labels.get(action_name, action_name)
             prob = data.get("probability", 0)
             weight = data.get("weight", 0)
             contrib = data.get("contribution", 0)
@@ -109,7 +100,7 @@ def _render_action_dashboard(breakdown):
             with col_bar:
                 st.progress(min(prob, 100) / 100)
             with col_numbers:
-                st.caption(f"확률 {prob}% × {weight} = **{contrib:.1f}**")
+                st.caption(f"{prob}% × {weight} = **{contrib:.1f}**")
 
         st.divider()
 
@@ -118,6 +109,6 @@ def _render_action_dashboard(breakdown):
         weakest_action = min(breakdown, key=lambda k: breakdown[k].get("contribution", 0))
 
         cols = st.columns(3)
-        cols[0].metric("총 가중 점수", f"{total:.1f}")
-        cols[1].metric("최강 행동", ACTION_LABELS_KR.get(top_action, top_action))
-        cols[2].metric("최약 행동", ACTION_LABELS_KR.get(weakest_action, weakest_action))
+        cols[0].metric(t("opt_total_score"), f"{total:.1f}")
+        cols[1].metric(t("opt_strongest"), action_labels.get(top_action, top_action))
+        cols[2].metric(t("opt_weakest"), action_labels.get(weakest_action, weakest_action))

@@ -1,24 +1,25 @@
 import streamlit as st
 
 from utils import generate_tweet_intent_url
+from i18n import t
 
 
 def render_ideas_tab(grok):
-    st.subheader("오늘 올릴 포스트 아이디어 5개")
-    st.caption("x-algorithm 최적화된 포스트 아이디어를 생성합니다")
+    st.subheader(t("ideas_subheader"))
+    st.caption(t("ideas_caption"))
 
     keywords = st.text_input(
-        "관심사 / 키워드",
-        placeholder="예: AI, 프로그래밍, 스타트업, 한국 여행",
+        t("ideas_keyword_label"),
+        placeholder=t("ideas_keyword_placeholder"),
         key="keywords_input",
         on_change=lambda: st.session_state.update(run_ideas=True),
     )
 
-    if st.button("💡 아이디어 생성", use_container_width=True, type="primary"):
+    if st.button(t("ideas_generate_btn"), use_container_width=True, type="primary"):
         if not keywords.strip():
-            st.warning("관심사나 키워드를 입력해주세요.")
+            st.warning(t("ideas_enter_keyword"))
         else:
-            with st.spinner("Grok이 x-algorithm 최적화 아이디어 생성 중..."):
+            with st.spinner(t("ideas_spinner")):
                 result = grok.generate_ideas(keywords)
 
             if "error" in result:
@@ -44,7 +45,7 @@ def render_ideas_tab(grok):
                 st.code(content, language="", wrap_lines=True)
 
                 intent_url = generate_tweet_intent_url(content)
-                st.link_button("𝕏 에 게시", intent_url, use_container_width=True)
+                st.link_button(t("post_to_x"), intent_url, use_container_width=True)
 
                 detail_col1, detail_col2, detail_col3 = st.columns(3)
                 with detail_col1:
@@ -55,5 +56,5 @@ def render_ideas_tab(grok):
                     actions = ", ".join(idea.get("target_actions", []))
                     st.caption(f"🎯 {actions}")
 
-                with st.expander("전략 보기"):
+                with st.expander(t("ideas_strategy")):
                     st.markdown(idea.get("strategy", ""))
