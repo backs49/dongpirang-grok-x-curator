@@ -6,6 +6,7 @@ from xalgo_prompts import (
     THREAD_SYSTEM_PROMPT,
     SCHEDULER_SYSTEM_PROMPT,
     AB_COMPARE_SYSTEM_PROMPT,
+    RISK_CHECK_SYSTEM_PROMPT,
 )
 from utils import parse_grok_json, parse_thread_text
 
@@ -137,6 +138,24 @@ class GrokClient:
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content},
+                ],
+                response_format={"type": "json_object"},
+            )
+            return parse_grok_json(response.choices[0].message.content or "")
+        except openai.OpenAIError as e:
+            return {"error": f"Grok API 오류: {str(e)}"}
+
+    def check_risk(self, text: str, image_desc: str = "") -> dict:
+        user_content = f"포스트 내용:\n{text}"
+        if image_desc:
+            user_content += f"\n\n이미지 설명: {image_desc}"
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": RISK_CHECK_SYSTEM_PROMPT},
                     {"role": "user", "content": user_content},
                 ],
                 response_format={"type": "json_object"},

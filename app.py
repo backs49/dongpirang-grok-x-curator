@@ -10,6 +10,7 @@ from tabs import (
     render_scheduler_tab,
     render_ab_compare_tab,
     render_unfollow_tab,
+    render_risk_check_tab,
 )
 
 # ─── 페이지 설정 ───
@@ -110,13 +111,14 @@ if grok and st.session_state.pop("run_curator", False):
             st.session_state.curator_error = _result["error"]
 
 # ─── 탭 ───
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "📝 포스트 최적화",
     "💡 아이디어 생성",
     "🔍 피드 큐레이터",
     "🧵 스레드 최적화",
     "📅 포스팅 스케줄러",
     "⚖️ A/B 비교",
+    "⚠️ 리스크 체크",
     "🔄 언팔 추적",
 ])
 
@@ -151,6 +153,11 @@ with tab6:
     else:
         st.info(_API_MSG)
 with tab7:
+    if grok:
+        render_risk_check_tab(grok)
+    else:
+        st.info(_API_MSG)
+with tab8:
     render_unfollow_tab()
 
 # ─── 하단 Footer ───

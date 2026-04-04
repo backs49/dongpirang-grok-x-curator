@@ -5,6 +5,7 @@ from .tab_thread import render_thread_tab
 from .tab_scheduler import render_scheduler_tab
 from .tab_ab_compare import render_ab_compare_tab
 from .tab_unfollow import render_unfollow_tab
+from .tab_risk_check import render_risk_check_tab
 
 __all__ = [
     "render_optimizer_tab",
@@ -14,4 +15,5 @@ __all__ = [
     "render_scheduler_tab",
     "render_ab_compare_tab",
     "render_unfollow_tab",
+    "render_risk_check_tab",
 ]
