@@ -78,8 +78,10 @@ def render_thread_tab(grok, app_url, viral_tag):
         for note in result.get("strategy_notes", []):
             st.markdown(f"- {note}")
 
-    # ─── 공유 ───
-    overall = result.get("overall_score", 0)
-    share_text = f"이 스레드를 동피랑 Grok X 추천기로 분석했더니 점수 {overall}/100! 🧵🔥\n\n{app_url}\n\n@mangodaon"
-    share_url = generate_tweet_intent_url(share_text)
-    st.link_button("🐦 X에 공유하기", share_url, use_container_width=True)
+    # ─── 게시 ───
+    if optimized_thread:
+        first_tweet = optimized_thread[0]
+        if add_viral:
+            first_tweet = append_viral_tag(first_tweet, viral_tag)
+        post_url = generate_tweet_intent_url(first_tweet)
+        st.link_button("𝕏 에 첫 트윗 게시", post_url, use_container_width=True)

@@ -106,6 +106,5 @@ def render_ab_compare_tab(grok, app_url, viral_tag):
 
     st.code(best, language=None)
 
-    share_text = f"두 포스트를 동피랑 Grok X 추천기로 A/B 비교! 승자 점수 차이 +{diff}점 ⚖️🔥\n\n{app_url}\n\n@mangodaon"
-    share_url = generate_tweet_intent_url(share_text)
-    st.link_button("🐦 X에 공유하기", share_url, use_container_width=True)
+    post_url = generate_tweet_intent_url(best)
+    st.link_button("𝕏 에 게시", post_url, use_container_width=True)
