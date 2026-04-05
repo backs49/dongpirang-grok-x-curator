@@ -40,13 +40,29 @@ class GrokClient:
         except openai.OpenAIError as e:
             return {"error": f"Grok API 오류: {str(e)}"}
 
-    def generate_ideas(self, keywords: str) -> dict:
+    def generate_ideas(self, keywords: str, length: int = 0) -> dict:
         from datetime import datetime
         # 2026년 4월 3일 현재를 강제로 주입
         current_date_kr = datetime.now().strftime("%Y년 %m월 %d일")
 
-        # placeholder를 실제 날짜로 치환
-        system_prompt = IDEAS_SYSTEM_PROMPT.format(current_date_kr=current_date_kr)
+        # 글자수 지시사항 빌드
+        if length and length > 0:
+            length_instruction = (
+                f"**분량: 반드시 정확히 약 {length}자(±10% 이내)**. "
+                f"사용자가 직접 지정한 분량이므로 엄격하게 지키세요. "
+                f"한두 줄로 끝내지 마세요. 구체적인 예시, 수치, 경험을 포함하여 충실하게 작성하세요."
+            )
+        else:
+            length_instruction = (
+                "**분량: 반드시 200~500자**. "
+                "한두 줄로 끝내지 마세요. 구체적인 예시, 수치, 경험을 포함하여 충실하게 작성하세요."
+            )
+
+        # placeholder를 실제 값으로 치환
+        system_prompt = IDEAS_SYSTEM_PROMPT.format(
+            current_date_kr=current_date_kr,
+            length_instruction=length_instruction,
+        )
 
         try:
             response = self.client.chat.completions.create(

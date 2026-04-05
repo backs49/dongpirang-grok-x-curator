@@ -352,6 +352,16 @@ _T = {
         "en": "View Strategy",
         "ja": "戦略を見る",
     },
+    "ideas_length_label": {
+        "ko": "원하는 포스트 길이 (선택)",
+        "en": "Desired Post Length (optional)",
+        "ja": "希望するポスト長さ（任意）",
+    },
+    "ideas_length_help": {
+        "ko": "0 = 자동 (200~500자 권장). 100~1000자 범위에서 직접 지정 가능.",
+        "en": "0 = auto (200-500 chars recommended). Set 100-1000 to specify.",
+        "ja": "0 = 自動（200〜500文字推奨）。100〜1000文字で指定可能。",
+    },
 
     # ─── Curator Tab ───
     "cur_subheader": {

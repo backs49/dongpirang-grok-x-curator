@@ -109,8 +109,9 @@ st.caption(t("app_caption_main"))
 if grok and st.session_state.pop("run_ideas", False):
     kw = st.session_state.get("keywords_input", "")
     if kw.strip():
+        _length = st.session_state.get("post_length", 0)
         with st.spinner(t("ideas_spinner")):
-            _result = grok.generate_ideas(kw)
+            _result = grok.generate_ideas(kw, length=_length)
         if "error" not in _result:
             st.session_state.ideas_result = _result
         else:

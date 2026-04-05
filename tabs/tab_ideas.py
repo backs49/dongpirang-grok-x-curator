@@ -4,6 +4,16 @@ from utils import generate_tweet_intent_url
 from i18n import t
 
 
+def _sync_from_slider():
+    st.session_state.post_length = st.session_state.length_slider
+    st.session_state.length_input = st.session_state.length_slider
+
+
+def _sync_from_input():
+    st.session_state.post_length = st.session_state.length_input
+    st.session_state.length_slider = st.session_state.length_input
+
+
 def render_ideas_tab(grok):
     st.subheader(t("ideas_subheader"))
     st.caption(t("ideas_caption"))
@@ -15,12 +25,46 @@ def render_ideas_tab(grok):
         on_change=lambda: st.session_state.update(run_ideas=True),
     )
 
+    # ─── 포스트 길이 선택 (슬라이더 + 숫자 입력 연동) ───
+    if "post_length" not in st.session_state:
+        st.session_state.post_length = 0
+    if "length_slider" not in st.session_state:
+        st.session_state.length_slider = 0
+    if "length_input" not in st.session_state:
+        st.session_state.length_input = 0
+
+    st.markdown(f"**{t('ideas_length_label')}**")
+    col_slider, col_input = st.columns([4, 1])
+    with col_slider:
+        st.slider(
+            t("ideas_length_label"),
+            min_value=0,
+            max_value=1000,
+            step=10,
+            key="length_slider",
+            on_change=_sync_from_slider,
+            label_visibility="collapsed",
+        )
+    with col_input:
+        st.number_input(
+            t("ideas_length_label"),
+            min_value=0,
+            max_value=1000,
+            step=10,
+            key="length_input",
+            on_change=_sync_from_input,
+            label_visibility="collapsed",
+        )
+    st.caption(t("ideas_length_help"))
+
+    post_length = st.session_state.post_length
+
     if st.button(t("ideas_generate_btn"), use_container_width=True, type="primary"):
         if not keywords.strip():
             st.warning(t("ideas_enter_keyword"))
         else:
             with st.spinner(t("ideas_spinner")):
-                result = grok.generate_ideas(keywords)
+                result = grok.generate_ideas(keywords, length=post_length)
 
             if "error" in result:
                 st.error(result["error"])
