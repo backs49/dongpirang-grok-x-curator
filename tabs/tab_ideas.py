@@ -42,7 +42,6 @@ def render_ideas_tab(grok):
             step=10,
             key="length_slider",
             on_change=_sync_from_slider,
-            help=t("ideas_length_help"),
         )
     with col_input:
         st.number_input(
@@ -53,6 +52,7 @@ def render_ideas_tab(grok):
             key="length_input",
             on_change=_sync_from_input,
         )
+    st.caption(t("ideas_length_help"))
 
     post_length = st.session_state.post_length
 
