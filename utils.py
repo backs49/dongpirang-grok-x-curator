@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 def generate_tweet_intent_url(text: str) -> str:
     encoded = quote(text, safe="")
-    return f"https://twitter.com/intent/tweet?text={encoded}"
+    return f"https://x.com/intent/post?text={encoded}"
 
 
 def generate_search_url(query: str) -> str:
@@ -17,7 +17,7 @@ def generate_search_url(query: str) -> str:
 
 def generate_follow_url(username: str) -> str:
     clean = username.lstrip("@")
-    return f"https://twitter.com/intent/follow?screen_name={clean}"
+    return f"https://x.com/intent/follow?screen_name={clean}"
 
 
 def parse_grok_json(response_text: str) -> dict:

@@ -11,28 +11,28 @@ from utils import (
 class TestGenerateTweetIntentUrl:
     def test_basic_text(self):
         url = generate_tweet_intent_url("Hello world")
-        assert url.startswith("https://twitter.com/intent/tweet?text=")
+        assert url.startswith("https://x.com/intent/post?text=")
         assert "Hello" in url
 
     def test_encodes_special_characters(self):
         url = generate_tweet_intent_url("Hello & world #test")
         assert "%26" in url or "&" not in url.split("?text=")[1].split("&")[0]
-        assert "intent/tweet" in url
+        assert "intent/post" in url
 
     def test_korean_text(self):
         url = generate_tweet_intent_url("안녕하세요")
-        assert "intent/tweet" in url
-        assert len(url) > len("https://twitter.com/intent/tweet?text=")
+        assert "intent/post" in url
+        assert len(url) > len("https://x.com/intent/post?text=")
 
     def test_empty_text(self):
         url = generate_tweet_intent_url("")
-        assert "intent/tweet" in url
+        assert "intent/post" in url
 
 
 class TestGenerateFollowUrl:
     def test_basic_username(self):
         url = generate_follow_url("mangodaon")
-        assert url == "https://twitter.com/intent/follow?screen_name=mangodaon"
+        assert url == "https://x.com/intent/follow?screen_name=mangodaon"
 
     def test_strips_at_sign(self):
         url = generate_follow_url("@mangodaon")
