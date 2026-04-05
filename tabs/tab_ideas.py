@@ -99,3 +99,10 @@ def render_ideas_tab(grok):
 
                 with st.expander(t("ideas_strategy")):
                     st.markdown(idea.get("strategy", ""))
+
+                # ─── 이미지 프롬프트 ───
+                image_prompt = idea.get("image_prompt", "")
+                if image_prompt:
+                    st.markdown(f"**{t('ideas_image_prompt_title')}**")
+                    st.caption(t("ideas_image_prompt_caption"))
+                    st.code(image_prompt, language="", wrap_lines=True)

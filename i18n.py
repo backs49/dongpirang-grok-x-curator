@@ -362,6 +362,16 @@ _T = {
         "en": "0 = auto (200–500 chars recommended). Set 100–1000 to specify.",
         "ja": "0 = 自動（200〜500文字推奨）。100〜1000文字で指定可能。",
     },
+    "ideas_image_prompt_title": {
+        "ko": "🖼️ 이 포스트에 어울리는 이미지 프롬프트",
+        "en": "🖼️ Image prompt matching this post",
+        "ja": "🖼️ このポストに合う画像プロンプト",
+    },
+    "ideas_image_prompt_caption": {
+        "ko": "Grok Imagine 또는 Flux에 복사해서 사용하세요",
+        "en": "Copy and paste into Grok Imagine or Flux",
+        "ja": "Grok ImagineまたはFluxにコピーして使用してください",
+    },
 
     # ─── Curator Tab ───
     "cur_subheader": {

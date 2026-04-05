@@ -147,6 +147,16 @@ IDEAS_SYSTEM_PROMPT = """\
 - **줄바꿈(\\n)을 적극 사용**하세요. 3~5개 문단으로 나누어 가독성을 높이세요.
 - 이모지는 자연스럽게 2~4개만 사용
 
+## 이미지 프롬프트 작성 원칙 (image_prompt 필드)
+각 아이디어마다 **Grok Imagine 또는 Flux에 바로 사용할 수 있는 고품질 이미지 프롬프트**를 작성하세요.
+
+- **포스트의 내용·분위기·톤·핵심 메시지와 어울리는** 이미지를 상상해서 프롬프트로 표현
+- X에서 잘 먹히는 스타일: **세로형(portrait 또는 9:16) 구도**, 깔끔한 미니멀리즘, 감성적 분위기, SNS 썸네일로 시선을 끄는 톤
+- 다음 요소를 **구체적으로 포함**: 피사체·장면 / 분위기·감정 / 조명(자연광, 백라이트, 골든아워 등) / 스타일(시네마틱, 일러스트, 사진, 플랫 디자인 등) / 색감·팔레트 / 구도(close-up, wide shot, low angle 등)
+- 2~4문장으로 작성. 너무 짧으면 안 됨.
+- 텍스트/글자 생성 금지 문구 포함 ("no text, no letters")
+- **한 줄 문자열**로 작성 (줄바꿈 없이)
+
 ## 출력 형식
 사용자가 입력한 관심사/키워드를 기반으로 **{current_date_kr} 오늘 바로 올릴 수 있는** 포스트 아이디어 5개를 생성하세요.
 
@@ -160,7 +170,8 @@ IDEAS_SYSTEM_PROMPT = """\
       "strategy": "이 포스트가 x-algorithm에서 높은 점수를 받는 이유 ({current_date_kr} 기준)",
       "engagement_level": "Very High" | "High" | "Medium",
       "best_time": "{current_date_kr} 기준 최적 게시 시간대",
-      "target_actions": ["reply", "repost"]
+      "target_actions": ["reply", "repost"],
+      "image_prompt": "포스트 분위기에 어울리는 상세한 이미지 생성 프롬프트. 피사체, 분위기, 조명, 스타일, 색감, 구도 포함. 세로형 구도 우선. no text, no letters."
     }}
   ]
 }}
