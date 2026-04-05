@@ -33,8 +33,7 @@ def render_ideas_tab(grok):
     if "length_input" not in st.session_state:
         st.session_state.length_input = 0
 
-    st.markdown(f"**{t('ideas_length_label')}**")
-    col_slider, col_input = st.columns([4, 1])
+    col_slider, col_input = st.columns([3, 1])
     with col_slider:
         st.slider(
             t("ideas_length_label"),
@@ -43,19 +42,17 @@ def render_ideas_tab(grok):
             step=10,
             key="length_slider",
             on_change=_sync_from_slider,
-            label_visibility="collapsed",
+            help=t("ideas_length_help"),
         )
     with col_input:
         st.number_input(
-            t("ideas_length_label"),
+            "자 / chars",
             min_value=0,
             max_value=1000,
             step=10,
             key="length_input",
             on_change=_sync_from_input,
-            label_visibility="collapsed",
         )
-    st.caption(t("ideas_length_help"))
 
     post_length = st.session_state.post_length
 
