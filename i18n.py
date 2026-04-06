@@ -1029,6 +1029,46 @@ _T = {
         "en": "Show {n} more",
         "ja": "残り{n}人を表示",
     },
+    "unf_download_snapshots": {
+        "ko": "📥 스냅샷 백업 (JSON)",
+        "en": "📥 Backup Snapshots (JSON)",
+        "ja": "📥 スナップショットバックアップ (JSON)",
+    },
+    "unf_upload_snapshots": {
+        "ko": "📤 스냅샷 복원 (JSON)",
+        "en": "📤 Restore Snapshots (JSON)",
+        "ja": "📤 スナップショット復元 (JSON)",
+    },
+    "unf_upload_success": {
+        "ko": "✅ 스냅샷 {n}개 복원 완료",
+        "en": "✅ {n} snapshots restored",
+        "ja": "✅ {n}件復元完了",
+    },
+    "unf_upload_error": {
+        "ko": "JSON 파싱 실패. 올바른 스냅샷 파일인지 확인하세요.",
+        "en": "Failed to parse JSON. Please check the snapshot file.",
+        "ja": "JSON解析失敗。正しいスナップショットファイルか確認してください。",
+    },
+    "unf_export_unfollowed": {
+        "ko": "📥 언팔 목록 CSV",
+        "en": "📥 Unfollowed CSV",
+        "ja": "📥 アンフォローCSV",
+    },
+    "unf_export_new": {
+        "ko": "📥 새 팔로워 CSV",
+        "en": "📥 New Followers CSV",
+        "ja": "📥 新フォロワーCSV",
+    },
+    "unf_export_mutual": {
+        "ko": "📥 맞팔 언팔 CSV",
+        "en": "📥 Mutual Unfollowed CSV",
+        "ja": "📥 相互アンフォローCSV",
+    },
+    "unf_unfollow_back": {
+        "ko": "🚫 나도 언팔",
+        "en": "🚫 Unfollow back",
+        "ja": "🚫 フォロー解除",
+    },
 }
 
 
