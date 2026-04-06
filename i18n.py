@@ -318,9 +318,9 @@ _T = {
         "ja": "今日投稿するポストアイデア5つ",
     },
     "ideas_caption": {
-        "ko": "x-algorithm 최적화된 포스트 아이디어를 생성합니다",
-        "en": "Generate x-algorithm optimized post ideas",
-        "ja": "x-algorithm最適化されたポストアイデアを生成します",
+        "ko": "x-algorithm 최적화된 포스트 아이디어를 생성합니다. (AI 생성 글 그대로 복붙하지 말고 본인 생각을 더해주세요.)",
+        "en": "Generate x-algorithm optimized post ideas. (Don't just copy-paste AI-generated text — add your own thoughts.)",
+        "ja": "x-algorithm最適化されたポストアイデアを生成します。（AI生成文をそのままコピペせず、自分の考えを加えてください。）",
     },
     "ideas_keyword_label": {
         "ko": "관심사 / 키워드",
