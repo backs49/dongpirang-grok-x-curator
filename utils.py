@@ -20,10 +20,34 @@ def generate_follow_url(username: str) -> str:
     return f"https://x.com/intent/follow?screen_name={clean}"
 
 
+_GROK_CITATION_RE = re.compile(
+    r"<grok:render\b[^>]*?(?:/>|>.*?</grok:render>)",
+    re.DOTALL,
+)
+
+_HANGUL_RE = re.compile(r"[\uAC00-\uD7AF]")
+
+
+def contains_hangul(text: str) -> bool:
+    """문자열에 한글 음절이 포함되어 있는지 검사한다."""
+    if not text:
+        return False
+    return bool(_HANGUL_RE.search(text))
+
+
+def strip_grok_citations(text: str) -> str:
+    """Grok Live Search가 응답에 끼워 넣는 `<grok:render>` 인용 마크업을 제거한다.
+    Grok UI에서만 렌더되는 태그인데 JSON 값에 그대로 새어나와 사용자에게 노출되는
+    현상이 있어, 파싱 전 단계에서 일괄 제거한다."""
+    if not text:
+        return text
+    return _GROK_CITATION_RE.sub("", text)
+
+
 def parse_grok_json(response_text: str) -> dict:
     if not response_text or not response_text.strip():
         return {"error": "빈 응답입니다"}
-    text = response_text.strip()
+    text = strip_grok_citations(response_text).strip()
     if text.startswith("```"):
         lines = text.split("\n")
         lines = [l for l in lines if not l.strip().startswith("```")]

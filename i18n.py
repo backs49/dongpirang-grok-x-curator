@@ -6,8 +6,42 @@ LANGUAGES = {"ko": "한국어", "en": "English", "ja": "日本語"}
 
 LANG_INSTRUCTION = {
     "ko": "",
-    "en": "\n\n**IMPORTANT: All text values in the JSON response MUST be written in English.**",
-    "ja": "\n\n**IMPORTANT: JSON応答内のすべてのテキスト値は日本語で書いてください。**",
+    "en": (
+        "\n\n**CRITICAL OUTPUT LANGUAGE RULE — READ CAREFULLY:**\n"
+        "EVERY text value in the JSON response MUST be written in ENGLISH, "
+        "regardless of the source content's language. This includes `summary`, "
+        "`why_recommended`, `engagement_hint`, `suggested_reply`, `search_keywords`, "
+        "and every other field. Even when the referenced post is in Korean, Japanese, "
+        "or any other language, your reply examples and descriptions MUST be in ENGLISH. "
+        "Do NOT match the language of the original post — always use ENGLISH for output."
+    ),
+    "ja": (
+        "\n\n**重要な出力言語ルール — 必ず読んでください:**\n"
+        "JSON応答内のすべてのテキスト値は、元のコンテンツの言語に関わらず、"
+        "必ず **日本語** で記述してください。`summary`、`why_recommended`、"
+        "`engagement_hint`、`suggested_reply`、`search_keywords` など、"
+        "すべてのフィールドが対象です。参照するポストが韓国語・英語・その他の言語であっても、"
+        "リプライ例や説明文は **必ず日本語** で書いてください。"
+        "元のポストの言語に合わせず、常に **日本語** で出力してください。"
+    ),
+}
+
+# 큐레이터가 탐색해야 할 콘텐츠 언어권 (사용자 UI 언어 기준).
+# 프롬프트에 {language_pair} 플레이스홀더로 주입되며, 영어는 디폴트
+# 공용어로 항상 포함시켜 OOD(Out-of-Network Discovery) 폭을 넓게 유지한다.
+LANG_CONTENT_PAIR = {
+    "ko": "Korean and English",
+    "en": "English",
+    "ja": "Japanese and English",
+}
+
+# 프롬프트 필드 설명에 직접 박아넣을 출력 언어 이름.
+# suggested_reply 같은 필드가 "자연스러운 리플"이라는 한국어 설명에 앵커링되어
+# 엉뚱한 언어로 나오는 것을 막기 위해, 필드 설명 자체에 목표 언어를 명시한다.
+LANG_OUTPUT_NAME = {
+    "ko": "Korean",
+    "en": "English",
+    "ja": "Japanese",
 }
 
 _T = {
@@ -62,6 +96,11 @@ _T = {
         "en": "grok-4-1-fast-reasoning: Fast / grok-4.20-reasoning: Deep analysis",
         "ja": "grok-4-1-fast-reasoning: 高速 / grok-4.20-reasoning: 深い分析",
     },
+    "ja_model_warning": {
+        "ko": "💡 일본어는 **grok-4.20-reasoning** 모델을 권장합니다. grok-4-1-fast-reasoning 은 간혹 큐레이터의 추천 리플이 한국어로 섞여 나올 수 있어요.",
+        "en": "💡 For Japanese output, **grok-4.20-reasoning** is recommended. grok-4-1-fast-reasoning occasionally leaks Korean into curator suggested replies.",
+        "ja": "💡 日本語出力には **grok-4.20-reasoning** を推奨します。grok-4-1-fast-reasoning は、キュレーターの推奨リプライに韓国語が混ざることがあります。",
+    },
     "follow_btn": {
         "ko": "🐦 @mangodaon 팔로우하기",
         "en": "🐦 Follow @mangodaon",
@@ -101,43 +140,43 @@ _T = {
     # ─── Tab names ───
     "tab_optimizer": {
         "ko": "📝 포스트 최적화",
-        "en": "📝 Post Optimizer",
+        "en": "📝 Optimize",
         "ja": "📝 ポスト最適化",
     },
     "tab_ideas": {
         "ko": "💡 아이디어 생성",
-        "en": "💡 Idea Generator",
+        "en": "💡 Ideas",
         "ja": "💡 アイデア生成",
     },
     "tab_curator": {
         "ko": "🔍 피드 큐레이터",
-        "en": "🔍 Feed Curator",
-        "ja": "🔍 フィードキュレーター",
+        "en": "🔍 Curator",
+        "ja": "🔍 キュレーター",
     },
     "tab_thread": {
         "ko": "🧵 스레드 최적화",
-        "en": "🧵 Thread Optimizer",
-        "ja": "🧵 スレッド最適化",
+        "en": "🧵 Thread",
+        "ja": "🧵 スレッド",
     },
     "tab_scheduler": {
         "ko": "📅 포스팅 스케줄러",
-        "en": "📅 Posting Scheduler",
-        "ja": "📅 投稿スケジューラー",
+        "en": "📅 Schedule",
+        "ja": "📅 スケジュール",
     },
     "tab_ab": {
         "ko": "⚖️ A/B 비교",
-        "en": "⚖️ A/B Compare",
-        "ja": "⚖️ A/B比較",
+        "en": "⚖️ A/B",
+        "ja": "⚖️ A/B",
     },
     "tab_risk": {
         "ko": "⚠️ 리스크 체크",
-        "en": "⚠️ Risk Check",
-        "ja": "⚠️ リスクチェック",
+        "en": "⚠️ Risk",
+        "ja": "⚠️ リスク",
     },
     "tab_unfollow": {
         "ko": "🔄 언팔 추적",
-        "en": "🔄 Unfollow Tracker",
-        "ja": "🔄 アンフォロー追跡",
+        "en": "🔄 Unfollow",
+        "ja": "🔄 アンフォロー",
     },
 
     # ─── Common ───
@@ -1108,3 +1147,13 @@ def get_action_labels() -> dict:
 def get_lang_instruction() -> str:
     """Get the language instruction suffix for Grok prompts."""
     return LANG_INSTRUCTION.get(get_lang(), "")
+
+
+def get_content_language_pair() -> str:
+    """Get the content-language pair the curator should explore, based on UI language."""
+    return LANG_CONTENT_PAIR.get(get_lang(), LANG_CONTENT_PAIR["ko"])
+
+
+def get_output_language_name() -> str:
+    """Get the English name of the target output language for embedding in prompts."""
+    return LANG_OUTPUT_NAME.get(get_lang(), LANG_OUTPUT_NAME["ko"])

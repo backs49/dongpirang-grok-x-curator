@@ -8,8 +8,8 @@ from xalgo_prompts import (
     AB_COMPARE_SYSTEM_PROMPT,
     RISK_CHECK_SYSTEM_PROMPT,
 )
-from utils import parse_grok_json, parse_thread_text
-from i18n import get_lang_instruction
+from utils import parse_grok_json, parse_thread_text, contains_hangul
+from i18n import get_lang_instruction, get_content_language_pair, get_output_language_name, get_lang
 
 
 class GrokClient:
@@ -80,18 +80,33 @@ class GrokClient:
     def curate_feed(self, interests: str) -> dict:
         from datetime import datetime, timedelta
         current_date_kr = datetime.now().strftime("%Y년 %m월 %d일")
-        system_prompt = CURATOR_SYSTEM_PROMPT.format(current_date_kr=current_date_kr)
+        output_lang_name = get_output_language_name()
+        system_prompt = CURATOR_SYSTEM_PROMPT.format(
+            current_date_kr=current_date_kr,
+            language_pair=get_content_language_pair(),
+            output_language=output_lang_name,
+        )
 
         today = datetime.now()
         from_date = (today - timedelta(days=7)).strftime("%Y-%m-%d")
         to_date = today.strftime("%Y-%m-%d")
+
+        # user 메시지는 한국어 레이블 ("관심사:") 대신 언어 중립적인 영어 레이블 +
+        # 명시적 출력 언어 태그를 포함시킨다. 한국어 앵커가 suggested_reply 같은
+        # 생성형 필드의 언어 지시(LANG_INSTRUCTION)를 뚫고 한국어로 새는 현상을 방지.
+        user_content = (
+            f"User interests: {interests}\n\n"
+            f"Output language for ALL JSON text values: {output_lang_name}. "
+            f"This applies to suggested_reply and every other field — do not match "
+            f"the source post's language."
+        )
 
         try:
             response = self.client.responses.create(
                 model=self.model,
                 input=[
                     {"role": "system", "content": system_prompt + get_lang_instruction()},
-                    {"role": "user", "content": f"관심사: {interests}"},
+                    {"role": "user", "content": user_content},
                 ],
                 tools=[{
                     "type": "x_search",
@@ -109,9 +124,53 @@ class GrokClient:
                         if hasattr(part, "text"):
                             text_content = part.text
 
-            return parse_grok_json(text_content)
+            result = parse_grok_json(text_content)
+            self._fix_korean_leakage(result)
+            return result
         except openai.OpenAIError as e:
             return {"error": f"Grok API 오류: {str(e)}"}
+
+    def _fix_korean_leakage(self, result: dict) -> None:
+        """suggested_reply 가 목표 언어가 아니라 한국어로 새어나온 경우,
+        해당 필드만 저비용 번역 호출로 교정한다. grok-4-1-fast-reasoning + 일본어
+        조합에서 모델이 종종 한국어로 폴백하는 현상에 대한 안전망."""
+        if get_lang() == "ko":
+            return
+        recs = result.get("recommendations")
+        if not isinstance(recs, list):
+            return
+        target_lang = get_output_language_name()
+        for rec in recs:
+            if not isinstance(rec, dict):
+                continue
+            reply = rec.get("suggested_reply", "")
+            if not isinstance(reply, str) or not contains_hangul(reply):
+                continue
+            translated = self._translate_reply(reply, target_lang)
+            if translated:
+                rec["suggested_reply"] = translated
+
+    def _translate_reply(self, text: str, target_lang: str) -> str:
+        """짧은 리플 한 개를 목표 언어로 번역. 실패 시 빈 문자열 반환."""
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            f"You are a translator. Rewrite the user's text in natural, "
+                            f"casual {target_lang} suitable for a social media reply. "
+                            f"Preserve tone and emojis. Output ONLY the translated text, "
+                            f"no quotes, no explanations."
+                        ),
+                    },
+                    {"role": "user", "content": text},
+                ],
+            )
+            return (response.choices[0].message.content or "").strip()
+        except openai.OpenAIError:
+            return ""
 
     def optimize_thread(self, thread_text: str) -> dict:
         tweets = parse_thread_text(thread_text)

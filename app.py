@@ -2,7 +2,7 @@ import streamlit as st
 import extra_streamlit_components as stx
 from grok_client import GrokClient
 from utils import generate_tweet_intent_url, generate_follow_url
-from i18n import t, LANGUAGES
+from i18n import t, LANGUAGES, get_lang
 from tabs.tab_optimizer import render_optimizer_tab
 from tabs.tab_ideas import render_ideas_tab
 from tabs.tab_curator import render_curator_tab
@@ -82,6 +82,9 @@ with st.sidebar:
         ["grok-4-1-fast-reasoning", "grok-4.20-reasoning"],
         help=t("model_help"),
     )
+
+    if get_lang() == "ja" and model == "grok-4-1-fast-reasoning":
+        st.info(t("ja_model_warning"))
 
     st.divider()
 
