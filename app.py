@@ -43,80 +43,90 @@ with st.sidebar:
     st.title(t("app_title"))
     st.caption(t("app_caption"))
 
-    # ─── 언어 선택 ───
-    lang_options = list(LANGUAGES.keys())
-    lang_labels = list(LANGUAGES.values())
-    current_lang = st.session_state.get("lang", "ko")
-    lang_idx = lang_options.index(current_lang) if current_lang in lang_options else 0
-
-    selected_lang = st.selectbox(
-        t("lang_label"),
-        lang_options,
-        format_func=lambda k: LANGUAGES[k],
-        index=lang_idx,
-        key="lang_select",
-    )
-    if selected_lang != st.session_state.get("lang", "ko"):
-        st.session_state.lang = selected_lang
-        st.rerun()
-
-    # ─── 테마 선택 ───
-    THEME_OPTIONS = {"light": "☀ Light", "dark": "🌙 Dark"}
-    current_theme = st.session_state.get("theme", "light")
-    theme_keys = list(THEME_OPTIONS.keys())
-    theme_idx = theme_keys.index(current_theme) if current_theme in theme_keys else 0
-
-    selected_theme = st.selectbox(
-        t("theme_label"),
-        theme_keys,
-        format_func=lambda k: THEME_OPTIONS[k],
-        index=theme_idx,
-        key="theme_select",
-    )
-    if selected_theme != st.session_state.get("theme", "light"):
-        st.session_state.theme = selected_theme
-        cookie_manager.set(
-            THEME_COOKIE_KEY,
-            selected_theme,
-            key="save_theme_cookie",
+    # ─── 그룹 1: 환경 설정 ───
+    with st.container(border=True):
+        st.markdown(
+            '<span class="sidebar-section-label">ENVIRONMENT</span>',
+            unsafe_allow_html=True,
         )
-        st.rerun()
 
-    st.divider()
+        # 언어 선택
+        lang_options = list(LANGUAGES.keys())
+        current_lang = st.session_state.get("lang", "ko")
+        lang_idx = lang_options.index(current_lang) if current_lang in lang_options else 0
 
-    api_key = st.text_input(
-        t("api_key_label"),
-        type="password",
-        help=t("api_key_help"),
-        placeholder="xai-...",
-        value=saved_key,
-    )
+        selected_lang = st.selectbox(
+            t("lang_label"),
+            lang_options,
+            format_func=lambda k: LANGUAGES[k],
+            index=lang_idx,
+            key="lang_select",
+        )
+        if selected_lang != st.session_state.get("lang", "ko"):
+            st.session_state.lang = selected_lang
+            st.rerun()
 
-    remember_key = st.checkbox(
-        t("api_key_remember"),
-        value=bool(saved_key),
-        help=t("api_key_remember_help"),
-    )
+        # 테마 선택
+        THEME_OPTIONS = {"light": "☀ Light", "dark": "🌙 Dark"}
+        current_theme = st.session_state.get("theme", "light")
+        theme_keys = list(THEME_OPTIONS.keys())
+        theme_idx = theme_keys.index(current_theme) if current_theme in theme_keys else 0
 
-    # 쿠키 저장/삭제 (값이 변경될 때만)
-    if remember_key and api_key and api_key != saved_key:
-        cookie_manager.set(COOKIE_KEY, api_key, key="save_cookie")
-    elif not remember_key and saved_key:
-        cookie_manager.delete(COOKIE_KEY, key="delete_cookie")
+        selected_theme = st.selectbox(
+            t("theme_label"),
+            theme_keys,
+            format_func=lambda k: THEME_OPTIONS[k],
+            index=theme_idx,
+            key="theme_select",
+        )
+        if selected_theme != st.session_state.get("theme", "light"):
+            st.session_state.theme = selected_theme
+            cookie_manager.set(
+                THEME_COOKIE_KEY,
+                selected_theme,
+                key="save_theme_cookie",
+            )
+            st.rerun()
 
-    st.caption(t("api_key_warning"))
+    # ─── 그룹 2: API 연결 ───
+    with st.container(border=True):
+        st.markdown(
+            '<span class="sidebar-section-label">API CONNECTION</span>',
+            unsafe_allow_html=True,
+        )
 
-    model = st.selectbox(
-        t("model_select"),
-        ["grok-4-1-fast-reasoning", "grok-4.20-reasoning"],
-        help=t("model_help"),
-    )
+        api_key = st.text_input(
+            t("api_key_label"),
+            type="password",
+            help=t("api_key_help"),
+            placeholder="xai-...",
+            value=saved_key,
+        )
 
-    if get_lang() == "ja" and model == "grok-4-1-fast-reasoning":
-        st.info(t("ja_model_warning"))
+        remember_key = st.checkbox(
+            t("api_key_remember"),
+            value=bool(saved_key),
+            help=t("api_key_remember_help"),
+        )
 
-    st.divider()
+        # 쿠키 저장/삭제 (값이 변경될 때만)
+        if remember_key and api_key and api_key != saved_key:
+            cookie_manager.set(COOKIE_KEY, api_key, key="save_cookie")
+        elif not remember_key and saved_key:
+            cookie_manager.delete(COOKIE_KEY, key="delete_cookie")
 
+        st.caption(t("api_key_warning"))
+
+        model = st.selectbox(
+            t("model_select"),
+            ["grok-4-1-fast-reasoning", "grok-4.20-reasoning"],
+            help=t("model_help"),
+        )
+
+        if get_lang() == "ja" and model == "grok-4-1-fast-reasoning":
+            st.info(t("ja_model_warning"))
+
+    # ─── CTA: 팔로우 버튼 (컨테이너 밖) ───
     follow_url = generate_follow_url("mangodaon")
     st.link_button(t("follow_btn"), follow_url, use_container_width=True)
 
