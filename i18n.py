@@ -136,6 +136,11 @@ _T = {
         "en": "🌐 Language",
         "ja": "🌐 言語",
     },
+    "theme_label": {
+        "ko": "🎨 테마",
+        "en": "🎨 Theme",
+        "ja": "🎨 テーマ",
+    },
 
     # ─── Tab names ───
     "tab_optimizer": {

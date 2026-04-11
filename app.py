@@ -67,7 +67,7 @@ with st.sidebar:
     theme_idx = theme_keys.index(current_theme) if current_theme in theme_keys else 0
 
     selected_theme = st.selectbox(
-        "테마",
+        t("theme_label"),
         theme_keys,
         format_func=lambda k: THEME_OPTIONS[k],
         index=theme_idx,
