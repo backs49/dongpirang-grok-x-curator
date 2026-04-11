@@ -12,7 +12,6 @@ def render_curator_tab(grok):
         t("cur_interest_label"),
         placeholder=t("cur_interest_placeholder"),
         key="curator_interests",
-        on_change=lambda: st.session_state.update(run_curator=True),
     )
 
     if st.button(t("cur_search_btn"), use_container_width=True, type="primary"):

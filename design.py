@@ -46,8 +46,8 @@ DARK_TOKENS = {
     "--accent":        "#E07840",
     "--accent-hover":  "#C9521E",
     "--accent-soft":   "rgba(224, 120, 64, 0.18)",
-    "--border":        "#4A3525",
-    "--border-strong": "#6B4F38",
+    "--border":        "#6B4F38",
+    "--border-strong": "#8B6A4D",
     "--success":       "#5BA080",
     "--warning":       "#D4922B",
     "--danger":        "#D9534F",
@@ -98,6 +98,29 @@ html, body, [class*="css"] {
     color: var(--text) !important;
 }
 
+/* config.toml의 정적 textColor가 다크 모드에서 새어나오는 것을 막기 위해
+   메인 컨테이너 안의 모든 텍스트 디폴트 색을 토큰으로 강제. */
+[data-testid="stAppViewContainer"] {
+    color: var(--text) !important;
+}
+
+/* ── 상단 헤더 툴바 (Deploy 버튼 영역) ─────────────── */
+body header,
+body [data-testid="stHeader"],
+body [data-testid="stHeader"] > div,
+body .stAppHeader,
+body [data-testid="stToolbar"],
+body [data-testid="stDecoration"] {
+    background: var(--bg) !important;
+    background-color: var(--bg) !important;
+}
+
+body header *,
+body [data-testid="stHeader"] *,
+body .stAppHeader * {
+    color: var(--text) !important;
+}
+
 /* ── 사이드바 ────────────────────────────────────── */
 section[data-testid="stSidebar"],
 section[data-testid="stSidebar"] > div,
@@ -133,9 +156,60 @@ section[data-testid="stSidebar"] .stMarkdown h3 {
     color: var(--text) !important;
 }
 
-.stCaption, [data-testid="stCaptionContainer"] {
+/* 모든 마크다운 컨테이너 텍스트 — expander 헤더, dataframe 등
+   Streamlit이 [data-testid="stMarkdownContainer"]에 emotion-cache 색을
+   적용하기 때문에 토큰 색으로 강제해야 함. */
+.stApp [data-testid="stMarkdownContainer"],
+.stApp [data-testid="stMarkdownContainer"] p,
+.stApp [data-testid="stMarkdownContainer"] li,
+.stApp [data-testid="stMarkdownContainer"] span,
+.stApp [data-testid="stMarkdownContainer"] strong,
+.stApp [data-testid="stMarkdownContainer"] em {
+    color: var(--text) !important;
+}
+
+/* 캡션은 더 흐리게 (markdown 룰을 이기도록 source order 뒤에 배치) */
+.stApp .stCaption,
+.stApp [data-testid="stCaptionContainer"],
+.stApp [data-testid="stCaption"],
+.stApp [data-testid="stCaptionContainer"] *,
+.stApp [data-testid="stCaption"] * {
     font-size: var(--text-xs) !important;
     color: var(--text-muted) !important;
+}
+
+/* ── 위젯 라벨 (text input, textarea, selectbox 등의 윗줄) ─── */
+.stApp [data-testid="stWidgetLabel"],
+.stApp [data-testid="stWidgetLabel"] *,
+.stApp [data-testid="stWidgetLabel"] p,
+.stApp [data-testid="stWidgetLabel"] [data-testid="stMarkdownContainer"],
+.stApp [data-testid="stWidgetLabel"] [data-testid="stMarkdownContainer"] *,
+.stApp label[data-baseweb="form-control-label"],
+.stApp label[data-baseweb="form-control-label"] *,
+.stApp .stTextInput label,
+.stApp .stTextInput label *,
+.stApp .stTextArea label,
+.stApp .stTextArea label *,
+.stApp .stSelectbox label,
+.stApp .stSelectbox label *,
+.stApp .stMultiSelect label,
+.stApp .stMultiSelect label *,
+.stApp .stNumberInput label,
+.stApp .stNumberInput label *,
+.stApp .stDateInput label,
+.stApp .stTimeInput label,
+.stApp .stRadio label,
+.stApp .stCheckbox label,
+.stApp .stFileUploader label,
+.stApp .stColorPicker label,
+.stApp .stSlider label {
+    color: var(--text) !important;
+}
+
+.stApp [data-testid="stWidgetLabel"],
+.stApp label[data-baseweb="form-control-label"] {
+    font-size: var(--text-sm) !important;
+    font-weight: 500 !important;
 }
 
 /* ── 페이지 헤더 타이틀 ──────────────────────────── */
@@ -158,20 +232,26 @@ h3 {
     font-size: var(--text-xl) !important;
 }
 
-/* ── 탭 네비게이션 ───────────────────────────────── */
+/* ── 탭 네비게이션 ─────────────────────────────────
+   탭 레이블이 길어져 뷰포트를 넘칠 경우 마지막 탭이 잘리지 않도록
+   tab-list를 가로 스크롤로 허용하고, 각 탭은 줄바꿈 없이 한 줄로 유지. */
 .stTabs [data-baseweb="tab-list"] {
     gap: 4px;
     border-bottom: 1px solid var(--border) !important;
     background: transparent !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
 }
 
 .stTabs [data-baseweb="tab"] {
     font-size: var(--text-sm);
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-md) var(--radius-md) 0 0;
     color: var(--text-muted) !important;
     background: transparent !important;
     border: none !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
     transition: color 0.15s, background 0.15s;
 }
 
@@ -262,6 +342,46 @@ h3 {
     color: var(--text-muted) !important;
 }
 
+/* 다크 모드에서 입력 캐럿(커서)이 배경색과 섞여 보이지 않는 현상 방지.
+   text/textarea/number/search 모든 입력 요소에 토큰 색을 강제. */
+.stApp input,
+.stApp textarea,
+.stApp .stTextInput input,
+.stApp .stTextArea textarea,
+.stApp .stNumberInput input,
+.stApp .stChatInput textarea {
+    caret-color: var(--accent) !important;
+}
+
+/* text_input 내부 보조 컨트롤 (password 보기/숨기기 아이콘 등) —
+   baseweb input wrapper가 secondaryBackgroundColor를 배경으로 깔아서
+   다크 모드에서 라이트색으로 새어나오는 것을 막는다. */
+.stApp .stTextInput div[data-baseweb="base-input"],
+.stApp .stTextInput div[data-baseweb="input"] {
+    background-color: var(--bg-elevated) !important;
+}
+
+.stApp .stTextInput div[data-baseweb="base-input"] button,
+.stApp .stTextInput div[data-baseweb="input"] button {
+    background-color: transparent !important;
+    border: none !important;
+    color: var(--text) !important;
+}
+
+.stApp .stTextInput div[data-baseweb="base-input"] button svg,
+.stApp .stTextInput div[data-baseweb="input"] button svg {
+    fill: var(--text) !important;
+}
+
+/* ── Selectbox 드롭다운 화살표 ──────────────────────
+   baseweb select의 chevron svg가 fadedText로 렌더링되어 다크 모드에서
+   거의 보이지 않음 → 본문 텍스트 색과 동일하게 강제. */
+.stApp .stSelectbox svg,
+.stApp [data-baseweb="select"] svg {
+    fill: var(--text) !important;
+    color: var(--text) !important;
+}
+
 /* ── st.metric ───────────────────────────────────── */
 [data-testid="stMetric"] {
     background: var(--bg-elevated);
@@ -282,26 +402,59 @@ h3 {
     font-size: var(--text-sm) !important;
 }
 
-/* ── st.code ─────────────────────────────────────── */
-.stCodeBlock {
+/* ── st.code ─────────────────────────────────────────
+   Streamlit은 react-syntax-highlighter로 st.code를 렌더하는데, 내부
+   <pre>/<code>/<span>이 config.toml의 라이트 테마 색을 고정으로 박아두어
+   다크 모드에서 배경/텍스트가 그대로 새어나온다. 바깥 래퍼(.stCodeBlock,
+   [data-testid="stCode"])뿐 아니라 내부까지 토큰 색으로 강제 오버라이드. */
+.stApp .stCodeBlock,
+.stApp [data-testid="stCode"],
+.stApp [data-testid="stCode"] pre,
+.stApp [data-testid="stCode"] code,
+.stApp .stCodeBlock pre,
+.stApp .stCodeBlock code {
+    background: var(--bg-elevated) !important;
+    color: var(--text) !important;
+}
+
+.stApp .stCodeBlock {
     border: 1px solid var(--border) !important;
     border-radius: var(--radius-lg) !important;
-    background: var(--bg-elevated) !important;
+}
+
+/* language="" 일 때 토큰 색을 유지(구문 강조 없음). 언어 지정된 코드의
+   syntax token도 가독성을 위해 기본 텍스트 색으로 통일. */
+.stApp [data-testid="stCode"] span,
+.stApp .stCodeBlock span {
+    color: var(--text) !important;
 }
 
 /* ── st.expander ─────────────────────────────────── */
-[data-testid="stExpander"] {
+.stApp [data-testid="stExpander"],
+.stApp [data-testid="stExpanderDetails"] {
     border: 1px solid var(--border) !important;
     border-radius: var(--radius-lg) !important;
     background: var(--bg-elevated) !important;
 }
 
-[data-testid="stExpander"] summary {
+/* Streamlit이 summary 요소에 secondaryBackgroundColor를 직접 박는 경우가
+   있어 더 높은 specificity로 강제 오버라이드한다. */
+.stApp [data-testid="stExpander"] details,
+.stApp [data-testid="stExpander"] details > summary,
+.stApp [data-testid="stExpander"] summary {
+    background: var(--bg-elevated) !important;
+}
+
+.stApp [data-testid="stExpander"] summary,
+.stApp [data-testid="stExpander"] summary *,
+.stApp details summary,
+.stApp details summary * {
     color: var(--text) !important;
     font-size: var(--text-sm) !important;
 }
 
-[data-testid="stExpander"] summary:hover {
+.stApp [data-testid="stExpander"] summary:hover,
+.stApp [data-testid="stExpander"] summary:hover * {
     color: var(--accent) !important;
 }
 
@@ -365,19 +518,40 @@ hr {
     background: var(--accent);
 }
 
-/* ── 카드 (st.container border=True) ─────────────── */
-[data-testid="stVerticalBlockBorderWrapper"] {
-    border: 1px solid var(--border) !important;
+/* ── st.spinner ─────────────────────────────────────
+   spinner 텍스트가 fadedText 색으로 렌더되어 다크 모드에서 거의 안 보이고,
+   회전 원은 border-top만 accent로 남아있어 대비가 부족. 둘 다 토큰 색으로 강제. */
+.stApp [data-testid="stSpinner"],
+.stApp [data-testid="stSpinner"] > div {
+    color: var(--text) !important;
+}
+
+.stApp [data-testid="stSpinner"] i,
+.stApp [data-testid="stSpinner"] svg,
+.stApp [data-testid="stSpinner"] div[role="progressbar"] {
+    border-color: var(--border-strong) !important;
+    border-top-color: var(--accent) !important;
+    color: var(--accent) !important;
+}
+
+/* ── 카드 (st.container border=True / st.columns border=True) ─────
+   Streamlit 1.50은 `st.container(border=True)`를 StyledFlexContainerBlock
+   (emotion target="e196pkbe2")로, `st.columns(border=True)`를
+   StyledColumn(data-testid="stColumn")으로 렌더링한다. 두 경우 모두 emotion이
+   `border: 1px solid {theme.colors.borderColor}`를 직접 주입하는데, config.toml
+   의 정적 borderColor가 다크 배경에서 거의 투명하므로 `border-color`만 토큰으로
+   오버라이드한다. border-style이 없는 비-bordered 컨테이너에는 시각적 영향이
+   없으므로 광범위 매칭이 안전하다. */
+.stApp [class*="e196pkbe2"],
+.stApp [data-testid="stColumn"] {
+    border-color: var(--border-strong) !important;
     border-radius: var(--radius-lg) !important;
-    background: var(--bg-elevated);
-    box-shadow: var(--shadow-sm);
-    padding: var(--space-4) var(--space-5) !important;
     transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-[data-testid="stVerticalBlockBorderWrapper"]:hover {
-    border-color: var(--border-strong) !important;
-    box-shadow: var(--shadow-md);
+.stApp [class*="e196pkbe2"]:hover,
+.stApp [data-testid="stColumn"]:hover {
+    border-color: var(--accent) !important;
 }
 
 /* ── footer 숨기기 ───────────────────────────────── */
@@ -393,9 +567,25 @@ _FONT_LINK = """
 """
 
 
+def _streamlit_var_overrides(color_tokens: dict) -> dict:
+    """config.toml의 정적 색이 emotion-cache로 새어나오는 것을 막기 위해
+    Streamlit 내부 CSS 변수를 우리 토큰으로 재바인딩한다."""
+    return {
+        "--background-color":            color_tokens["--bg"],
+        "--secondary-background-color":  color_tokens["--bg-elevated"],
+        "--text-color":                  color_tokens["--text"],
+        "--primary-color":               color_tokens["--accent"],
+        "--default-background-color":    color_tokens["--bg"],
+        "--default-secondary-background-color": color_tokens["--bg-elevated"],
+        "--default-text-color":          color_tokens["--text"],
+        "--default-primary-color":       color_tokens["--accent"],
+    }
+
+
 def _build_root_block(theme: str) -> str:
     color_tokens = DARK_TOKENS if theme == "dark" else LIGHT_TOKENS
-    all_tokens = {**color_tokens, **SHARED_TOKENS}
+    streamlit_overrides = _streamlit_var_overrides(color_tokens)
+    all_tokens = {**color_tokens, **SHARED_TOKENS, **streamlit_overrides}
     lines = "\n".join(f"  {k}: {v};" for k, v in all_tokens.items())
     return f":root {{\n{lines}\n}}"
 

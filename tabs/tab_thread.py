@@ -81,6 +81,11 @@ def render_thread_tab(grok, app_url, viral_tag):
 
     # ─── 게시 ───
     if optimized_thread:
+        add_viral = st.checkbox(
+            t("opt_viral_tag"),
+            value=False,
+            key="thr_viral",
+        )
         first_tweet = optimized_thread[0]
         if add_viral:
             first_tweet = append_viral_tag(first_tweet, viral_tag)

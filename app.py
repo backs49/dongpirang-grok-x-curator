@@ -23,18 +23,30 @@ st.set_page_config(
 APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
 VIRAL_TAG = "동피랑 Grok X 추천기로 최적화됨 🔥 @mangodaon"
 COOKIE_KEY = "dongpirang_grok_api_key"
-THEME_COOKIE_KEY = "dongpirang_theme"
 
 # ─── 쿠키 매니저 ───
 cookie_manager = stx.CookieManager()
 
-# ─── 쿠키에서 저장된 키 불러오기 ───
-saved_key = cookie_manager.get(COOKIE_KEY) or ""
-saved_theme = cookie_manager.get(THEME_COOKIE_KEY) or "light"
-if saved_theme not in ("light", "dark"):
-    saved_theme = "light"
+# API 키 쿠키는 세션당 한 번만 읽어 캐시한다.
+# 매 rerun마다 .get을 호출하면 extra_streamlit_components의 iframe이 재마운트되어
+# st.tabs의 활성 탭이 첫 번째로 리셋되는 회귀가 발생한다 (커밋 86fb3f5 참조).
+if "_cookies_loaded" not in st.session_state:
+    raw_key = cookie_manager.get(COOKIE_KEY) or ""
+    st.session_state._saved_api_key = raw_key
+    st.session_state._cookies_loaded = True
+
+# 테마는 브라우저 세션 동안만 session_state에 유지한다.
+# (쿠키 영속화는 iframe 재마운트로 탭 상태가 리셋되는 부작용이 있어 보류.)
 if "theme" not in st.session_state:
-    st.session_state.theme = saved_theme
+    st.session_state.theme = "light"
+
+saved_key = st.session_state._saved_api_key
+
+# 테마 selectbox 변경을 inject_css 호출 전에 반영해 즉시 새 테마로 페인트한다.
+if "theme_select" in st.session_state:
+    _sel = st.session_state.theme_select
+    if _sel in ("light", "dark") and _sel != st.session_state.theme:
+        st.session_state.theme = _sel
 
 inject_css(st.session_state.theme)
 
@@ -69,21 +81,14 @@ with st.sidebar:
         theme_keys = list(THEME_OPTIONS.keys())
         theme_idx = theme_keys.index(current_theme) if current_theme in theme_keys else 0
 
-        selected_theme = st.selectbox(
+        # 변경 처리는 스크립트 상단(inject_css 직전)에서 수행한다.
+        st.selectbox(
             t("theme_label"),
             theme_keys,
             format_func=lambda k: THEME_OPTIONS[k],
             index=theme_idx,
             key="theme_select",
         )
-        if selected_theme != st.session_state.get("theme", "light"):
-            st.session_state.theme = selected_theme
-            cookie_manager.set(
-                THEME_COOKIE_KEY,
-                selected_theme,
-                key="save_theme_cookie",
-            )
-            st.rerun()
 
     with st.container(border=True):
         st.markdown(
@@ -106,10 +111,15 @@ with st.sidebar:
         )
 
         # 쿠키 저장/삭제 (값이 변경될 때만)
+        # 캐시(_saved_api_key)도 함께 갱신해 다음 rerun에서 .set이 재호출되지 않게 한다.
         if remember_key and api_key and api_key != saved_key:
             cookie_manager.set(COOKIE_KEY, api_key, key="save_cookie")
+            st.session_state._saved_api_key = api_key
+            saved_key = api_key
         elif not remember_key and saved_key:
             cookie_manager.delete(COOKIE_KEY, key="delete_cookie")
+            st.session_state._saved_api_key = ""
+            saved_key = ""
 
         st.caption(t("api_key_warning"))
 
@@ -145,29 +155,11 @@ _API_MSG = t("api_required")
 st.title(t("app_title"))
 st.caption(t("app_caption_main"))
 
-# ─── 엔터키로 트리거된 작업 처리 (탭 렌더링 전) ───
-if grok and st.session_state.pop("run_ideas", False):
-    kw = st.session_state.get("keywords_input", "")
-    if kw.strip():
-        _length = st.session_state.get("post_length", 0)
-        with st.spinner(t("ideas_spinner")):
-            _result = grok.generate_ideas(kw, length=_length)
-        if "error" not in _result:
-            st.session_state.ideas_result = _result
-        else:
-            st.session_state.ideas_error = _result["error"]
-
-if grok and st.session_state.pop("run_curator", False):
-    inp = st.session_state.get("curator_interests", "")
-    if inp.strip():
-        with st.spinner(t("cur_spinner")):
-            _result = grok.curate_feed(inp)
-        if "error" not in _result:
-            st.session_state.curator_result = _result
-        else:
-            st.session_state.curator_error = _result["error"]
-
 # ─── 탭 ───
+# 엔터키로 트리거된 작업(run_ideas/run_curator)은 각 탭 내부에서 처리한다.
+# 탭 위에서 spinner를 띄우면 spinner가 메인 영역을 점유해 st.tabs가 스크립트
+# 흐름상 한참 뒤에 렌더링되고, 브라우저는 탭 위젯이 잠시 사라졌다고 인식해
+# active 탭 상태를 잃어버린다 (커밋 0a2f500의 부작용).
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     t("tab_optimizer"),
     t("tab_ideas"),

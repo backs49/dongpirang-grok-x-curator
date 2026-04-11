@@ -22,7 +22,6 @@ def render_ideas_tab(grok):
         t("ideas_keyword_label"),
         placeholder=t("ideas_keyword_placeholder"),
         key="keywords_input",
-        on_change=lambda: st.session_state.update(run_ideas=True),
     )
 
     # ─── 포스트 길이 선택 (슬라이더 + 숫자 입력 연동) ───

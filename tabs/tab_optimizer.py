@@ -9,7 +9,7 @@ def render_optimizer_tab(grok, app_url, viral_tag):
 
     post_text = st.text_area(
         t("post_label"),
-        height=120,
+        height=240,
         placeholder=t("post_placeholder"),
     )
 
