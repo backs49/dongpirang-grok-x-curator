@@ -11,6 +11,7 @@ from tabs.tab_scheduler import render_scheduler_tab
 from tabs.tab_ab_compare import render_ab_compare_tab
 from tabs.tab_unfollow import render_unfollow_tab
 from tabs.tab_risk_check import render_risk_check_tab
+from design import inject_css
 
 # ─── 페이지 설정 ───
 st.set_page_config(
@@ -18,6 +19,7 @@ st.set_page_config(
     page_icon="🔥",
     layout="wide",
 )
+inject_css()
 
 APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
 VIRAL_TAG = "동피랑 Grok X 추천기로 최적화됨 🔥 @mangodaon"
