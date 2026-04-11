@@ -408,9 +408,12 @@ h3 {
 
 /* ── Selectbox 드롭다운 화살표 ──────────────────────
    baseweb select의 chevron svg가 fadedText로 렌더링되어 다크 모드에서
-   거의 보이지 않음 → 본문 텍스트 색과 동일하게 강제. */
-.stApp .stSelectbox svg,
-.stApp [data-baseweb="select"] svg {
+   거의 보이지 않음 → 본문 텍스트 색과 동일하게 강제.
+   주의: `.stSelectbox svg` 처럼 넓게 잡으면 레이블 옆 help("?") 아이콘
+   svg 까지 덮여, 라이트 모드에서 본문색(어두움)이 내부 path 를 꽉 채워
+   둥근 점으로 뭉개진다. chevron 이 속한 select 컨트롤 내부만 타겟한다. */
+.stApp .stSelectbox div[data-baseweb="select"] svg,
+.stApp [data-baseweb="select"] [role="button"] svg {
     fill: var(--text) !important;
     color: var(--text) !important;
 }
