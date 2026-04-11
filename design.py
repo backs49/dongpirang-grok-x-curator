@@ -23,8 +23,16 @@ html, body, [class*="css"] {
 }
 
 /* ── 사이드바 ────────────────────────────────────── */
-section[data-testid="stSidebar"] {
+/* Streamlit Cloud에서 config.toml secondaryBackgroundColor가
+   사이드바에 잘 안 먹히는 경우 CSS로 강제 덮어쓰기 */
+section[data-testid="stSidebar"],
+section[data-testid="stSidebar"] > div,
+section[data-testid="stSidebar"] > div:first-child,
+[data-testid="stSidebarContent"] {
     background-color: #221A15 !important;
+}
+
+section[data-testid="stSidebar"] {
     border-right: 1px solid #3D2A20 !important;
 }
 
@@ -94,19 +102,33 @@ section[data-testid="stSidebar"] .stMarkdown h3 {
     background: #B8501E !important;
 }
 
-/* ── 링크 버튼 ───────────────────────────────────── */
+/* ── 링크 버튼 (X 공유, 팔로우 등) ─────────────────
+   테라코타 아웃라인으로 통일 — 사이드바/메인 모두 일관성 */
 .stLinkButton > a {
-    border: 1px solid #4A7C72 !important;
-    color: #4A7C72 !important;
+    border: 1px solid #D4622A !important;
+    color: #D4622A !important;
     border-radius: 6px !important;
     font-size: 13px !important;
+    background: transparent !important;
     transition: background 0.15s, color 0.15s !important;
 }
 
 .stLinkButton > a:hover {
-    background: #4A7C72 !important;
+    background: #D4622A !important;
     color: #F2E8DF !important;
     text-decoration: none !important;
+}
+
+/* 사이드바 내 링크버튼은 좀 더 차분하게 */
+section[data-testid="stSidebar"] .stLinkButton > a {
+    border-color: #6B4030 !important;
+    color: #C07050 !important;
+}
+
+section[data-testid="stSidebar"] .stLinkButton > a:hover {
+    border-color: #D4622A !important;
+    background: #D4622A !important;
+    color: #F2E8DF !important;
 }
 
 /* ── 입력 필드 ───────────────────────────────────── */
@@ -187,14 +209,14 @@ section[data-testid="stSidebar"] .stMarkdown h3 {
 
 [data-testid="stNotificationContentSuccess"] {
     background: #102E20 !important;
-    border-left: 3px solid #4A7C72 !important;
+    border-left: 3px solid #5BA090 !important;
     border-radius: 6px !important;
 }
 
 /* ── st.info ─────────────────────────────────────── */
 [data-testid="stNotificationContentInfo"] {
-    background: #102030 !important;
-    border-left: 3px solid #4A7C72 !important;
+    background: #1E1A10 !important;
+    border-left: 3px solid #D4622A !important;
     border-radius: 6px !important;
 }
 
