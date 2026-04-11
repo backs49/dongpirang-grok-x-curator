@@ -319,8 +319,38 @@ h3 {
     text-decoration: none !important;
 }
 
-/* ── 입력 필드 ───────────────────────────────────── */
-.stTextInput > div > div > input,
+/* ── 입력 필드 ─────────────────────────────────────
+   text_input: border/배경은 **외부 래퍼** div[data-baseweb="input"] 에만 준다.
+   내부 래퍼 div[data-baseweb="base-input"] 은 <input> 만 감싸고 eye 아이콘
+   버튼은 그 옆에 sibling 으로 붙는다. base-input 에 border 를 주면 아이콘이
+   빠진 작은 박스가 먼저 생기고, 아이콘은 밖에 남아 두 박스로 쪼개져 보인다.
+   selectbox 의 두 박스 분리 버그와 같은 패턴. */
+.stApp .stTextInput div[data-baseweb="input"] {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+}
+
+.stApp .stTextInput div[data-baseweb="input"]:focus-within {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px var(--accent-soft) !important;
+}
+
+.stApp .stTextInput div[data-baseweb="base-input"] {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.stTextInput input {
+    background-color: transparent !important;
+    border: none !important;
+    color: var(--text) !important;
+    font-size: var(--text-base) !important;
+    padding: 10px 14px !important;
+}
+
+/* textarea 는 보조 컨트롤이 없어 input 엘리먼트에 직접 스타일을 줘도 된다. */
 .stTextArea > div > div > textarea {
     background-color: var(--bg-elevated) !important;
     border: 1px solid var(--border) !important;
@@ -328,6 +358,11 @@ h3 {
     color: var(--text) !important;
     font-size: var(--text-base) !important;
     padding: 10px 14px !important;
+}
+
+.stTextArea > div > div > textarea:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px var(--accent-soft) !important;
 }
 
 /* Selectbox: baseweb 컨트롤 래퍼(ValueContainer + Indicator 를 감싸는 div)
@@ -340,12 +375,6 @@ h3 {
     border-radius: var(--radius-md) !important;
     color: var(--text) !important;
     font-size: var(--text-base) !important;
-}
-
-.stTextInput > div > div > input:focus,
-.stTextArea > div > div > textarea:focus {
-    border-color: var(--accent) !important;
-    box-shadow: 0 0 0 3px var(--accent-soft) !important;
 }
 
 .stTextInput input::placeholder,
@@ -365,21 +394,14 @@ h3 {
 }
 
 /* text_input 내부 보조 컨트롤 (password 보기/숨기기 아이콘 등) —
-   baseweb input wrapper가 secondaryBackgroundColor를 배경으로 깔아서
-   다크 모드에서 라이트색으로 새어나오는 것을 막는다. */
-.stApp .stTextInput div[data-baseweb="base-input"],
-.stApp .stTextInput div[data-baseweb="input"] {
-    background-color: var(--bg-elevated) !important;
-}
-
-.stApp .stTextInput div[data-baseweb="base-input"] button,
+   외부 래퍼(data-baseweb="input") 가 이미 배경을 담당하므로, 내부 요소는
+   모두 투명으로 두고 아이콘 색만 테마 토큰으로 맞춘다. */
 .stApp .stTextInput div[data-baseweb="input"] button {
     background-color: transparent !important;
     border: none !important;
     color: var(--text) !important;
 }
 
-.stApp .stTextInput div[data-baseweb="base-input"] button svg,
 .stApp .stTextInput div[data-baseweb="input"] button svg {
     fill: var(--text) !important;
 }
@@ -391,6 +413,68 @@ h3 {
 .stApp [data-baseweb="select"] svg {
     fill: var(--text) !important;
     color: var(--text) !important;
+}
+
+/* ── File uploader ────────────────────────────────
+   st.file_uploader 의 dropzone section 한 요소에만 배경/테두리를 준다.
+   과거 `[class*="e16n7gab"]` 와일드카드는 emotion 해시가 겹치는 내부 자식
+   (아이콘 래퍼, instructions 래퍼, browse 버튼 등)에도 모두 매칭되어
+   dropzone 안에 수많은 dashed 박스가 중첩으로 생기는 회귀가 있었다. */
+.stApp section[data-testid="stFileUploaderDropzone"] {
+    background-color: var(--bg-elevated) !important;
+    border: 1px dashed var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    color: var(--text) !important;
+}
+
+.stApp [data-testid="stFileUploaderDropzoneInstructions"],
+.stApp [data-testid="stFileUploaderDropzoneInstructions"] *,
+.stApp [data-testid="stFileUploaderDropzoneInstructions"] span,
+.stApp [data-testid="stFileUploaderDropzoneInstructions"] div {
+    color: var(--text) !important;
+    background-color: transparent !important;
+}
+
+.stApp [data-testid="stFileUploaderDropzone"] svg {
+    fill: var(--text-muted) !important;
+    color: var(--text-muted) !important;
+}
+
+.stApp [data-testid="stFileUploaderDropzoneInstructions"] small,
+.stApp [data-testid="stFileUploaderDropzoneInstructions"] span[class*="small"],
+.stApp [data-testid="stFileUploaderDropzone"] small {
+    color: var(--text-muted) !important;
+}
+
+/* "Browse files" 버튼 — dropzone 내부 */
+.stApp [data-testid="stFileUploaderDropzone"] button,
+.stApp section[data-testid="stFileUploaderDropzone"] button {
+    background-color: transparent !important;
+    border: 1px solid var(--border-strong) !important;
+    color: var(--text) !important;
+}
+
+.stApp [data-testid="stFileUploaderDropzone"] button:hover {
+    background-color: var(--bg-base) !important;
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+}
+
+/* 업로드 완료 후 파일 행 (파일명 + 크기 + 삭제 버튼) */
+.stApp [data-testid="stFileUploaderFile"],
+.stApp [data-testid="stFileUploaderFileName"],
+.stApp [data-testid="stFileUploaderFileData"] {
+    color: var(--text) !important;
+    background-color: transparent !important;
+}
+
+.stApp [data-testid="stFileUploaderFile"] small,
+.stApp [data-testid="stFileUploaderFileData"] small {
+    color: var(--text-muted) !important;
+}
+
+.stApp [data-testid="stFileUploaderDeleteBtn"] svg {
+    fill: var(--text-muted) !important;
 }
 
 /* ── st.metric ───────────────────────────────────── */
