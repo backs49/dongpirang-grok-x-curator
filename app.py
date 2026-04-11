@@ -60,6 +60,28 @@ with st.sidebar:
         st.session_state.lang = selected_lang
         st.rerun()
 
+    # ─── 테마 선택 ───
+    THEME_OPTIONS = {"light": "☀ Light", "dark": "🌙 Dark"}
+    current_theme = st.session_state.get("theme", "light")
+    theme_keys = list(THEME_OPTIONS.keys())
+    theme_idx = theme_keys.index(current_theme) if current_theme in theme_keys else 0
+
+    selected_theme = st.selectbox(
+        "테마",
+        theme_keys,
+        format_func=lambda k: THEME_OPTIONS[k],
+        index=theme_idx,
+        key="theme_select",
+    )
+    if selected_theme != st.session_state.get("theme", "light"):
+        st.session_state.theme = selected_theme
+        cookie_manager.set(
+            THEME_COOKIE_KEY,
+            selected_theme,
+            key="save_theme_cookie",
+        )
+        st.rerun()
+
     st.divider()
 
     api_key = st.text_input(
