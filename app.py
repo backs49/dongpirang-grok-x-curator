@@ -43,14 +43,12 @@ with st.sidebar:
     st.title(t("app_title"))
     st.caption(t("app_caption"))
 
-    # ─── 그룹 1: 환경 설정 ───
     with st.container(border=True):
         st.markdown(
             '<span class="sidebar-section-label">ENVIRONMENT</span>',
             unsafe_allow_html=True,
         )
 
-        # 언어 선택
         lang_options = list(LANGUAGES.keys())
         current_lang = st.session_state.get("lang", "ko")
         lang_idx = lang_options.index(current_lang) if current_lang in lang_options else 0
@@ -66,7 +64,6 @@ with st.sidebar:
             st.session_state.lang = selected_lang
             st.rerun()
 
-        # 테마 선택
         THEME_OPTIONS = {"light": "☀ Light", "dark": "🌙 Dark"}
         current_theme = st.session_state.get("theme", "light")
         theme_keys = list(THEME_OPTIONS.keys())
@@ -88,7 +85,6 @@ with st.sidebar:
             )
             st.rerun()
 
-    # ─── 그룹 2: API 연결 ───
     with st.container(border=True):
         st.markdown(
             '<span class="sidebar-section-label">API CONNECTION</span>',
