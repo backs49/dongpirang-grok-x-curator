@@ -1,5 +1,5 @@
 """
-동피랑 Grok X 추천기 — Design System
+동피랑고양이 Grok 𝕏 — Design System
 
 토큰 기반 CSS 변수 시스템으로 라이트/다크 두 테마를 지원한다.
 사용법:

@@ -15,14 +15,46 @@ from design import inject_css
 
 # ─── 페이지 설정 ───
 st.set_page_config(
-    page_title="동피랑 Grok X 추천기",
-    page_icon="🔥",
+    page_title="동피랑고양이 Grok 𝕏",
+    page_icon="assets/pink-paw.svg",
     layout="wide",
 )
 
 APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
-VIRAL_TAG = "동피랑 Grok X 추천기로 최적화됨 🔥 @mangodaon"
+VIRAL_TAG = "동피랑고양이 Grok 𝕏 로 최적화됨 🐾 @mangodaon"
 COOKIE_KEY = "dongpirang_grok_api_key"
+
+# 연핑크 발자국 두 개 인라인 SVG — 🐾 이모지를 모사하되 플랫폼 렌더링
+# 차이(갈색/회색 등)를 제거하고 연핑크로 고정한다. em 기준 크기라
+# h1/h2 폰트 사이즈에 자동으로 맞춰진다.
+PINK_PAW_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" '
+    'width="1em" height="1em" style="vertical-align:-0.15em;margin-right:0.25em;">'
+    '<g fill="#F5B7C3">'
+    '<g transform="translate(0,2)">'
+    '<ellipse cx="8" cy="11" rx="3" ry="4"/>'
+    '<ellipse cx="14" cy="6" rx="3" ry="4"/>'
+    '<ellipse cx="20" cy="6" rx="3" ry="4"/>'
+    '<ellipse cx="26" cy="11" rx="3" ry="4"/>'
+    '<ellipse cx="17" cy="22" rx="8" ry="7"/>'
+    '</g>'
+    '<g transform="translate(30,32)">'
+    '<ellipse cx="8" cy="11" rx="3" ry="4"/>'
+    '<ellipse cx="14" cy="6" rx="3" ry="4"/>'
+    '<ellipse cx="20" cy="6" rx="3" ry="4"/>'
+    '<ellipse cx="26" cy="11" rx="3" ry="4"/>'
+    '<ellipse cx="17" cy="22" rx="8" ry="7"/>'
+    '</g>'
+    '</g></svg>'
+)
+
+
+def render_app_title(level: int = 1) -> None:
+    """핑크 발바닥 SVG + 앱 타이틀을 h1/h2 로 렌더링."""
+    st.markdown(
+        f'<h{level} class="app-title">{PINK_PAW_SVG}{t("app_title")}</h{level}>',
+        unsafe_allow_html=True,
+    )
 
 # ─── 쿠키 매니저 ───
 cookie_manager = stx.CookieManager()
@@ -52,7 +84,7 @@ inject_css(st.session_state.theme)
 
 # ─── 사이드바 ───
 with st.sidebar:
-    st.title(t("app_title"))
+    render_app_title(level=1)
     st.caption(t("app_caption"))
 
     with st.container(border=True):
@@ -152,7 +184,7 @@ if api_key:
 _API_MSG = t("api_required")
 
 # ─── 메인 타이틀 ───
-st.title(t("app_title"))
+render_app_title(level=1)
 st.caption(t("app_caption_main"))
 
 # ─── 탭 ───
@@ -215,11 +247,14 @@ st.divider()
 footer_col1, footer_col2, footer_col3 = st.columns(3)
 
 with footer_col1:
-    st.markdown(t("footer_title"))
+    st.markdown(
+        f'{PINK_PAW_SVG}{t("footer_title")}',
+        unsafe_allow_html=True,
+    )
     st.caption(t("footer_caption"))
 
 with footer_col2:
-    promo_text = f"동피랑 Grok X 추천기로 X 포스트를 최적화하고 있어요! 🔥\nx-algorithm 기반 무료 분석\n\n{APP_URL}\n\n@mangodaon"
+    promo_text = f"동피랑고양이 Grok 𝕏 로 X 포스트를 최적화하고 있어요! 🐾\nx-algorithm 기반 무료 분석\n\n{APP_URL}\n\n@mangodaon"
     promo_url = generate_tweet_intent_url(promo_text)
     st.link_button(t("footer_share"), promo_url, use_container_width=True)
 

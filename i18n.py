@@ -47,9 +47,9 @@ LANG_OUTPUT_NAME = {
 _T = {
     # ─── App-level ───
     "app_title": {
-        "ko": "🔥 동피랑 Grok X 추천기",
-        "en": "🔥 Dongpirang Grok X Curator",
-        "ja": "🔥 東ピラン Grok X キュレーター",
+        "ko": "동피랑고양이 Grok 𝕏",
+        "en": "Dongpirang Cat Grok 𝕏",
+        "ja": "東ピラン猫 Grok 𝕏",
     },
     "app_caption": {
         "ko": "x-algorithm 기반 X 포스트 최적화",
@@ -112,9 +112,9 @@ _T = {
         "ja": "⚠️ この機能を使用するには、サイドバーでGrok APIキーを入力してください。 👉 [console.x.ai](https://console.x.ai)",
     },
     "footer_title": {
-        "ko": "**동피랑 Grok X 추천기** 🔥",
-        "en": "**Dongpirang Grok X Curator** 🔥",
-        "ja": "**東ピラン Grok X キュレーター** 🔥",
+        "ko": "**동피랑고양이 Grok 𝕏**",
+        "en": "**Dongpirang Cat Grok 𝕏**",
+        "ja": "**東ピラン猫 Grok 𝕏**",
     },
     "footer_caption": {
         "ko": "x-algorithm 기반 X 포스트 최적화 도구",

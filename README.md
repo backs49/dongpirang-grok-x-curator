@@ -1,4 +1,4 @@
-# 🔥 동피랑 Grok X 추천기
+# 🐾 동피랑고양이 Grok 𝕏
 
 **x-algorithm + Grok API 기반 X 포스트 최적화 도구**
 
