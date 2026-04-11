@@ -19,17 +19,24 @@ st.set_page_config(
     page_icon="🔥",
     layout="wide",
 )
-inject_css()
 
 APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
 VIRAL_TAG = "동피랑 Grok X 추천기로 최적화됨 🔥 @mangodaon"
 COOKIE_KEY = "dongpirang_grok_api_key"
+THEME_COOKIE_KEY = "dongpirang_theme"
 
 # ─── 쿠키 매니저 ───
 cookie_manager = stx.CookieManager()
 
 # ─── 쿠키에서 저장된 키 불러오기 ───
 saved_key = cookie_manager.get(COOKIE_KEY) or ""
+saved_theme = cookie_manager.get(THEME_COOKIE_KEY) or "light"
+if saved_theme not in ("light", "dark"):
+    saved_theme = "light"
+if "theme" not in st.session_state:
+    st.session_state.theme = saved_theme
+
+inject_css(st.session_state.theme)
 
 # ─── 사이드바 ───
 with st.sidebar:
