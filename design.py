@@ -321,14 +321,25 @@ h3 {
 
 /* ── 입력 필드 ───────────────────────────────────── */
 .stTextInput > div > div > input,
-.stTextArea > div > div > textarea,
-.stSelectbox > div > div > div {
+.stTextArea > div > div > textarea {
     background-color: var(--bg-elevated) !important;
     border: 1px solid var(--border) !important;
     border-radius: var(--radius-md) !important;
     color: var(--text) !important;
     font-size: var(--text-base) !important;
     padding: 10px 14px !important;
+}
+
+/* Selectbox: baseweb 컨트롤 래퍼(ValueContainer + Indicator 를 감싸는 div)
+   단 하나에만 border/배경을 적용한다. `.stSelectbox > div > div > div` 처럼
+   느슨한 셀렉터는 내부 자식 두 개(값 표시부, 화살표 버튼)에 각각 적용되어
+   셀렉트박스가 두 개의 둥근 박스로 쪼개지는 시각 버그를 유발한다. */
+.stSelectbox div[data-baseweb="select"] > div {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    color: var(--text) !important;
+    font-size: var(--text-base) !important;
 }
 
 .stTextInput > div > div > input:focus,
