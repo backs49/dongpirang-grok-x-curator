@@ -5,5 +5,8 @@ secondaryBackgroundColor = "#F4ECE2"
 textColor = "#1F1A15"
 font = "sans serif"
 
+[ui]
+hideTopBar = true
+
 [server]
 headless = true
