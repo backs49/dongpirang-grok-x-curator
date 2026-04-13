@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit_analytics2 as streamlit_analytics
 import extra_streamlit_components as stx
 from grok_client import GrokClient
 from utils import generate_tweet_intent_url, generate_follow_url
@@ -12,11 +13,6 @@ from tabs.tab_ab_compare import render_ab_compare_tab
 from tabs.tab_unfollow import render_unfollow_tab
 from tabs.tab_risk_check import render_risk_check_tab
 from design import inject_css
-from analytics import inject_ga4
-
-# ─── Google Analytics 4 (Streamlit index.html 패치) ───
-# st.set_page_config 보다 먼저 호출해 첫 페이지 로드부터 추적되도록 한다.
-inject_ga4()
 
 # ─── 페이지 설정 ───
 st.set_page_config(
@@ -24,6 +20,12 @@ st.set_page_config(
     page_icon="assets/pink-paw.svg",
     layout="wide",
 )
+
+# ─── 사용 현황 추적 (streamlit-analytics2) ───
+# 페이지뷰 + 모든 위젯 상호작용(탭 전환·버튼 클릭 등)을 세션 단위로 수집한다.
+# 대시보드는 URL 끝에 ?analytics=on 을 붙여 접근하며, 비밀번호는
+# st.secrets["ANALYTICS_PASSWORD"] 로 보호한다 (미설정 시 공개).
+streamlit_analytics.start_tracking()
 
 APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
 VIRAL_TAG = "동피랑고양이 Grok 𝕏 로 최적화됨 🐾 @mangodaon"
@@ -266,3 +268,10 @@ with footer_col2:
 with footer_col3:
     follow_url = generate_follow_url("mangodaon")
     st.link_button(t("footer_follow"), follow_url, use_container_width=True)
+
+# ─── 사용 현황 추적 종료 ───
+try:
+    _analytics_password = st.secrets["ANALYTICS_PASSWORD"]
+except (KeyError, FileNotFoundError):
+    _analytics_password = None
+streamlit_analytics.stop_tracking(unsafe_password=_analytics_password)
