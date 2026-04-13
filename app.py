@@ -12,6 +12,11 @@ from tabs.tab_ab_compare import render_ab_compare_tab
 from tabs.tab_unfollow import render_unfollow_tab
 from tabs.tab_risk_check import render_risk_check_tab
 from design import inject_css
+from analytics import inject_ga4
+
+# ─── Google Analytics 4 (Streamlit index.html 패치) ───
+# st.set_page_config 보다 먼저 호출해 첫 페이지 로드부터 추적되도록 한다.
+inject_ga4()
 
 # ─── 페이지 설정 ───
 st.set_page_config(
