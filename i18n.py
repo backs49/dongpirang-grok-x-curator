@@ -412,9 +412,9 @@ _T = {
         "ja": "🖼️ このポストに合う画像プロンプト",
     },
     "ideas_image_prompt_caption": {
-        "ko": "Grok Imagine 또는 Flux에 복사해서 사용하세요",
-        "en": "Copy and paste into Grok Imagine or Flux",
-        "ja": "Grok ImagineまたはFluxにコピーして使用してください",
+        "ko": "Grok Imagine 또는 Gemini 3 Flash Image에 복사해서 사용하세요",
+        "en": "Copy and paste into Grok Imagine or Gemini 3 Flash Image",
+        "ja": "Grok ImagineまたはGemini 3 Flash Imageにコピーして使用してください",
     },
 
     # ─── Curator Tab ───
