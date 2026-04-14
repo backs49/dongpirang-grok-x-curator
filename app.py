@@ -66,13 +66,19 @@ def render_app_title(level: int = 1) -> None:
 # ─── 쿠키 매니저 ───
 cookie_manager = stx.CookieManager()
 
-# API 키 쿠키는 세션당 한 번만 읽어 캐시한다.
-# 매 rerun마다 .get을 호출하면 extra_streamlit_components의 iframe이 재마운트되어
-# st.tabs의 활성 탭이 첫 번째로 리셋되는 회귀가 발생한다 (커밋 86fb3f5 참조).
-if "_cookies_loaded" not in st.session_state:
-    raw_key = cookie_manager.get(COOKIE_KEY) or ""
-    st.session_state._saved_api_key = raw_key
-    st.session_state._cookies_loaded = True
+# API 키 쿠키 로딩.
+# extra_streamlit_components의 CookieManager는 iframe postMessage로 쿠키를
+# 보고하므로, fresh page load 직후 첫 렌더에서는 get_all()이 빈 dict를 돌려줄 수
+# 있다. 받아올 때까지 _cookies_loaded 플래그를 잠그지 않고 다음 rerun에서 다시
+# 시도한다. 탭 상태 리셋 회귀(86fb3f5)는 "사용자가 탭을 클릭한 이후의 rerun"에서
+# 발생하는데, 이 재시도는 초기 1~2 rerun 사이에만 일어나므로 안전하다.
+if not st.session_state.get("_cookies_loaded"):
+    cookies = cookie_manager.get_all()
+    if cookies:
+        st.session_state._saved_api_key = cookies.get(COOKIE_KEY, "")
+        st.session_state._cookies_loaded = True
+    else:
+        st.session_state._saved_api_key = ""
 
 # 테마는 브라우저 세션 동안만 session_state에 유지한다.
 # (쿠키 영속화는 iframe 재마운트로 탭 상태가 리셋되는 부작용이 있어 보류.)
