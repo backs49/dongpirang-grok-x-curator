@@ -111,6 +111,16 @@ _T = {
         "en": "⚠️ Enter your Grok API key in the sidebar to use this feature. 👉 [console.x.ai](https://console.x.ai)",
         "ja": "⚠️ この機能を使用するには、サイドバーでGrok APIキーを入力してください。 👉 [console.x.ai](https://console.x.ai)",
     },
+    "demo_banner": {
+        "ko": "🎬 **데모 모드** — 미리 만들어둔 예시 결과를 보여드리고 있어요. 왼쪽 사이드바에 Grok API 키를 입력하면 본인의 입력으로 직접 생성할 수 있습니다.",
+        "en": "🎬 **Demo mode** — You are viewing a preset example result. Enter your Grok API key in the sidebar to generate with your own input.",
+        "ja": "🎬 **デモモード** — あらかじめ用意されたサンプル結果を表示しています。サイドバーでGrok APIキーを入力すると、ご自身の入力で生成できます。",
+    },
+    "demo_key_needed": {
+        "ko": "🔑 사이드바에 Grok API 키를 입력하면 본인 입력으로 분석할 수 있어요.",
+        "en": "🔑 Enter your Grok API key in the sidebar to run analysis on your own input.",
+        "ja": "🔑 サイドバーでGrok APIキーを入力すると、ご自身の入力で分析できます。",
+    },
     "footer_title": {
         "ko": "**동피랑고양이 Grok 𝕏**",
         "en": "**Dongpirang Cat Grok 𝕏**",

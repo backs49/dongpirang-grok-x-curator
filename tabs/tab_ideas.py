@@ -18,6 +18,9 @@ def render_ideas_tab(grok):
     st.subheader(t("ideas_subheader"))
     st.caption(t("ideas_caption"))
 
+    if grok is None:
+        st.info(t("demo_banner"))
+
     keywords = st.text_input(
         t("ideas_keyword_label"),
         placeholder=t("ideas_keyword_placeholder"),
@@ -56,7 +59,9 @@ def render_ideas_tab(grok):
     post_length = st.session_state.post_length
 
     if st.button(t("ideas_generate_btn"), use_container_width=True, type="primary"):
-        if not keywords.strip():
+        if grok is None:
+            st.warning(t("demo_key_needed"))
+        elif not keywords.strip():
             st.warning(t("ideas_enter_keyword"))
         else:
             with st.spinner(t("ideas_spinner")):

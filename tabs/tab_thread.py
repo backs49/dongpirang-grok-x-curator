@@ -7,6 +7,9 @@ def render_thread_tab(grok, app_url, viral_tag):
     st.subheader(t("thr_subheader"))
     st.caption(t("thr_caption"))
 
+    if grok is None:
+        st.info(t("demo_banner"))
+
     thread_input = st.text_area(
         t("thr_input_label"),
         height=250,
@@ -18,7 +21,9 @@ def render_thread_tab(grok, app_url, viral_tag):
         st.caption(t("thr_detected", n=len(tweets)))
 
     if st.button(t("thr_analyze_btn"), use_container_width=True, type="primary"):
-        if not thread_input.strip():
+        if grok is None:
+            st.warning(t("demo_key_needed"))
+        elif not thread_input.strip():
             st.warning(t("thr_enter_content"))
         else:
             with st.spinner(t("thr_spinner")):

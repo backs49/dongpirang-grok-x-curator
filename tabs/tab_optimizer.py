@@ -7,6 +7,9 @@ def render_optimizer_tab(grok, app_url, viral_tag):
     st.subheader(t("opt_subheader"))
     st.caption(t("opt_caption"))
 
+    if grok is None:
+        st.info(t("demo_banner"))
+
     post_text = st.text_area(
         t("post_label"),
         height=240,
@@ -20,7 +23,9 @@ def render_optimizer_tab(grok, app_url, viral_tag):
         hashtags = st.text_input(t("opt_hashtag_label"), placeholder=t("opt_hashtag_placeholder"))
 
     if st.button(t("opt_analyze_btn"), use_container_width=True, type="primary"):
-        if not post_text.strip():
+        if grok is None:
+            st.warning(t("demo_key_needed"))
+        elif not post_text.strip():
             st.warning(t("enter_post"))
         else:
             with st.spinner(t("opt_spinner")):

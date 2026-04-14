@@ -8,6 +8,9 @@ def render_curator_tab(grok):
     st.subheader(t("cur_subheader"))
     st.caption(t("cur_caption"))
 
+    if grok is None:
+        st.info(t("demo_banner"))
+
     interests = st.text_input(
         t("cur_interest_label"),
         placeholder=t("cur_interest_placeholder"),
@@ -15,7 +18,9 @@ def render_curator_tab(grok):
     )
 
     if st.button(t("cur_search_btn"), use_container_width=True, type="primary"):
-        if not interests.strip():
+        if grok is None:
+            st.warning(t("demo_key_needed"))
+        elif not interests.strip():
             st.warning(t("cur_enter_interest"))
         else:
             with st.spinner(t("cur_spinner")):

@@ -190,6 +190,24 @@ if api_key:
 
 _API_MSG = t("api_required")
 
+# ─── 데모 모드: API 키가 없을 때 프리셋 결과 주입 ───
+# 방문자가 각 핵심 탭의 결과 UI 를 즉시 보고 앱 가치를 파악할 수 있도록,
+# 미리 만든 한국어 예시를 session_state 에 꽂아 넣는다. 실제 키를 입력하면
+# 혼동을 피하기 위해 데모 결과를 정리한다.
+_DEMO_RESULT_KEYS = ("optimize_result", "ideas_result", "curator_result", "thread_result")
+if grok is None:
+    if not st.session_state.get("_demo_mode"):
+        from demo_data import OPTIMIZER_DEMO, IDEAS_DEMO, CURATOR_DEMO, THREAD_DEMO
+        st.session_state.optimize_result = OPTIMIZER_DEMO
+        st.session_state.ideas_result = IDEAS_DEMO
+        st.session_state.curator_result = CURATOR_DEMO
+        st.session_state.thread_result = THREAD_DEMO
+        st.session_state._demo_mode = True
+elif st.session_state.get("_demo_mode"):
+    for _key in _DEMO_RESULT_KEYS:
+        st.session_state.pop(_key, None)
+    st.session_state._demo_mode = False
+
 # ─── 메인 타이틀 ───
 render_app_title(level=1)
 st.caption(t("app_caption_main"))
@@ -211,25 +229,13 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
 ])
 
 with tab1:
-    if grok:
-        render_optimizer_tab(grok, APP_URL, VIRAL_TAG)
-    else:
-        st.info(_API_MSG)
+    render_optimizer_tab(grok, APP_URL, VIRAL_TAG)
 with tab2:
-    if grok:
-        render_ideas_tab(grok)
-    else:
-        st.info(_API_MSG)
+    render_ideas_tab(grok)
 with tab3:
-    if grok:
-        render_curator_tab(grok)
-    else:
-        st.info(_API_MSG)
+    render_curator_tab(grok)
 with tab4:
-    if grok:
-        render_thread_tab(grok, APP_URL, VIRAL_TAG)
-    else:
-        st.info(_API_MSG)
+    render_thread_tab(grok, APP_URL, VIRAL_TAG)
 with tab5:
     if grok:
         render_scheduler_tab(grok)
