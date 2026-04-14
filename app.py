@@ -25,6 +25,12 @@ st.set_page_config(
 # 페이지뷰 + 모든 위젯 상호작용(탭 전환·버튼 클릭 등)을 세션 단위로 수집한다.
 # 대시보드는 URL 끝에 ?analytics=on 을 붙여 접근하며, 비밀번호는
 # st.secrets["ANALYTICS_PASSWORD"] 로 보호한다 (미설정 시 공개).
+#
+# 주의: streamlit-analytics2는 모든 text_input 값을 counts 딕셔너리에 저장한다
+# (password 타입도 예외 없음). API 키가 대시보드에 노출되는 것을 막기 위해,
+# start_tracking()이 st.text_input 을 래핑하기 직전에 원본 참조를 잡아두고
+# API 키 위젯만 이 원본으로 호출한다. 다른 위젯 추적은 그대로 유지된다.
+_untracked_text_input = st.text_input
 streamlit_analytics.start_tracking()
 
 APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
@@ -141,7 +147,8 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
 
-        api_key = st.text_input(
+        # 원본 text_input 으로 호출해 analytics 추적에서 제외 (위 주석 참조).
+        api_key = _untracked_text_input(
             t("api_key_label"),
             type="password",
             help=t("api_key_help"),
