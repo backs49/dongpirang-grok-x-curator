@@ -86,6 +86,11 @@ _T = {
         "en": "⚠️ Grok API Key is shown only once.\nSave it immediately!",
         "ja": "⚠️ Grok APIキーは一度だけ表示されます。\nすぐに保存してください！",
     },
+    "api_key_privacy": {
+        "ko": "🔒 입력한 키는 이 브라우저에만 저장돼요. 서버·분석 어디에도 남지 않아요.",
+        "en": "🔒 Your key stays in this browser only — never stored on the server or in analytics.",
+        "ja": "🔒 入力したキーはこのブラウザにのみ保存されます。サーバーや分析には残りません。",
+    },
     "model_select": {
         "ko": "모델 선택",
         "en": "Select Model",

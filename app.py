@@ -174,6 +174,7 @@ with st.sidebar:
             saved_key = ""
 
         st.caption(t("api_key_warning"))
+        st.caption(t("api_key_privacy"))
 
         model = st.selectbox(
             t("model_select"),
