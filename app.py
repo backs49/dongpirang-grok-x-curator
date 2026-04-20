@@ -290,6 +290,20 @@ with footer_col3:
     st.link_button(t("footer_follow"), follow_url, use_container_width=True)
 
 # ─── 사용 현황 추적 종료 ───
+# API 키 값이 analytics data에 잔류하지 않도록 stop_tracking 직전에 삭제한다.
+# _untracked_text_input 우회만으로는 불충분하다: Streamlit rerun 중 이전 실행이
+# stop_tracking()까지 도달하지 못하면 st.text_input이 래핑된 채 남아,
+# 다음 rerun에서 _untracked_text_input이 래핑 버전을 캡처하게 된다.
+# 방어적으로, 표시/저장 직전에 data에서 키 항목 자체를 매번 제거한다.
+_api_label = t("api_key_label")
+try:
+    from streamlit_analytics2.state import data as _sa2_data
+    _sa2_data.get("widgets", {}).pop(_api_label, None)
+except ImportError:
+    pass
+if "session_data" in st.session_state:
+    st.session_state.session_data.get("widgets", {}).pop(_api_label, None)
+
 try:
     _analytics_password = st.secrets["ANALYTICS_PASSWORD"]
 except (KeyError, FileNotFoundError):

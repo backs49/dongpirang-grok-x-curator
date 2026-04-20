@@ -297,7 +297,7 @@ def _render_user_table(users: list[str], show_unfollow_link: bool = False):
     rows = []
     for u in users:
         if u.isdigit():
-            link = f"https://x.com/intent/user?user_id={u}"
+            link = f"https://x.com/i/user/{u}"
             row = f"| `{u}` | [{t('unf_view_on_x')}]({link}) |"
             if show_unfollow_link:
                 row += f" [{t('unf_unfollow_back')}]({link}) |"
