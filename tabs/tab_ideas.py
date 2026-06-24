@@ -1,5 +1,6 @@
 import streamlit as st
 
+from image_client import build_copy_prompt
 from utils import generate_tweet_intent_url
 from i18n import t
 
@@ -110,3 +111,8 @@ def render_ideas_tab(grok):
                     st.markdown(f"**{t('ideas_image_prompt_title')}**")
                     st.caption(t("ideas_image_prompt_caption"))
                     st.code(image_prompt, language="", wrap_lines=True)
+
+                    copy_prompt = build_copy_prompt(content, image_prompt)
+                    st.markdown(f"**{t('ideas_copy_image_prompt_title')}**")
+                    st.caption(t("ideas_copy_image_prompt_caption"))
+                    st.code(copy_prompt, language="", wrap_lines=True)

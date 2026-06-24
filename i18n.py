@@ -456,6 +456,16 @@ _T = {
         "en": "Copy and paste into Grok Imagine or Gemini 3 Flash Image",
         "ja": "Grok ImagineまたはGemini 3 Flash Imageにコピーして使用してください",
     },
+    "ideas_copy_image_prompt_title": {
+        "ko": "복사용 이미지 생성 프롬프트",
+        "en": "Copy-ready image prompt",
+        "ja": "コピー用画像生成プロンプト",
+    },
+    "ideas_copy_image_prompt_caption": {
+        "ko": "ChatGPT, Grok Imagine, Gemini 등에 붙여넣어 사용하세요.",
+        "en": "Paste this into ChatGPT, Grok Imagine, Gemini, or another image tool.",
+        "ja": "ChatGPT、Grok Imagine、Geminiなどに貼り付けて使用してください。",
+    },
 
     # ─── Curator Tab ───
     "cur_subheader": {
