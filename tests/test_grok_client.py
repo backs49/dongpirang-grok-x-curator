@@ -16,7 +16,7 @@ class TestGrokClientInit:
 
 
 class TestOptimizePost:
-    @patch("grok_client.openai.OpenAI")
+    @patch("providers.xai_api.openai.OpenAI")
     def test_returns_parsed_json(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
@@ -38,7 +38,7 @@ class TestOptimizePost:
         assert result["engagement_level"] == "High"
         mock_client.chat.completions.create.assert_called_once()
 
-    @patch("grok_client.openai.OpenAI")
+    @patch("providers.xai_api.openai.OpenAI")
     def test_passes_image_desc_and_hashtags(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
@@ -57,7 +57,7 @@ class TestOptimizePost:
 
 
 class TestGenerateIdeas:
-    @patch("grok_client.openai.OpenAI")
+    @patch("providers.xai_api.openai.OpenAI")
     def test_returns_ideas_list(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
@@ -76,7 +76,7 @@ class TestGenerateIdeas:
 
 
 class TestCurateFeed:
-    @patch("grok_client.openai.OpenAI")
+    @patch("providers.xai_api.openai.OpenAI")
     def test_returns_recommendations(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
@@ -106,7 +106,7 @@ class TestCurateFeed:
 
 
 class TestOptimizeThread:
-    @patch("grok_client.openai.OpenAI")
+    @patch("providers.xai_api.openai.OpenAI")
     def test_returns_thread_analysis(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
@@ -138,7 +138,7 @@ class TestOptimizeThread:
 
 
 class TestPlanSchedule:
-    @patch("grok_client.openai.OpenAI")
+    @patch("providers.xai_api.openai.OpenAI")
     def test_returns_schedule(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
@@ -164,7 +164,7 @@ class TestPlanSchedule:
 
 
 class TestComparePosts:
-    @patch("grok_client.openai.OpenAI")
+    @patch("providers.xai_api.openai.OpenAI")
     def test_returns_comparison(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
@@ -187,7 +187,7 @@ class TestComparePosts:
         assert result["winner"] == "B"
         assert result["score_difference"] == 13
 
-    @patch("grok_client.openai.OpenAI")
+    @patch("providers.xai_api.openai.OpenAI")
     def test_sends_both_posts_in_single_call(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
@@ -207,7 +207,7 @@ class TestComparePosts:
 
 
 class TestErrorHandling:
-    @patch("grok_client.openai.OpenAI")
+    @patch("providers.xai_api.openai.OpenAI")
     def test_api_error_returns_error_dict(self, mock_openai_cls):
         mock_client = MagicMock()
         mock_openai_cls.return_value = mock_client
