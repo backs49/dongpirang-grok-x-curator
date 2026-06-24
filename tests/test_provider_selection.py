@@ -1,6 +1,22 @@
 from unittest.mock import MagicMock, patch
 
-from provider_selection import build_provider
+from provider_selection import API_MODEL_OPTIONS, build_provider, uses_api_model_selector
+
+
+def test_model_selector_is_only_used_for_xai_api():
+    assert uses_api_model_selector("xAI API") is True
+    assert uses_api_model_selector("Claude CLI") is False
+    assert uses_api_model_selector("Grok CLI") is False
+    assert uses_api_model_selector("Demo") is False
+
+
+def test_api_model_options_are_xai_models():
+    assert API_MODEL_OPTIONS == [
+        "grok-4.3",
+        "grok-build-0.1",
+        "grok-4.1-fast-reasoning",
+        "grok-4.20-reasoning",
+    ]
 
 
 class TestBuildProvider:

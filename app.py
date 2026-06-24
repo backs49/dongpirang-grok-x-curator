@@ -3,7 +3,7 @@ import streamlit_analytics2 as streamlit_analytics
 import extra_streamlit_components as stx
 from utils import generate_tweet_intent_url, generate_follow_url
 from i18n import t, LANGUAGES, get_lang
-from provider_selection import ENGINE_OPTIONS, build_provider
+from provider_selection import API_MODEL_OPTIONS, ENGINE_OPTIONS, build_provider, uses_api_model_selector
 from tabs.tab_optimizer import render_optimizer_tab
 from tabs.tab_ideas import render_ideas_tab
 from tabs.tab_curator import render_curator_tab
@@ -185,13 +185,18 @@ with st.sidebar:
             st.caption(t("api_key_warning"))
             st.caption(t("api_key_privacy"))
 
-        model = st.selectbox(
-            t("model_select"),
-            ["grok-4.3", "grok-build-0.1", "grok-4.1-fast-reasoning", "grok-4.20-reasoning"],
-            help=t("model_help"),
-        )
+        if uses_api_model_selector(engine):
+            model = st.selectbox(
+                t("model_select"),
+                API_MODEL_OPTIONS,
+                help=t("model_help"),
+            )
+        else:
+            model = ""
+            if engine in ("Claude CLI", "Grok CLI"):
+                st.caption(t("cli_default_model_note"))
 
-        if engine == "xAI API" and get_lang() == "ja" and model == "grok-4-1-fast-reasoning":
+        if engine == "xAI API" and get_lang() == "ja" and model == "grok-4.1-fast-reasoning":
             st.info(t("ja_model_warning"))
 
     # ─── CTA: 팔로우 버튼 (컨테이너 밖) ───

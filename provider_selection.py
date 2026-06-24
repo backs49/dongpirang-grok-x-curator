@@ -8,6 +8,16 @@ from providers.xai_api import XaiApiProvider
 
 
 ENGINE_OPTIONS = ["Claude CLI", "Grok CLI", "xAI API", "Demo"]
+API_MODEL_OPTIONS = [
+    "grok-4.3",
+    "grok-build-0.1",
+    "grok-4.1-fast-reasoning",
+    "grok-4.20-reasoning",
+]
+
+
+def uses_api_model_selector(engine: str) -> bool:
+    return engine == "xAI API"
 
 
 def build_provider(

@@ -122,14 +122,19 @@ _T = {
         "ja": "モデル選択",
     },
     "model_help": {
-        "ko": "grok-4-1-fast-reasoning: 빠른 응답 / grok-4.20-reasoning: 깊은 분석",
-        "en": "grok-4-1-fast-reasoning: Fast / grok-4.20-reasoning: Deep analysis",
-        "ja": "grok-4-1-fast-reasoning: 高速 / grok-4.20-reasoning: 深い分析",
+        "ko": "grok-4.1-fast-reasoning: 빠른 응답 / grok-4.20-reasoning: 깊은 분석",
+        "en": "grok-4.1-fast-reasoning: Fast / grok-4.20-reasoning: Deep analysis",
+        "ja": "grok-4.1-fast-reasoning: 高速 / grok-4.20-reasoning: 深い分析",
+    },
+    "cli_default_model_note": {
+        "ko": "CLI에 설정된 기본 모델을 사용합니다.",
+        "en": "Uses the default model configured in the local CLI.",
+        "ja": "ローカルCLIに設定された既定モデルを使用します。",
     },
     "ja_model_warning": {
-        "ko": "💡 일본어는 **grok-4.20-reasoning** 모델을 권장합니다. grok-4-1-fast-reasoning 은 간혹 큐레이터의 추천 리플이 한국어로 섞여 나올 수 있어요.",
-        "en": "💡 For Japanese output, **grok-4.20-reasoning** is recommended. grok-4-1-fast-reasoning occasionally leaks Korean into curator suggested replies.",
-        "ja": "💡 日本語出力には **grok-4.20-reasoning** を推奨します。grok-4-1-fast-reasoning は、キュレーターの推奨リプライに韓国語が混ざることがあります。",
+        "ko": "💡 일본어는 **grok-4.20-reasoning** 모델을 권장합니다. grok-4.1-fast-reasoning 은 간혹 큐레이터의 추천 리플이 한국어로 섞여 나올 수 있어요.",
+        "en": "💡 For Japanese output, **grok-4.20-reasoning** is recommended. grok-4.1-fast-reasoning occasionally leaks Korean into curator suggested replies.",
+        "ja": "💡 日本語出力には **grok-4.20-reasoning** を推奨します。grok-4.1-fast-reasoning は、キュレーターの推奨リプライに韓国語が混ざることがあります。",
     },
     "follow_btn": {
         "ko": "🐦 @mangodaon 팔로우하기",
