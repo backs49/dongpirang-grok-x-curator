@@ -137,19 +137,19 @@ _T = {
         "ja": "🐦 @mangodaonをフォロー",
     },
     "api_required": {
-        "ko": "⚠️ 이 기능을 사용하려면 사이드바에서 Grok API 키를 입력해주세요. 👉 [console.x.ai](https://console.x.ai)",
-        "en": "⚠️ Enter your Grok API key in the sidebar to use this feature. 👉 [console.x.ai](https://console.x.ai)",
-        "ja": "⚠️ この機能を使用するには、サイドバーでGrok APIキーを入力してください。 👉 [console.x.ai](https://console.x.ai)",
+        "ko": "⚠️ 이 기능을 사용하려면 사이드바에서 사용 가능한 AI 엔진을 선택해주세요.",
+        "en": "⚠️ Select an available AI engine in the sidebar to use this feature.",
+        "ja": "⚠️ この機能を使用するには、サイドバーで利用可能なAIエンジンを選択してください。",
     },
     "demo_banner": {
-        "ko": "🎬 **데모 모드** — 미리 만들어둔 예시 결과를 보여드리고 있어요. 왼쪽 사이드바에 Grok API 키를 입력하면 본인의 입력으로 직접 생성할 수 있습니다.",
-        "en": "🎬 **Demo mode** — You are viewing a preset example result. Enter your Grok API key in the sidebar to generate with your own input.",
-        "ja": "🎬 **デモモード** — あらかじめ用意されたサンプル結果を表示しています。サイドバーでGrok APIキーを入力すると、ご自身の入力で生成できます。",
+        "ko": "🎬 **데모 모드** — 미리 만들어둔 예시 결과를 보여드리고 있어요. 왼쪽 사이드바에서 사용 가능한 AI 엔진을 선택하면 본인의 입력으로 직접 생성할 수 있습니다.",
+        "en": "🎬 **Demo mode** — You are viewing a preset example result. Select an available AI engine in the sidebar to generate with your own input.",
+        "ja": "🎬 **デモモード** — あらかじめ用意されたサンプル結果を表示しています。サイドバーで利用可能なAIエンジンを選択すると、ご自身の入力で生成できます。",
     },
     "demo_key_needed": {
-        "ko": "🔑 사이드바에 Grok API 키를 입력하면 본인 입력으로 분석할 수 있어요.",
-        "en": "🔑 Enter your Grok API key in the sidebar to run analysis on your own input.",
-        "ja": "🔑 サイドバーでGrok APIキーを入力すると、ご自身の入力で分析できます。",
+        "ko": "왼쪽 사이드바에서 사용 가능한 AI 엔진을 선택하면 본인 입력으로 분석할 수 있어요.",
+        "en": "Select an available AI engine in the sidebar to run analysis on your own input.",
+        "ja": "サイドバーで利用可能なAIエンジンを選択すると、ご自身の入力で分析できます。",
     },
     "footer_title": {
         "ko": "**동피랑고양이 Grok 𝕏**",
@@ -283,9 +283,9 @@ _T = {
         "ja": "🔍 x-algorithm分析",
     },
     "opt_spinner": {
-        "ko": "Grok이 x-algorithm 분석 중...",
-        "en": "Grok is analyzing with x-algorithm...",
-        "ja": "Grokがx-algorithmで分析中...",
+        "ko": "선택한 AI 엔진이 x-algorithm 분석 중...",
+        "en": "The selected AI engine is analyzing with x-algorithm...",
+        "ja": "選択したAIエンジンがx-algorithmで分析中...",
     },
     "opt_score": {
         "ko": "x-algorithm 점수",
@@ -427,9 +427,9 @@ _T = {
         "ja": "関心事やキーワードを入力してください。",
     },
     "ideas_spinner": {
-        "ko": "Grok이 x-algorithm 최적화 아이디어 생성 중...",
-        "en": "Grok is generating x-algorithm optimized ideas...",
-        "ja": "Grokがx-algorithm最適化アイデアを生成中...",
+        "ko": "선택한 AI 엔진이 x-algorithm 최적화 아이디어 생성 중...",
+        "en": "The selected AI engine is generating x-algorithm optimized ideas...",
+        "ja": "選択したAIエンジンがx-algorithm最適化アイデアを生成中...",
     },
     "ideas_strategy": {
         "ko": "전략 보기",
@@ -474,9 +474,9 @@ _T = {
         "ja": "パーソナライズドフィードキュレーター",
     },
     "cur_caption": {
-        "ko": "Grok의 실시간 검색으로 관심사 기반 추천 포스트를 찾습니다",
-        "en": "Find recommended posts based on your interests using Grok's real-time search",
-        "ja": "Grokのリアルタイム検索で関心ベースのおすすめポストを検索します",
+        "ko": "선택한 AI 엔진으로 관심사 기반 추천 포스트를 찾습니다",
+        "en": "Find recommended posts based on your interests with the selected AI engine",
+        "ja": "選択したAIエンジンで関心ベースのおすすめポストを探します",
     },
     "cur_interest_label": {
         "ko": "관심사 입력",
@@ -499,9 +499,9 @@ _T = {
         "ja": "関心事を入力してください。",
     },
     "cur_spinner": {
-        "ko": "Grok이 X에서 실시간 검색 중...",
-        "en": "Grok is searching X in real-time...",
-        "ja": "GrokがXでリアルタイム検索中...",
+        "ko": "선택한 AI 엔진이 추천을 준비 중...",
+        "en": "The selected AI engine is preparing recommendations...",
+        "ja": "選択したAIエンジンがおすすめを準備中...",
     },
     "cur_why": {
         "ko": "💡 왜 추천했나요?",
@@ -556,9 +556,9 @@ _T = {
         "ja": "スレッド内容を入力してください。",
     },
     "thr_spinner": {
-        "ko": "Grok이 스레드를 분석 중...",
-        "en": "Grok is analyzing the thread...",
-        "ja": "Grokがスレッドを分析中...",
+        "ko": "선택한 AI 엔진이 스레드를 분석 중...",
+        "en": "The selected AI engine is analyzing the thread...",
+        "ja": "選択したAIエンジンがスレッドを分析中...",
     },
     "thr_overall_score": {
         "ko": "전체 스레드 점수",
@@ -673,9 +673,9 @@ _T = {
         "ja": "少なくとも1つのポストテーマを入力してください。",
     },
     "sch_spinner": {
-        "ko": "Grok이 최적 스케줄을 설계 중...",
-        "en": "Grok is designing the optimal schedule...",
-        "ja": "Grokが最適スケジュールを設計中...",
+        "ko": "선택한 AI 엔진이 최적 스케줄을 설계 중...",
+        "en": "The selected AI engine is designing the optimal schedule...",
+        "ja": "選択したAIエンジンが最適スケジュールを設計中...",
     },
     "sch_diversity_score": {
         "ko": "주제 다양성 점수",
@@ -760,9 +760,9 @@ _T = {
         "ja": "両方のポストを入力してください。",
     },
     "ab_spinner": {
-        "ko": "Grok이 두 포스트를 비교 분석 중...",
-        "en": "Grok is comparing both posts...",
-        "ja": "Grokが2つのポストを比較分析中...",
+        "ko": "선택한 AI 엔진이 두 포스트를 비교 분석 중...",
+        "en": "The selected AI engine is comparing both posts...",
+        "ja": "選択したAIエンジンが2つのポストを比較分析中...",
     },
     "ab_winner": {
         "ko": "🏆 포스트 {w} 승리! (+{d}점)",
@@ -837,9 +837,9 @@ _T = {
         "ja": "⚠️ リスク分析する",
     },
     "risk_spinner": {
-        "ko": "Grok이 리스크를 분석하고 있습니다...",
-        "en": "Grok is analyzing risks...",
-        "ja": "Grokがリスクを分析しています...",
+        "ko": "선택한 AI 엔진이 리스크를 분석하고 있습니다...",
+        "en": "The selected AI engine is analyzing risks...",
+        "ja": "選択したAIエンジンがリスクを分析しています...",
     },
     "risk_level_label": {
         "ko": "전체 위험도",
