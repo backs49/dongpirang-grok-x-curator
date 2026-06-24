@@ -66,6 +66,31 @@ _T = {
         "en": "🔑 Enter Grok API Key",
         "ja": "🔑 Grok APIキーを入力",
     },
+    "ai_engine_label": {
+        "ko": "실행 엔진",
+        "en": "AI engine",
+        "ja": "実行エンジン",
+    },
+    "provider_status_ready": {
+        "ko": "사용 가능",
+        "en": "Ready",
+        "ja": "使用可能",
+    },
+    "provider_status_unavailable": {
+        "ko": "사용할 수 없음",
+        "en": "Unavailable",
+        "ja": "使用不可",
+    },
+    "local_generation_needed": {
+        "ko": "로컬 생성을 사용하려면 Claude 또는 Grok CLI 로그인이 필요합니다.",
+        "en": "Local generation requires a logged-in Claude or Grok CLI.",
+        "ja": "ローカル生成にはClaudeまたはGrok CLIのログインが必要です。",
+    },
+    "curator_fallback_notice": {
+        "ko": "현재 엔진은 실시간 X 검색을 사용할 수 없어 검색 키워드와 답글 초안만 생성합니다.",
+        "en": "The current engine cannot use live X search, so it will generate search keywords and reply drafts only.",
+        "ja": "現在のエンジンではリアルタイムX検索を使用できないため、検索キーワードと返信案のみ生成します。",
+    },
     "api_key_help": {
         "ko": "console.x.ai에서 발급받으세요",
         "en": "Get yours at console.x.ai",

@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit_analytics2 as streamlit_analytics
 import extra_streamlit_components as stx
-from grok_client import GrokClient
 from utils import generate_tweet_intent_url, generate_follow_url
 from i18n import t, LANGUAGES, get_lang
+from provider_selection import ENGINE_OPTIONS, build_provider
 from tabs.tab_optimizer import render_optimizer_tab
 from tabs.tab_ideas import render_ideas_tab
 from tabs.tab_curator import render_curator_tab
@@ -143,64 +143,71 @@ with st.sidebar:
 
     with st.container(border=True):
         st.markdown(
-            '<span class="sidebar-section-label">API CONNECTION</span>',
+            '<span class="sidebar-section-label">AI ENGINE</span>',
             unsafe_allow_html=True,
         )
 
-        # 원본 text_input 으로 호출해 analytics 추적에서 제외 (위 주석 참조).
-        api_key = _untracked_text_input(
-            t("api_key_label"),
-            type="password",
-            help=t("api_key_help"),
-            placeholder="xai-...",
-            value=saved_key,
+        engine = st.selectbox(
+            t("ai_engine_label"),
+            ENGINE_OPTIONS,
+            index=0,
+            key="ai_engine",
         )
 
-        remember_key = st.checkbox(
-            t("api_key_remember"),
-            value=bool(saved_key),
-            help=t("api_key_remember_help"),
-        )
+        api_key = ""
+        if engine == "xAI API":
+            # 원본 text_input 으로 호출해 analytics 추적에서 제외 (위 주석 참조).
+            api_key = _untracked_text_input(
+                t("api_key_label"),
+                type="password",
+                help=t("api_key_help"),
+                placeholder="xai-...",
+                value=saved_key,
+            )
 
-        # 쿠키 저장/삭제 (값이 변경될 때만)
-        # 캐시(_saved_api_key)도 함께 갱신해 다음 rerun에서 .set이 재호출되지 않게 한다.
-        if remember_key and api_key and api_key != saved_key:
-            cookie_manager.set(COOKIE_KEY, api_key, key="save_cookie")
-            st.session_state._saved_api_key = api_key
-            saved_key = api_key
-        elif not remember_key and saved_key:
-            cookie_manager.delete(COOKIE_KEY, key="delete_cookie")
-            st.session_state._saved_api_key = ""
-            saved_key = ""
+            remember_key = st.checkbox(
+                t("api_key_remember"),
+                value=bool(saved_key),
+                help=t("api_key_remember_help"),
+            )
 
-        st.caption(t("api_key_warning"))
-        st.caption(t("api_key_privacy"))
+            # 쿠키 저장/삭제 (값이 변경될 때만)
+            # 캐시(_saved_api_key)도 함께 갱신해 다음 rerun에서 .set이 재호출되지 않게 한다.
+            if remember_key and api_key and api_key != saved_key:
+                cookie_manager.set(COOKIE_KEY, api_key, key="save_cookie")
+                st.session_state._saved_api_key = api_key
+                saved_key = api_key
+            elif not remember_key and saved_key:
+                cookie_manager.delete(COOKIE_KEY, key="delete_cookie")
+                st.session_state._saved_api_key = ""
+                saved_key = ""
+
+            st.caption(t("api_key_warning"))
+            st.caption(t("api_key_privacy"))
 
         model = st.selectbox(
             t("model_select"),
-            ["grok-4-1-fast-reasoning", "grok-4.20-reasoning"],
+            ["grok-4.3", "grok-build-0.1", "grok-4.1-fast-reasoning", "grok-4.20-reasoning"],
             help=t("model_help"),
         )
 
-        if get_lang() == "ja" and model == "grok-4-1-fast-reasoning":
+        if engine == "xAI API" and get_lang() == "ja" and model == "grok-4-1-fast-reasoning":
             st.info(t("ja_model_warning"))
 
     # ─── CTA: 팔로우 버튼 (컨테이너 밖) ───
     follow_url = generate_follow_url("mangodaon")
     st.link_button(t("follow_btn"), follow_url, use_container_width=True)
 
-# ─── API 키 검증 & Grok 클라이언트 초기화 ───
-grok = None
-if api_key:
-    if (
-        "grok_client" not in st.session_state
-        or st.session_state.get("_model") != model
-        or st.session_state.get("_api_key") != api_key
-    ):
-        st.session_state.grok_client = GrokClient(api_key=api_key, model=model)
-        st.session_state._model = model
-        st.session_state._api_key = api_key
-    grok = st.session_state.grok_client
+# ─── AI 엔진 검증 & 클라이언트 초기화 ───
+grok, provider_status = build_provider(
+    st.session_state.get("ai_engine", "Claude CLI"),
+    api_key=api_key,
+    model=model,
+)
+if provider_status.available:
+    st.sidebar.success(f"{t('provider_status_ready')}: {provider_status.message}")
+else:
+    st.sidebar.info(f"{t('provider_status_unavailable')}: {provider_status.message}")
 
 _API_MSG = t("api_required")
 

@@ -10,6 +10,8 @@ def render_curator_tab(grok):
 
     if grok is None:
         st.info(t("demo_banner"))
+    elif not getattr(getattr(grok, "provider", None), "supports_curator", False):
+        st.info(t("curator_fallback_notice"))
 
     interests = st.text_input(
         t("cur_interest_label"),
