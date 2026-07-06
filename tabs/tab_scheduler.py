@@ -6,6 +6,9 @@ def render_scheduler_tab(grok):
     st.subheader(t("sch_subheader"))
     st.caption(t("sch_caption"))
 
+    if grok is None:
+        st.info(t("demo_banner"))
+
     num_posts = st.slider(t("sch_post_count"), 1, 5, 3)
 
     posts_info = []
@@ -27,7 +30,9 @@ def render_scheduler_tab(grok):
 
     if st.button(t("sch_generate_btn"), use_container_width=True, type="primary"):
         filled = [p for p in posts_info if p["topic"].strip()]
-        if not filled:
+        if grok is None:
+            st.warning(t("demo_key_needed"))
+        elif not filled:
             st.warning(t("sch_enter_topic"))
         else:
             with st.spinner(t("sch_spinner")):

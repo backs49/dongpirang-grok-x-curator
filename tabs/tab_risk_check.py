@@ -28,6 +28,9 @@ def render_risk_check_tab(grok):
     st.subheader(t("risk_subheader"))
     st.caption(t("risk_caption"))
 
+    if grok is None:
+        st.info(t("demo_banner"))
+
     st.warning(t("risk_warning"))
 
     # ─── 입력 ───
@@ -45,18 +48,18 @@ def render_risk_check_tab(grok):
     )
 
     if st.button(t("risk_analyze_btn"), use_container_width=True, type="primary"):
-        if not post_text.strip():
+        if grok is None:
+            st.warning(t("demo_key_needed"))
+        elif not post_text.strip():
             st.warning(t("enter_post"))
-            return
+        else:
+            with st.spinner(t("risk_spinner")):
+                result = grok.check_risk(post_text, image_desc)
 
-        with st.spinner(t("risk_spinner")):
-            result = grok.check_risk(post_text, image_desc)
-
-        if "error" in result:
-            st.error(result["error"])
-            return
-
-        st.session_state.risk_result = result
+            if "error" in result:
+                st.error(result["error"])
+            else:
+                st.session_state.risk_result = result
 
     # ─── 결과 표시 ───
     if "risk_result" not in st.session_state:

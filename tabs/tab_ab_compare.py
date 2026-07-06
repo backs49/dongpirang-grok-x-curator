@@ -7,6 +7,9 @@ def render_ab_compare_tab(grok, app_url, viral_tag):
     st.subheader(t("ab_subheader"))
     st.caption(t("ab_caption"))
 
+    if grok is None:
+        st.info(t("demo_banner"))
+
     col_a, col_b = st.columns(2)
     with col_a:
         st.markdown(f"### {t('ab_post_a')}")
@@ -28,7 +31,9 @@ def render_ab_compare_tab(grok, app_url, viral_tag):
         )
 
     if st.button(t("ab_compare_btn"), use_container_width=True, type="primary"):
-        if not post_a.strip() or not post_b.strip():
+        if grok is None:
+            st.warning(t("demo_key_needed"))
+        elif not post_a.strip() or not post_b.strip():
             st.warning(t("ab_enter_both"))
         else:
             with st.spinner(t("ab_spinner")):

@@ -214,20 +214,27 @@ if provider_status.available:
 else:
     st.sidebar.info(f"{t('provider_status_unavailable')}: {provider_status.message}")
 
-_API_MSG = t("api_required")
-
 # ─── 데모 모드: API 키가 없을 때 프리셋 결과 주입 ───
 # 방문자가 각 핵심 탭의 결과 UI 를 즉시 보고 앱 가치를 파악할 수 있도록,
 # 미리 만든 한국어 예시를 session_state 에 꽂아 넣는다. 실제 키를 입력하면
 # 혼동을 피하기 위해 데모 결과를 정리한다.
-_DEMO_RESULT_KEYS = ("optimize_result", "ideas_result", "curator_result", "thread_result")
+_DEMO_RESULT_KEYS = (
+    "optimize_result", "ideas_result", "curator_result", "thread_result",
+    "ab_result", "schedule_result", "risk_result",
+)
 if grok is None:
     if not st.session_state.get("_demo_mode"):
-        from demo_data import OPTIMIZER_DEMO, IDEAS_DEMO, CURATOR_DEMO, THREAD_DEMO
+        from demo_data import (
+            OPTIMIZER_DEMO, IDEAS_DEMO, CURATOR_DEMO, THREAD_DEMO,
+            AB_DEMO, SCHEDULER_DEMO, RISK_DEMO,
+        )
         st.session_state.optimize_result = OPTIMIZER_DEMO
         st.session_state.ideas_result = IDEAS_DEMO
         st.session_state.curator_result = CURATOR_DEMO
         st.session_state.thread_result = THREAD_DEMO
+        st.session_state.ab_result = AB_DEMO
+        st.session_state.schedule_result = SCHEDULER_DEMO
+        st.session_state.risk_result = RISK_DEMO
         st.session_state._demo_mode = True
 elif st.session_state.get("_demo_mode"):
     for _key in _DEMO_RESULT_KEYS:
@@ -263,20 +270,11 @@ with tab3:
 with tab4:
     render_thread_tab(grok, APP_URL, VIRAL_TAG)
 with tab5:
-    if grok:
-        render_scheduler_tab(grok)
-    else:
-        st.info(_API_MSG)
+    render_scheduler_tab(grok)
 with tab6:
-    if grok:
-        render_ab_compare_tab(grok, APP_URL, VIRAL_TAG)
-    else:
-        st.info(_API_MSG)
+    render_ab_compare_tab(grok, APP_URL, VIRAL_TAG)
 with tab7:
-    if grok:
-        render_risk_check_tab(grok)
-    else:
-        st.info(_API_MSG)
+    render_risk_check_tab(grok)
 with tab8:
     render_unfollow_tab()
 

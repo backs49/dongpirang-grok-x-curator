@@ -230,3 +230,191 @@ THREAD_DEMO = {
         "마지막 CTA는 열린 질문이 닫힌 질문보다 reply율을 3~5배 올립니다",
     ],
 }
+
+
+AB_DEMO = {
+    "post_a": {
+        "score": 64,
+        "engagement_level": "Medium",
+        "strengths": [
+            "주제가 명확해서 관심사가 같은 독자에게는 안정적으로 전달됩니다",
+            "짧고 읽기 쉬워 dwell time 대비 이탈률이 낮습니다",
+            "부담 없는 톤이라 like 확률은 준수합니다",
+        ],
+        "weaknesses": [
+            "질문이나 논점이 없어 reply 유도력이 약합니다 (×13.5 가중치를 놓침)",
+            "구체적인 숫자·경험이 없어 bookmark/repost 가치가 낮습니다",
+        ],
+    },
+    "post_b": {
+        "score": 81,
+        "engagement_level": "High",
+        "strengths": [
+            "첫 문장의 구체적 숫자(+487명)가 스크롤을 멈추는 강력한 Hook입니다",
+            "개인 경험 서사가 있어 dwell time과 신뢰도가 함께 올라갑니다",
+            "마지막 열린 질문이 reply(×13.5)를 직접 유도합니다",
+            "실용 팁이 담겨 있어 bookmark(×4.0) 확률이 높습니다",
+        ],
+        "weaknesses": [
+            "트렌딩 키워드가 없어 OON discovery 확장성은 보통입니다",
+            "리스트 포맷이 아니라서 스캔 가독성이 살짝 아쉽습니다",
+        ],
+    },
+    "winner": "B",
+    "score_difference": 17,
+    "comparative_analysis": {
+        "reply": {
+            "advantage": "B",
+            "reason": "B는 '당신의 3주 전은?'이라는 열린 질문으로 끝나 답글 문턱이 낮습니다. A는 감상 공유형이라 답글 동기가 약해요.",
+        },
+        "repost": {
+            "advantage": "B",
+            "reason": "B의 구체적 성과 숫자는 '나도 해봐야지' 하는 공유 동기를 만듭니다. A는 공유할 실용 가치가 부족합니다.",
+        },
+        "bookmark": {
+            "advantage": "B",
+            "reason": "B는 따라 할 수 있는 방법이 담겨 있어 나중에 다시 보려고 저장합니다. A는 저장할 정보가 없어요.",
+        },
+        "dwell_time": {
+            "advantage": "B",
+            "reason": "B의 스토리 구조(전→후→방법)가 끝까지 읽게 만듭니다. A는 한눈에 다 읽혀 체류 시간이 짧습니다.",
+        },
+        "oon_discovery": {
+            "advantage": "B",
+            "reason": "'팔로워 성장'은 보편적 관심사라 팔로워 밖 노출 가능성이 상대적으로 높습니다. 둘 다 트렌딩 키워드는 없는 점이 아쉽습니다.",
+        },
+    },
+    "improvement_for_loser": [
+        "첫 문장에 구체적 숫자를 넣어 Hook을 강화하세요 (예상 +8점)",
+        "마지막에 독자에게 묻는 열린 질문 한 줄을 추가하세요 (예상 +6점)",
+        "본인 경험 한 토막을 넣어 신뢰도와 체류 시간을 올리세요 (예상 +4점)",
+    ],
+    "best_of_both": (
+        "3주 전만 해도 '팔로워는 왜 안 늘지?' 하던 저였어요.\n\n"
+        "지금은 +487명. 바꾼 건 딱 하나 — 매일 같은 시간, 첫 문장은 숫자로 시작.\n\n"
+        "오늘 밤 글 하나만 이렇게 올려보세요.\n\n"
+        "당신이 요즘 붙잡고 있는 목표는 뭔가요?"
+    ),
+}
+
+
+SCHEDULER_DEMO = {
+    "schedule": [
+        {
+            "position": 1,
+            "topic_summary": "팔로워 +487명 성장 후기 (개인 경험 스토리)",
+            "recommended_time": "저녁 7:00",
+            "recommended_day": "오늘",
+            "reason": (
+                "퇴근 후 18-20시는 하루 중 engagement 피크 시간대입니다. "
+                "가장 강력한 스토리형 콘텐츠를 여기에 배치해 첫 포스트의 "
+                "감쇠 없는 노출(1.0)을 최대로 활용하세요."
+            ),
+            "decay_from_previous": 1.0,
+            "expected_visibility": "Very High",
+        },
+        {
+            "position": 2,
+            "topic_summary": "AI 코딩 도구 3종 비교 (정보성 리스트)",
+            "recommended_time": "오전 10:30",
+            "recommended_day": "내일",
+            "reason": (
+                "오전 업무 시간대는 전문 인사이트에 최적이고 dwell time 점수가 높습니다. "
+                "전날 저녁 포스트와 15시간 이상 간격을 두어 Author Diversity 감쇠를 "
+                "사실상 초기화합니다. 주제도 스토리→정보성으로 교차됩니다."
+            ),
+            "decay_from_previous": 0.95,
+            "expected_visibility": "High",
+        },
+        {
+            "position": 3,
+            "topic_summary": "밤 루틴 공감형 질문 포스트 (가벼운 대화 유도)",
+            "recommended_time": "저녁 10:30",
+            "recommended_day": "내일",
+            "reason": (
+                "심야 22-24시는 체류 시간이 길고 깊은 대화가 이루어지는 시간대라 "
+                "질문형 포스트의 reply 확률이 높습니다. 같은 날 오전 포스트와 "
+                "12시간 간격 + 형식 교차(리스트→질문)로 감쇠를 최소화합니다."
+            ),
+            "decay_from_previous": 0.88,
+            "expected_visibility": "High",
+        },
+    ],
+    "posting_order": [1, 2, 3],
+    "topic_diversity_score": 82,
+    "time_gap_analysis": (
+        "세 포스트 모두 12시간 이상 간격이라 Author Diversity 감쇠가 거의 발생하지 "
+        "않습니다 (최저 0.88). 스토리→정보성 리스트→공감형 질문으로 주제와 형식이 "
+        "교차 배치되어 각 포스트가 독립적으로 평가될 확률이 높습니다."
+    ),
+    "decay_visualization": [
+        {"post": 1, "visibility_percent": 100},
+        {"post": 2, "visibility_percent": 95},
+        {"post": 3, "visibility_percent": 88},
+    ],
+    "overall_strategy": (
+        "가장 강력한 성장 후기를 engagement 피크(퇴근 후)에 먼저 올려 팔로우 전환을 "
+        "노리는 배치입니다. 이후 포스트는 오전 인사이트·심야 대화형으로 시간대 특성과 "
+        "형식을 맞췄습니다. 첫 포스트에서 유입된 새 팔로워가 다음 날 두 포스트를 "
+        "연달아 보게 되므로, 프로필 고정 트윗을 미리 정리해두면 팔로우 전환율이 "
+        "추가로 올라갑니다."
+    ),
+}
+
+
+RISK_DEMO = {
+    "risk_level": "medium",
+    "risk_score": 42,
+    "summary": (
+        "전체적으로 안전한 홍보성 포스트지만, 과도한 해시태그와 외부 링크 조합이 "
+        "스팸 필터에 걸릴 수 있고 '무조건 돈 번다' 류의 수익 보장 표현이 수익화 "
+        "정책상 허위 정보로 분류될 위험이 있습니다."
+    ),
+    "risk_items": [
+        {
+            "category": "visibility",
+            "category_label": "노출 제한 위험",
+            "severity": "medium",
+            "description": (
+                "해시태그 6개 + 외부 링크 조합은 스팸 시그널로 분류될 수 있습니다. "
+                "해시태그는 2개 이하로 줄이고 링크는 답글로 옮기는 것이 안전합니다."
+            ),
+            "affected_phrase": "#부업 #재테크 #수익화 #돈버는법 #사이드잡 #N잡",
+        },
+        {
+            "category": "monetization",
+            "category_label": "수익 중지 위험",
+            "severity": "medium",
+            "description": (
+                "'무조건', '100% 보장' 같은 수익 보장 표현은 검증되지 않은 주장으로 "
+                "간주되어 수익화 심사에서 불리하게 작용할 수 있습니다."
+            ),
+            "affected_phrase": "이 방법이면 무조건 월 100만 원은 법니다",
+        },
+    ],
+    "risky_phrases": [
+        {
+            "phrase": "이 방법이면 무조건 월 100만 원은 법니다",
+            "reason": "검증 불가능한 수익 보장 표현은 허위 정보·사기성 콘텐츠로 신고될 수 있습니다",
+            "suggestion": "저는 이 방법으로 3개월 차에 월 100만 원을 만들었어요 (개인 경험 기준)",
+        },
+        {
+            "phrase": "#부업 #재테크 #수익화 #돈버는법 #사이드잡 #N잡",
+            "reason": "해시태그 5개 이상은 스팸 필터 트리거 조건에 해당합니다",
+            "suggestion": "#부업 하나만 남기거나 해시태그 없이 본문 키워드로 자연스럽게 녹이세요",
+        },
+    ],
+    "safe_version": (
+        "3개월 전 시작한 사이드 프로젝트가 이번 달 처음으로 월 100만 원을 넘겼어요.\n\n"
+        "제가 한 건 딱 세 가지 — 매일 기록, 주 1회 회고, 그리고 꾸준한 공유.\n\n"
+        "과정이 궁금하신 분은 답글 남겨주세요. 정리해서 공유할게요."
+    ),
+    "checklist": [
+        {"item": "혐오 표현", "passed": True, "note": "차별·비하 표현 없음"},
+        {"item": "폭력/위협", "passed": True, "note": "해당 없음"},
+        {"item": "허위 정보", "passed": False, "note": "'무조건 월 100만 원' 수익 보장 표현이 검증 불가"},
+        {"item": "개인정보", "passed": True, "note": "노출된 개인정보 없음"},
+        {"item": "스팸 요소", "passed": False, "note": "해시태그 6개는 스팸 필터 기준(5개+) 초과"},
+        {"item": "외부 링크", "passed": False, "note": "본문 내 외부 링크는 노출 감소 요인 — 답글로 이동 권장"},
+    ],
+}
