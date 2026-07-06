@@ -80,7 +80,7 @@ class TestXaiVideoProvider:
         assert body["resolution"] == "720p"
         assert "image" not in body
 
-    def test_generate_video_image_to_video_sends_data_uri(self, monkeypatch, tmp_path):
+    def test_generate_video_image_to_video_sends_image_object(self, monkeypatch, tmp_path):
         calls = _install_happy_path(monkeypatch)
 
         XaiVideoProvider(api_key="xai-x").generate_video(
@@ -88,9 +88,24 @@ class TestXaiVideoProvider:
         )
 
         body = calls["post"][0][1]["json"]
-        assert body["image"].startswith("data:image/png;base64,")
-        encoded = body["image"].split(",", 1)[1]
+        # API 스펙: image 는 {"url": <https 또는 base64 data URI>} 객체다.
+        assert isinstance(body["image"], dict)
+        assert body["image"]["url"].startswith("data:image/png;base64,")
+        encoded = body["image"]["url"].split(",", 1)[1]
         assert base64.b64decode(encoded) == PNG_BYTES
+
+    def test_submit_error_surfaces_api_detail(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(
+            video_mod.requests, "post",
+            lambda url, **kw: _FakeResponse(
+                {"error": "image must be an object"}, status_code=422
+            ),
+        )
+
+        with pytest.raises(ProviderError, match="image must be an object"):
+            XaiVideoProvider(api_key="xai-x").generate_video(
+                "x", tmp_path / "c.mp4", image_bytes=PNG_BYTES
+            )
 
     def test_generate_video_raises_on_failed_status(self, monkeypatch, tmp_path):
         monkeypatch.setattr(

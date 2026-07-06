@@ -36,6 +36,19 @@ class XaiVideoProvider:
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.api_key}"}
 
+    def _check_response(self, response, action: str) -> None:
+        """4xx/5xx 이면 API 가 준 상세 메시지를 포함해 ProviderError 를 던진다."""
+        if response.status_code < 400:
+            return
+        detail = ""
+        try:
+            detail = str(response.json())
+        except Exception:
+            detail = getattr(response, "text", "") or ""
+        raise ProviderError(
+            f"{self.name} {action} error: HTTP {response.status_code}: {detail[:300]}"
+        )
+
     def generate_video(
         self,
         prompt: str,
@@ -56,8 +69,9 @@ class XaiVideoProvider:
             "resolution": resolution,
         }
         if image_bytes:
+            # API 스펙: image 는 {"url": ...} 객체이며 url 에 base64 data URI 허용.
             encoded = base64.b64encode(image_bytes).decode()
-            body["image"] = f"data:image/png;base64,{encoded}"
+            body["image"] = {"url": f"data:image/png;base64,{encoded}"}
 
         try:
             response = requests.post(
@@ -66,7 +80,7 @@ class XaiVideoProvider:
                 headers=self._headers(),
                 timeout=60,
             )
-            response.raise_for_status()
+            self._check_response(response, "video submit")
             request_id = response.json().get("request_id")
         except ProviderError:
             raise
@@ -102,8 +116,10 @@ class XaiVideoProvider:
                     headers=self._headers(),
                     timeout=60,
                 )
-                response.raise_for_status()
+                self._check_response(response, "video poll")
                 payload = response.json()
+            except ProviderError:
+                raise
             except Exception as exc:
                 raise ProviderError(f"{self.name} video poll error: {exc}")
 
