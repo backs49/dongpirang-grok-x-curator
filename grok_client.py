@@ -14,6 +14,7 @@ from xalgo_prompts import (
     CURATOR_SYSTEM_PROMPT,
     IDEAS_SYSTEM_PROMPT,
     OPTIMIZER_SYSTEM_PROMPT,
+    PERFORMANCE_SYSTEM_PROMPT,
     RISK_CHECK_SYSTEM_PROMPT,
     SCHEDULER_SYSTEM_PROMPT,
     THREAD_SYSTEM_PROMPT,
@@ -127,6 +128,36 @@ class GrokClient:
 
         return self.provider.generate_json(
             RISK_CHECK_SYSTEM_PROMPT + get_lang_instruction(),
+            user_content,
+        )
+
+    def analyze_performance(self, summary: dict) -> dict:
+        def _fmt_posts(posts: list, label: str) -> str:
+            lines = [label]
+            for p in posts:
+                text = (p.get("text") or "").replace("\n", " ")[:140]
+                lines.append(
+                    f"- 노출 {p.get('impressions', 0):,} · 참여율 {p.get('engagement_pct', 0):.2f}% · \"{text}\""
+                )
+            return "\n".join(lines)
+
+        est_days = summary.get("est_days_to_target")
+        user_content = (
+            "실제 X 애널리틱스 데이터 요약:\n\n"
+            f"- 총 포스트 수: {summary.get('total_posts', 0)}\n"
+            f"- 총 노출: {summary.get('total_impressions', 0):,}\n"
+            f"- 최근 90일 노출: {summary.get('recent_impressions', 0):,}\n"
+            f"- 평균 참여율: {summary.get('avg_engagement_pct', 0):.2f}%\n"
+            f"- 수익화 요건(500만 노출) 진행률: {summary.get('monetization_pct', 0):.2f}%\n"
+            f"- 일평균 노출: {summary.get('daily_avg_impressions', 0):,.0f}\n"
+            f"- 현재 속도 기준 목표까지 예상 일수: {est_days if est_days is not None else '계산 불가'}\n\n"
+            + _fmt_posts(summary.get("top_posts", []), "[상위 포스트]")
+            + "\n\n"
+            + _fmt_posts(summary.get("bottom_posts", []), "[하위 포스트]")
+        )
+
+        return self.provider.generate_json(
+            PERFORMANCE_SYSTEM_PROMPT + get_lang_instruction(),
             user_content,
         )
 

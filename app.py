@@ -13,6 +13,7 @@ from tabs.tab_scheduler import render_scheduler_tab
 from tabs.tab_ab_compare import render_ab_compare_tab
 from tabs.tab_unfollow import render_unfollow_tab
 from tabs.tab_risk_check import render_risk_check_tab
+from tabs.tab_performance import render_performance_tab
 from design import inject_css
 
 # ─── 페이지 설정 ───
@@ -258,7 +259,7 @@ st.caption(t("app_caption_main"))
 # 탭 위에서 spinner를 띄우면 spinner가 메인 영역을 점유해 st.tabs가 스크립트
 # 흐름상 한참 뒤에 렌더링되고, 브라우저는 탭 위젯이 잠시 사라졌다고 인식해
 # active 탭 상태를 잃어버린다 (커밋 0a2f500의 부작용).
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     t("tab_optimizer"),
     t("tab_ideas"),
     t("tab_curator"),
@@ -266,6 +267,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     t("tab_scheduler"),
     t("tab_ab"),
     t("tab_risk"),
+    t("tab_performance"),
     t("tab_unfollow"),
 ])
 
@@ -284,6 +286,8 @@ with tab6:
 with tab7:
     render_risk_check_tab(grok)
 with tab8:
+    render_performance_tab(grok)
+with tab9:
     render_unfollow_tab()
 
 # ─── 하단 Footer ───

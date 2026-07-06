@@ -228,6 +228,178 @@ _T = {
         "en": "🔄 Unfollow",
         "ja": "🔄 アンフォロー",
     },
+    "tab_performance": {
+        "ko": "📈 성과 추적",
+        "en": "📈 Performance",
+        "ja": "📈 パフォーマンス",
+    },
+
+    # ─── Performance Tab ───
+    "perf_subheader": {
+        "ko": "실측 성과 & 수익화 진행률",
+        "en": "Real Performance & Monetization Progress",
+        "ja": "実測パフォーマンス＆収益化の進捗",
+    },
+    "perf_caption": {
+        "ko": "X 애널리틱스 CSV를 업로드하면 실제 노출 데이터로 수익화 요건 진행률과 '먹히는 패턴'을 분석합니다.",
+        "en": "Upload your X analytics CSV to track monetization progress and find what actually works from real impression data.",
+        "ja": "XアナリティクスのCSVをアップロードすると、実際の表示データで収益化要件の進捗と「効くパターン」を分析します。",
+    },
+    "perf_howto_title": {
+        "ko": "📥 CSV 내보내는 방법",
+        "en": "📥 How to export the CSV",
+        "ja": "📥 CSVのエクスポート方法",
+    },
+    "perf_howto_body": {
+        "ko": (
+            "1. X에서 **프리미엄 → 애널리틱스** (analytics.x.com) 로 이동\n"
+            "2. 포스트 활동 화면에서 기간을 선택하고 **데이터 내보내기(Export data)** 클릭\n"
+            "3. 받은 CSV를 아래에 업로드하세요\n\n"
+            "형식이 궁금하면 샘플 CSV를 받아 먼저 체험해 보세요."
+        ),
+        "en": (
+            "1. On X, open **Premium → Analytics** (analytics.x.com)\n"
+            "2. In the post activity view, pick a date range and click **Export data**\n"
+            "3. Upload the CSV below\n\n"
+            "Not sure about the format? Download the sample CSV and try it first."
+        ),
+        "ja": (
+            "1. Xで **プレミアム → アナリティクス** (analytics.x.com) を開く\n"
+            "2. ポストアクティビティ画面で期間を選び **データをエクスポート** をクリック\n"
+            "3. 受け取ったCSVを下にアップロード\n\n"
+            "形式が不明な場合は、サンプルCSVをダウンロードして試してください。"
+        ),
+    },
+    "perf_sample_download": {
+        "ko": "⬇️ 샘플 CSV 다운로드",
+        "en": "⬇️ Download sample CSV",
+        "ja": "⬇️ サンプルCSVをダウンロード",
+    },
+    "perf_upload_label": {
+        "ko": "애널리틱스 CSV 업로드",
+        "en": "Upload analytics CSV",
+        "ja": "アナリティクスCSVをアップロード",
+    },
+    "perf_upload_hint": {
+        "ko": "CSV를 업로드하면 대시보드가 나타납니다. 위의 샘플 CSV로 먼저 체험해 볼 수도 있어요.",
+        "en": "Upload a CSV to see the dashboard. You can also try the sample CSV above first.",
+        "ja": "CSVをアップロードするとダッシュボードが表示されます。上のサンプルCSVで先に試すこともできます。",
+    },
+    "perf_parse_error": {
+        "ko": "CSV에서 노출수(impressions) 열을 찾지 못했어요. X 애널리틱스에서 내보낸 원본 CSV인지 확인해 주세요.",
+        "en": "Couldn't find an impressions column in the CSV. Please check it's the original export from X analytics.",
+        "ja": "CSVからインプレッション列が見つかりませんでした。Xアナリティクスからの元のエクスポートか確認してください。",
+    },
+    "perf_total_posts": {
+        "ko": "포스트 수",
+        "en": "Posts",
+        "ja": "ポスト数",
+    },
+    "perf_total_impressions": {
+        "ko": "총 노출",
+        "en": "Total impressions",
+        "ja": "総インプレッション",
+    },
+    "perf_recent_impressions": {
+        "ko": "최근 90일 노출",
+        "en": "Last 90 days",
+        "ja": "直近90日",
+    },
+    "perf_engagement_rate": {
+        "ko": "평균 참여율",
+        "en": "Avg engagement",
+        "ja": "平均エンゲージ率",
+    },
+    "perf_no_dates": {
+        "ko": "날짜 열을 읽지 못해 전체 데이터를 최근 성과로 간주했어요. 90일 계산이 정확하려면 time/날짜 열이 있는 CSV를 사용하세요.",
+        "en": "No date column found, so all data was treated as recent. Use a CSV with a time/date column for an accurate 90-day window.",
+        "ja": "日付列が読めなかったため、全データを直近の実績として扱いました。正確な90日計算にはtime/日付列のあるCSVを使ってください。",
+    },
+    "perf_monetization_title": {
+        "ko": "💰 수익화 요건 진행률",
+        "en": "💰 Monetization progress",
+        "ja": "💰 収益化要件の進捗",
+    },
+    "perf_monetization_progress": {
+        "ko": "최근 3개월 노출 **{current} / {target}** ({pct}%)",
+        "en": "Impressions in the last 3 months: **{current} / {target}** ({pct}%)",
+        "ja": "直近3ヶ月のインプレッション: **{current} / {target}** ({pct}%)",
+    },
+    "perf_target_reached": {
+        "ko": "🎉 노출 요건을 이미 충족했어요! 나머지 요건을 확인하세요.",
+        "en": "🎉 You've already met the impressions requirement! Check the remaining criteria.",
+        "ja": "🎉 インプレッション要件はすでに達成しています！残りの要件を確認してください。",
+    },
+    "perf_estimate": {
+        "ko": "일평균 노출 {daily} 기준, 현재 속도라면 약 **{days}일** 후 500만 도달 예상입니다.",
+        "en": "At {daily} impressions/day, you'll reach 5M in roughly **{days} days** at the current pace.",
+        "ja": "1日平均{daily}インプレッションなら、現在のペースで約**{days}日**後に500万に到達する見込みです。",
+    },
+    "perf_checklist_title": {
+        "ko": "수익화 요건 체크리스트",
+        "en": "Monetization checklist",
+        "ja": "収益化要件チェックリスト",
+    },
+    "perf_followers_input": {
+        "ko": "현재 팔로워 수 (직접 입력)",
+        "en": "Current follower count (manual)",
+        "ja": "現在のフォロワー数（手入力）",
+    },
+    "perf_premium_check": {
+        "ko": "X 프리미엄 구독 중",
+        "en": "Subscribed to X Premium",
+        "ja": "Xプレミアムに加入中",
+    },
+    "perf_check_impressions": {
+        "ko": "최근 3개월 유기적 노출 500만 회",
+        "en": "5M organic impressions in the last 3 months",
+        "ja": "直近3ヶ月で500万オーガニックインプレッション",
+    },
+    "perf_check_followers": {
+        "ko": "팔로워 500명 이상",
+        "en": "500+ followers",
+        "ja": "フォロワー500人以上",
+    },
+    "perf_check_premium": {
+        "ko": "X 프리미엄 구독",
+        "en": "X Premium subscription",
+        "ja": "Xプレミアム加入",
+    },
+    "perf_top_posts": {
+        "ko": "🏆 상위 포스트",
+        "en": "🏆 Top posts",
+        "ja": "🏆 上位ポスト",
+    },
+    "perf_bottom_posts": {
+        "ko": "📉 하위 포스트",
+        "en": "📉 Bottom posts",
+        "ja": "📉 下位ポスト",
+    },
+    "perf_insight_title": {
+        "ko": "🤖 실측 기반 AI 인사이트",
+        "en": "🤖 AI insights from real data",
+        "ja": "🤖 実測データに基づくAIインサイト",
+    },
+    "perf_insight_btn": {
+        "ko": "🔍 내 계정에서 먹히는 패턴 분석",
+        "en": "🔍 Analyze what works on my account",
+        "ja": "🔍 自分のアカウントで効くパターンを分析",
+    },
+    "perf_insight_spinner": {
+        "ko": "실측 데이터에서 패턴을 분석 중…",
+        "en": "Analyzing patterns from your real data…",
+        "ja": "実測データからパターンを分析中…",
+    },
+    "perf_weak_points": {
+        "ko": "개선이 필요한 부분",
+        "en": "Areas to improve",
+        "ja": "改善が必要な点",
+    },
+    "perf_action_plan": {
+        "ko": "📋 이번 주 실행 계획",
+        "en": "📋 This week's action plan",
+        "ja": "📋 今週のアクションプラン",
+    },
 
     # ─── Common ───
     "post_label": {

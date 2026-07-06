@@ -418,3 +418,28 @@ RISK_DEMO = {
         {"item": "외부 링크", "passed": False, "note": "본문 내 외부 링크는 노출 감소 요인 — 답글로 이동 권장"},
     ],
 }
+
+
+def _build_sample_analytics_csv() -> str:
+    """성과 추적 탭 체험용 샘플 CSV. 날짜를 항상 최근 90일 안에 생성해
+    수익화 진행률 UI 가 의미 있게 보이도록 한다."""
+    from datetime import datetime, timedelta
+
+    rows = [
+        ("솔로 개발 3개월 회고, 매출 0원에서 배운 것", 82, 45210, 1890, 720, 95, 60, 210),
+        ("AI 도구 월 30만원어치 써본 솔직 후기", 75, 28400, 1120, 430, 51, 38, 160),
+        ("퇴근 후 2시간 루틴 공개", 60, 12800, 510, 210, 22, 15, 80),
+        ("첫 유료 사용자 후기 스레드", 45, 9600, 380, 140, 18, 11, 55),
+        ("개발 일지 #12 — 작은 기능 하나", 30, 3100, 95, 40, 4, 3, 12),
+        ("오늘의 버그 일기", 14, 1900, 60, 22, 2, 1, 8),
+        ("주말 아침 커밋 인증", 7, 5400, 230, 90, 9, 6, 30),
+    ]
+    lines = ['"Tweet text","time","impressions","engagements","likes","replies","retweets","bookmarks"']
+    now = datetime.now()
+    for text, days_ago, imp, eng, likes, replies, rts, bms in rows:
+        ts = (now - timedelta(days=days_ago)).strftime("%Y-%m-%d %H:%M +0000")
+        lines.append(f'"{text}","{ts}","{imp}","{eng}","{likes}","{replies}","{rts}","{bms}"')
+    return "\n".join(lines) + "\n"
+
+
+SAMPLE_ANALYTICS_CSV = _build_sample_analytics_csv()
