@@ -471,6 +471,36 @@ _T = {
         "en": "Paste this into ChatGPT, Grok Imagine, Gemini, or another image tool.",
         "ja": "ChatGPT、Grok Imagine、Geminiなどに貼り付けて使用してください。",
     },
+    "img_generate_btn": {
+        "ko": "🎨 이미지 바로 생성",
+        "en": "🎨 Generate image now",
+        "ja": "🎨 画像をすぐ生成",
+    },
+    "img_generating": {
+        "ko": "이미지 생성 중… ({engine}) 최대 몇 분 걸릴 수 있어요.",
+        "en": "Generating image… ({engine}) This can take a few minutes.",
+        "ja": "画像を生成中… ({engine}) 数分かかることがあります。",
+    },
+    "img_engine_note": {
+        "ko": "이미지 엔진: {engine}",
+        "en": "Image engine: {engine}",
+        "ja": "画像エンジン: {engine}",
+    },
+    "img_engine_none": {
+        "ko": "로컬 Codex CLI 또는 xAI API 키가 있으면 여기서 바로 이미지를 만들 수 있어요. 지금은 위 프롬프트를 복사해 외부 도구에서 생성해 주세요.",
+        "en": "With a local Codex CLI or an xAI API key you can generate the image right here. For now, copy the prompt above into an external tool.",
+        "ja": "ローカルのCodex CLIまたはxAI APIキーがあれば、ここで直接画像を生成できます。今は上のプロンプトをコピーして外部ツールで生成してください。",
+    },
+    "img_download": {
+        "ko": "⬇️ PNG 다운로드",
+        "en": "⬇️ Download PNG",
+        "ja": "⬇️ PNGをダウンロード",
+    },
+    "img_error": {
+        "ko": "이미지 생성에 실패했어요: {err}",
+        "en": "Image generation failed: {err}",
+        "ja": "画像の生成に失敗しました: {err}",
+    },
 
     # ─── Curator Tab ───
     "cur_subheader": {

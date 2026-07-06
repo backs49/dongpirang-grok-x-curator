@@ -3,6 +3,7 @@ import streamlit_analytics2 as streamlit_analytics
 import extra_streamlit_components as stx
 from utils import generate_tweet_intent_url, generate_follow_url
 from i18n import t, LANGUAGES, get_lang
+from image_client import build_image_client
 from provider_selection import API_MODEL_OPTIONS, ENGINE_OPTIONS, build_provider, uses_api_model_selector
 from tabs.tab_optimizer import render_optimizer_tab
 from tabs.tab_ideas import render_ideas_tab
@@ -209,6 +210,10 @@ grok, provider_status = build_provider(
     api_key=api_key,
     model=model,
 )
+
+# 이미지 생성 백엔드: 로컬 codex CLI 우선, 없으면 xAI API 키. 둘 다 없으면
+# 아이디어 탭이 기존 복사용 프롬프트만 보여준다.
+image_client = build_image_client(api_key)
 if provider_status.available:
     st.sidebar.success(f"{t('provider_status_ready')}: {provider_status.message}")
 else:
@@ -264,7 +269,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
 with tab1:
     render_optimizer_tab(grok, APP_URL, VIRAL_TAG)
 with tab2:
-    render_ideas_tab(grok)
+    render_ideas_tab(grok, image_client)
 with tab3:
     render_curator_tab(grok)
 with tab4:
