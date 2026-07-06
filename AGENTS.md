@@ -78,6 +78,7 @@ If the sandbox blocks local port binding, rerun with appropriate approval.
 
 - `ClaudeCliProvider` should use `claude -p` with no tools and no session persistence where possible.
 - `GrokCliProvider` should use `grok -p` with plain output and no unnecessary tools.
+- `CodexCliProvider` should use `codex exec` with `--ephemeral`, a read-only sandbox, and `--output-last-message` to read the final answer cleanly (stdout carries progress logs).
 - `XaiApiProvider` should remain OpenAI SDK compatible with `base_url="https://api.x.ai/v1"`.
 - Curator real-time X search should only be claimed when using a Grok-capable provider.
 - Claude-only curator fallback may generate search keywords and reply drafts, but must not claim live X search.
@@ -88,7 +89,8 @@ The image feature has two layers:
 
 - Copy-first fallback: `image_client.build_copy_prompt` builds a paste-ready image prompt, shown in `tabs/tab_ideas.py` alongside the raw `image_prompt`.
 - Direct generation: `image_client.build_image_client` auto-selects a backend — local Codex CLI (`providers/codex_cli_image.py`, official built-in `$imagegen` skill, subscription-backed, verified locally 2026-07) first, then the xAI image API (`providers/xai_image.py`, `images.generate` with `b64_json`) when an xAI key is set. With neither, the tab shows only the copy prompt.
-- Generated PNGs are written to `generated_images/` (gitignored).
+- Video: `image_client.build_video_client` wraps `providers/xai_video.py` (async `POST /videos/generations` + polling; downloads the temporary mp4 URL immediately). Video has no CLI path — it requires an xAI API key. The ideas tab offers image-to-video from a generated image.
+- Generated PNGs/MP4s are written to `generated_images/` (gitignored).
 
 Codex CLI image generation is a verified official path (`codex exec` + `$imagegen`, gpt-image-2). Still do not scrape or automate the ChatGPT/Claude/Grok web UIs, and do not treat chat subscriptions as raw API keys.
 

@@ -92,9 +92,9 @@ _T = {
         "ja": "現在のエンジンではリアルタイムX検索を使用できないため、検索キーワードと返信案のみ生成します。",
     },
     "api_key_help": {
-        "ko": "console.x.ai에서 발급받으세요",
-        "en": "Get yours at console.x.ai",
-        "ja": "console.x.aiで取得してください",
+        "ko": "console.x.ai에서 발급받으세요. xAI 엔진뿐 아니라 이미지·영상 생성에도 쓰여요.",
+        "en": "Get yours at console.x.ai. Used for the xAI engine and for image/video generation.",
+        "ja": "console.x.aiで取得してください。xAIエンジンだけでなく画像・動画生成にも使われます。",
     },
     "api_key_remember": {
         "ko": "🔑 API 키 기억하기",
@@ -500,6 +500,46 @@ _T = {
         "ko": "이미지 생성에 실패했어요: {err}",
         "en": "Image generation failed: {err}",
         "ja": "画像の生成に失敗しました: {err}",
+    },
+    "vid_generate_btn": {
+        "ko": "🎬 이 이미지로 영상 만들기",
+        "en": "🎬 Animate this image into a video",
+        "ja": "🎬 この画像から動画を作成",
+    },
+    "vid_generating": {
+        "ko": "영상 생성 중… 보통 1~3분 걸려요.",
+        "en": "Generating video… This usually takes 1–3 minutes.",
+        "ja": "動画を生成中… 通常1〜3分かかります。",
+    },
+    "vid_need_key": {
+        "ko": "🎬 xAI API 키를 사이드바에 입력하면 이 이미지를 영상으로 만들 수 있어요.",
+        "en": "🎬 Enter an xAI API key in the sidebar to animate this image into a video.",
+        "ja": "🎬 サイドバーにxAI APIキーを入力すると、この画像から動画を作成できます。",
+    },
+    "vid_duration_label": {
+        "ko": "영상 길이 (초)",
+        "en": "Video length (seconds)",
+        "ja": "動画の長さ（秒）",
+    },
+    "vid_resolution_label": {
+        "ko": "해상도",
+        "en": "Resolution",
+        "ja": "解像度",
+    },
+    "vid_cost_note": {
+        "ko": "비용 안내: 480p 초당 $0.01 · 720p 초당 $0.05 (xAI 과금)",
+        "en": "Cost: $0.01/sec at 480p · $0.05/sec at 720p (billed by xAI)",
+        "ja": "料金: 480pは秒あたり$0.01・720pは秒あたり$0.05（xAI課金）",
+    },
+    "vid_download": {
+        "ko": "⬇️ MP4 다운로드",
+        "en": "⬇️ Download MP4",
+        "ja": "⬇️ MP4をダウンロード",
+    },
+    "vid_error": {
+        "ko": "영상 생성에 실패했어요: {err}",
+        "en": "Video generation failed: {err}",
+        "ja": "動画の生成に失敗しました: {err}",
     },
 
     # ─── Curator Tab ───

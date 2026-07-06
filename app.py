@@ -3,7 +3,7 @@ import streamlit_analytics2 as streamlit_analytics
 import extra_streamlit_components as stx
 from utils import generate_tweet_intent_url, generate_follow_url
 from i18n import t, LANGUAGES, get_lang
-from image_client import build_image_client
+from image_client import build_image_client, build_video_client
 from provider_selection import API_MODEL_OPTIONS, ENGINE_OPTIONS, build_provider, uses_api_model_selector
 from tabs.tab_optimizer import render_optimizer_tab
 from tabs.tab_ideas import render_ideas_tab
@@ -155,34 +155,35 @@ with st.sidebar:
             key="ai_engine",
         )
 
-        api_key = ""
+        # xAI 키는 xAI 엔진뿐 아니라 이미지·영상 생성 백엔드에도 쓰이므로
+        # 엔진과 무관하게 항상 입력 가능하게 둔다.
+        # 원본 text_input 으로 호출해 analytics 추적에서 제외 (위 주석 참조).
+        api_key = _untracked_text_input(
+            t("api_key_label"),
+            type="password",
+            help=t("api_key_help"),
+            placeholder="xai-...",
+            value=saved_key,
+        )
+
+        remember_key = st.checkbox(
+            t("api_key_remember"),
+            value=bool(saved_key),
+            help=t("api_key_remember_help"),
+        )
+
+        # 쿠키 저장/삭제 (값이 변경될 때만)
+        # 캐시(_saved_api_key)도 함께 갱신해 다음 rerun에서 .set이 재호출되지 않게 한다.
+        if remember_key and api_key and api_key != saved_key:
+            cookie_manager.set(COOKIE_KEY, api_key, key="save_cookie")
+            st.session_state._saved_api_key = api_key
+            saved_key = api_key
+        elif not remember_key and saved_key:
+            cookie_manager.delete(COOKIE_KEY, key="delete_cookie")
+            st.session_state._saved_api_key = ""
+            saved_key = ""
+
         if engine == "xAI API":
-            # 원본 text_input 으로 호출해 analytics 추적에서 제외 (위 주석 참조).
-            api_key = _untracked_text_input(
-                t("api_key_label"),
-                type="password",
-                help=t("api_key_help"),
-                placeholder="xai-...",
-                value=saved_key,
-            )
-
-            remember_key = st.checkbox(
-                t("api_key_remember"),
-                value=bool(saved_key),
-                help=t("api_key_remember_help"),
-            )
-
-            # 쿠키 저장/삭제 (값이 변경될 때만)
-            # 캐시(_saved_api_key)도 함께 갱신해 다음 rerun에서 .set이 재호출되지 않게 한다.
-            if remember_key and api_key and api_key != saved_key:
-                cookie_manager.set(COOKIE_KEY, api_key, key="save_cookie")
-                st.session_state._saved_api_key = api_key
-                saved_key = api_key
-            elif not remember_key and saved_key:
-                cookie_manager.delete(COOKIE_KEY, key="delete_cookie")
-                st.session_state._saved_api_key = ""
-                saved_key = ""
-
             st.caption(t("api_key_warning"))
             st.caption(t("api_key_privacy"))
 
@@ -194,7 +195,7 @@ with st.sidebar:
             )
         else:
             model = ""
-            if engine in ("Claude CLI", "Grok CLI"):
+            if engine in ("Claude CLI", "Grok CLI", "Codex CLI"):
                 st.caption(t("cli_default_model_note"))
 
         if engine == "xAI API" and get_lang() == "ja" and model == "grok-4.1-fast-reasoning":
@@ -213,7 +214,9 @@ grok, provider_status = build_provider(
 
 # 이미지 생성 백엔드: 로컬 codex CLI 우선, 없으면 xAI API 키. 둘 다 없으면
 # 아이디어 탭이 기존 복사용 프롬프트만 보여준다.
+# 영상은 CLI 경로가 없어 xAI API 키가 있을 때만 활성화된다.
 image_client = build_image_client(api_key)
+video_client = build_video_client(api_key)
 if provider_status.available:
     st.sidebar.success(f"{t('provider_status_ready')}: {provider_status.message}")
 else:
@@ -269,7 +272,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
 with tab1:
     render_optimizer_tab(grok, APP_URL, VIRAL_TAG)
 with tab2:
-    render_ideas_tab(grok, image_client)
+    render_ideas_tab(grok, image_client, video_client)
 with tab3:
     render_curator_tab(grok)
 with tab4:

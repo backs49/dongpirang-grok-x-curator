@@ -176,5 +176,8 @@ def test_img_i18n_keys_cover_all_languages():
     from i18n import _T, LANGUAGES
 
     for key in ("img_generate_btn", "img_generating", "img_engine_note",
-                "img_engine_none", "img_download", "img_error"):
+                "img_engine_none", "img_download", "img_error",
+                "vid_generate_btn", "vid_generating", "vid_need_key",
+                "vid_duration_label", "vid_resolution_label", "vid_cost_note",
+                "vid_download", "vid_error"):
         assert set(_T[key]) >= set(LANGUAGES), f"missing translations for {key}"

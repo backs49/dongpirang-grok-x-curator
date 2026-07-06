@@ -16,7 +16,7 @@ def _sync_from_input():
     st.session_state.length_slider = st.session_state.length_input
 
 
-def render_ideas_tab(grok, image_client=None):
+def render_ideas_tab(grok, image_client=None, video_client=None):
     st.subheader(t("ideas_subheader"))
     st.caption(t("ideas_caption"))
 
@@ -73,9 +73,10 @@ def render_ideas_tab(grok, image_client=None):
                 st.error(result["error"])
             else:
                 st.session_state.ideas_result = result
-                # 이전 아이디어 세트에서 생성한 이미지가 새 아이디어에
+                # 이전 아이디어 세트에서 생성한 이미지/영상이 새 아이디어에
                 # 잘못 매칭되지 않도록 정리한다.
-                for key in [k for k in st.session_state if str(k).startswith("generated_image_")]:
+                stale_prefixes = ("generated_image_", "generated_video_")
+                for key in [k for k in st.session_state if str(k).startswith(stale_prefixes)]:
                     del st.session_state[key]
 
     if "ideas_error" in st.session_state:
@@ -122,10 +123,10 @@ def render_ideas_tab(grok, image_client=None):
                     st.caption(t("ideas_copy_image_prompt_caption"))
                     st.code(copy_prompt, language="", wrap_lines=True)
 
-                    _render_image_generation(image_client, copy_prompt, i)
+                    _render_image_generation(image_client, video_client, copy_prompt, i)
 
 
-def _render_image_generation(image_client, copy_prompt, idea_index):
+def _render_image_generation(image_client, video_client, copy_prompt, idea_index):
     """아이디어 카드 하단의 즉시 이미지 생성 UI."""
     if image_client is None:
         st.caption(t("img_engine_none"))
@@ -150,4 +151,50 @@ def _render_image_generation(image_client, copy_prompt, idea_index):
             file_name=f"idea_{idea_index + 1}.png",
             mime="image/png",
             key=f"dl_img_{idea_index}",
+        )
+        _render_video_generation(video_client, copy_prompt, png_bytes, idea_index)
+
+
+def _render_video_generation(video_client, copy_prompt, png_bytes, idea_index):
+    """생성된 이미지를 영상으로 애니메이팅하는 UI (xAI 키 필요)."""
+    if video_client is None:
+        st.caption(t("vid_need_key"))
+        return
+
+    col_dur, col_res = st.columns(2)
+    with col_dur:
+        duration = st.slider(
+            t("vid_duration_label"), 3, 15, 6, key=f"vid_dur_{idea_index}"
+        )
+    with col_res:
+        resolution = st.selectbox(
+            t("vid_resolution_label"),
+            ["480p", "720p", "1080p"],
+            index=1,
+            key=f"vid_res_{idea_index}",
+        )
+    st.caption(t("vid_cost_note"))
+
+    video_key = f"generated_video_{idea_index}"
+    if st.button(t("vid_generate_btn"), key=f"gen_vid_btn_{idea_index}"):
+        with st.spinner(t("vid_generating")):
+            try:
+                st.session_state[video_key] = video_client.generate(
+                    copy_prompt,
+                    image_bytes=png_bytes,
+                    duration=duration,
+                    resolution=resolution,
+                )
+            except ProviderError as exc:
+                st.error(t("vid_error", err=str(exc)))
+
+    mp4_bytes = st.session_state.get(video_key)
+    if mp4_bytes:
+        st.video(mp4_bytes)
+        st.download_button(
+            t("vid_download"),
+            data=mp4_bytes,
+            file_name=f"idea_{idea_index + 1}.mp4",
+            mime="video/mp4",
+            key=f"dl_vid_{idea_index}",
         )

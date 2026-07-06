@@ -6,6 +6,7 @@ from pathlib import Path
 
 from providers.codex_cli_image import CodexCliImageProvider
 from providers.xai_image import XaiImageProvider
+from providers.xai_video import XaiVideoProvider
 
 GENERATED_DIR = Path("generated_images")
 
@@ -56,4 +57,41 @@ def build_image_client(api_key: str, output_dir: Path = GENERATED_DIR) -> ImageC
         return ImageClient(CodexCliImageProvider(), output_dir)
     if (api_key or "").strip():
         return ImageClient(XaiImageProvider(api_key), output_dir)
+    return None
+
+
+class VideoClient:
+    """영상 프로바이더를 감싸 mp4 bytes 를 돌려주는 파사드."""
+
+    def __init__(self, provider, output_dir: Path = GENERATED_DIR):
+        self._provider = provider
+        self._output_dir = Path(output_dir)
+
+    @property
+    def name(self) -> str:
+        return self._provider.name
+
+    def generate(
+        self,
+        prompt: str,
+        *,
+        image_bytes: bytes | None = None,
+        duration: int = 6,
+        resolution: str = "720p",
+    ) -> bytes:
+        filename = f"clip_{time.strftime('%Y%m%d_%H%M%S')}_{int(time.time() * 1000) % 1000:03d}.mp4"
+        out_path = self._provider.generate_video(
+            prompt,
+            self._output_dir / filename,
+            image_bytes=image_bytes,
+            duration=duration,
+            resolution=resolution,
+        )
+        return Path(out_path).read_bytes()
+
+
+def build_video_client(api_key: str, output_dir: Path = GENERATED_DIR) -> VideoClient | None:
+    """영상 백엔드 선택. 영상은 CLI 경로가 없어 xAI API 키가 필수다."""
+    if (api_key or "").strip():
+        return VideoClient(XaiVideoProvider(api_key), output_dir)
     return None
