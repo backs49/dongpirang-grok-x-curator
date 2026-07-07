@@ -103,6 +103,12 @@ Codex CLI image generation is a verified official path (`codex exec` + `$imagege
   `cp scripts/com.dongpirang.publish.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.dongpirang.publish.plist`
 - `scripts/generate_drafts.py`: nightly draft batch (launchd 23:00 via `scripts/com.dongpirang.drafts.plist`). Skips when draft+approved stock ≥ 4; converts up to 3 unused materials into drafts; only when the inbox is empty does it add one tip draft from `settings.tip_keywords` in queue.json (default AI/솔로개발 keywords). Uses local CLI engines (Codex → Claude), so generation is free. All output stays in 'draft' status — publishing always requires user approval in the 발행 큐 tab.
 
+## Remote Access Tunnel
+
+- `scripts/tunnel_watch.sh` (launchd `com.dongpirang.tunnel`, hourly + at load): self-heals streamlit on :8501 (:8502 belongs to ai-trader), verifies the Cloudflare quick tunnel URL in `logs/cloudflared.url`, restarts cloudflared when dead, and sends the new URL via `scripts/notify_admin.py`. Sleep window 00–07 KST skips checks.
+- `scripts/notify_admin.py` sends Telegram messages to the single admin `TELEGRAM_CHAT_ID` in `.env` ONLY. Never add guest fan-out here (ai-trader's notify_telegram.py has guests — do not reuse it for tunnel URLs).
+- `app.py` has an access-password gate (`APP_ACCESS_PASSWORD` in `.env`) because the tunnel exposes local CLI engines publicly. Keep the gate's text_input untracked by analytics.
+
 ## Git Hygiene
 
 - The repo may contain untracked `.DS_Store` files. Do not remove or stage them unless the user asks.

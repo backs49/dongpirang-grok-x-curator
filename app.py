@@ -36,6 +36,26 @@ st.set_page_config(
 _untracked_text_input = st.text_input
 streamlit_analytics.start_tracking()
 
+# ─── 접속 비밀번호 게이트 ───
+# Cloudflare 터널로 앱이 공개 URL에 노출되면, 게이트가 없을 경우 URL을 아는
+# 누구나 로컬 CLI 엔진(Claude/Codex 구독)을 소모할 수 있다. .env 에
+# APP_ACCESS_PASSWORD 가 설정되어 있으면 통과 전까지 앱을 렌더링하지 않는다.
+# 비밀번호 입력란은 analytics 추적에서 제외한다 (API 키와 동일한 이유).
+from publisher import load_env as _load_env
+
+_ACCESS_PW = _load_env().get("APP_ACCESS_PASSWORD", "")
+if _ACCESS_PW and not st.session_state.get("_app_authed"):
+    st.markdown("### 🐾 접속 비밀번호")
+    _pw_try = _untracked_text_input(
+        "접속 비밀번호", type="password", label_visibility="collapsed"
+    )
+    if _pw_try == _ACCESS_PW:
+        st.session_state._app_authed = True
+        st.rerun()
+    if _pw_try:
+        st.error("비밀번호가 올바르지 않습니다")
+    st.stop()
+
 APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
 VIRAL_TAG = "동피랑고양이 Grok 𝕏 로 최적화됨 🐾 @mangodaon"
 COOKIE_KEY = "dongpirang_grok_api_key"

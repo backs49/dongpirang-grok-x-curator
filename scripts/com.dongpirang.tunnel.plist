@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.dongpirang.tunnel</string>
+  <key>WorkingDirectory</key>
+  <string>/Users/manggo-chaltteog/antigravity-workspace/dongpirang-grok-x-curator</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/manggo-chaltteog/antigravity-workspace/dongpirang-grok-x-curator/scripts/tunnel_watch.sh</string>
+  </array>
+  <key>StartInterval</key>
+  <integer>3600</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <!-- 워처가 cloudflared/streamlit을 백그라운드 자식으로 남기고 종료하므로,
+       launchd가 프로세스 그룹째 정리하지 않도록 한다 (ai-trader 워처와 동일). -->
+  <key>AbandonProcessGroup</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/dongpirang-tunnel.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/dongpirang-tunnel.err</string>
+</dict>
+</plist>
