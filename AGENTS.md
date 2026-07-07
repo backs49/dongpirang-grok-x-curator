@@ -101,6 +101,7 @@ Codex CLI image generation is a verified official path (`codex exec` + `$imagege
 - `scripts/publish_worker.py`: idempotent worker run by launchd at slot times. Dry-run by default; `--live` (or X_PUBLISH_LIVE=1) actually posts. Missed slots (>90min overdue) are reassigned, never force-posted.
 - `scripts/com.dongpirang.publish.plist`: launchd template. Install only after a manual `--live` test succeeds:
   `cp scripts/com.dongpirang.publish.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.dongpirang.publish.plist`
+- `scripts/generate_drafts.py`: nightly draft batch (launchd 23:00 via `scripts/com.dongpirang.drafts.plist`). Skips when draft+approved stock ≥ 4; converts up to 3 unused materials into drafts; only when the inbox is empty does it add one tip draft from `settings.tip_keywords` in queue.json (default AI/솔로개발 keywords). Uses local CLI engines (Codex → Claude), so generation is free. All output stays in 'draft' status — publishing always requires user approval in the 발행 큐 tab.
 
 ## Git Hygiene
 

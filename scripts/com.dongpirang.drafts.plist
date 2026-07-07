@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dongpirang.drafts</string>
+
+    <!-- 매일 밤 23시: 소재 인박스 → 초안 변환. 재고가 충분하면 스킵. -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>23</integer><key>Minute</key><integer>0</integer></dict>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/manggo-chaltteog/antigravity-workspace/dongpirang-grok-x-curator</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/manggo-chaltteog/antigravity-workspace/dongpirang-grok-x-curator/venv/bin/python</string>
+        <string>scripts/generate_drafts.py</string>
+    </array>
+
+    <!-- codex/claude CLI 가 PATH 에서 발견되도록 로그인 셸 PATH 를 지정 -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/manggo-chaltteog/.npm-global/bin:/Users/manggo-chaltteog/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/dongpirang-drafts.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/dongpirang-drafts.err</string>
+</dict>
+</plist>
