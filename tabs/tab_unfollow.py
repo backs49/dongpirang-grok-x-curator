@@ -138,7 +138,9 @@ def render_unfollow_tab():
         snapshots.insert(0, snapshot)
         st.session_state.unfollow_snapshots = snapshots[:10]
         st.success(t("unf_saved", label=label, n=len(followers)))
-        st.rerun()
+        # st.rerun() 금지: 명시적 rerun 은 활성 탭을 첫 탭으로 리셋한다.
+        # 아래 섹션들은 같은 실행에서 갱신된 session_state 를 읽으므로
+        # rerun 없이도 방금 저장한 스냅샷이 즉시 반영된다.
 
     # ─── CSV 다운로드 ───
     csv_lines = ["username_or_id"]
