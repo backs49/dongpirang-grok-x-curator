@@ -60,7 +60,9 @@ class CodexCliProvider:
                 message = out_file.read_text(encoding="utf-8")
             return completed.returncode, message, completed.stderr or completed.stdout
 
-    def generate_json(self, system_prompt: str, user_prompt: str, *, timeout: int = 120) -> dict:
+    # 추론형 모델 + 긴 시스템 프롬프트 조합은 2분을 넘기는 경우가 있어
+    # 다른 CLI(120초)보다 여유 있게 잡는다. 배치 실행이라 대기 비용이 없다.
+    def generate_json(self, system_prompt: str, user_prompt: str, *, timeout: int = 300) -> dict:
         prompt = self._prompt(
             system_prompt
             + "\n\nReturn only one valid JSON object. Do not wrap it in markdown. "
@@ -72,7 +74,7 @@ class CodexCliProvider:
             return {"error": f"{self.name} error: {(detail or 'unknown codex error').strip()}"}
         return extract_json_object(message)
 
-    def generate_text(self, system_prompt: str, user_prompt: str, *, timeout: int = 120) -> str:
+    def generate_text(self, system_prompt: str, user_prompt: str, *, timeout: int = 300) -> str:
         prompt = self._prompt(system_prompt + "\n\nDo not run any commands.", user_prompt)
         code, message, detail = self._run_exec(prompt, timeout=timeout)
         if code != 0:

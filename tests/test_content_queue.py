@@ -139,6 +139,10 @@ def test_draft_from_material_sends_material():
     system_prompt, user_prompt = provider.last_call
     assert "진정성" in system_prompt
     assert "버그 3시간" in user_prompt
+    # 자연스러운 글쓰기 지침(AI 냄새 제거)이 포함되어야 한다
+    assert "AI 냄새 제거 규칙" in system_prompt
+    assert "17년차" in system_prompt
+    assert "이모지는 기본적으로 쓰지 않는다" in system_prompt
 
 
 def test_pq_i18n_keys_cover_all_languages():

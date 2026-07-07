@@ -14,6 +14,7 @@ from xalgo_prompts import (
     CURATOR_SYSTEM_PROMPT,
     DRAFT_FROM_MATERIAL_SYSTEM_PROMPT,
     IDEAS_SYSTEM_PROMPT,
+    NATURAL_STYLE_GUIDE,
     OPTIMIZER_SYSTEM_PROMPT,
     PERFORMANCE_SYSTEM_PROMPT,
     RISK_CHECK_SYSTEM_PROMPT,
@@ -66,7 +67,7 @@ class GrokClient:
         )
 
         return self.provider.generate_json(
-            system_prompt + get_lang_instruction(),
+            system_prompt + NATURAL_STYLE_GUIDE + get_lang_instruction(),
             f"관심사/키워드: {keywords}",
         )
 
@@ -134,7 +135,7 @@ class GrokClient:
 
     def draft_from_material(self, material_text: str) -> dict:
         return self.provider.generate_json(
-            DRAFT_FROM_MATERIAL_SYSTEM_PROMPT + get_lang_instruction(),
+            DRAFT_FROM_MATERIAL_SYSTEM_PROMPT + NATURAL_STYLE_GUIDE + get_lang_instruction(),
             f"소재 메모:\n{material_text}",
         )
 
