@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dongpirang.publish</string>
+
+    <!-- 발행 슬롯 시각에 워커 실행. 워커가 멱등이라 일요일 등 슬롯 없는
+         시각에 실행돼도 아무것도 하지 않는다. 맥이 잠들어 있었다면
+         launchd 가 깨어난 뒤 실행해 주고, 유예(90분) 초과분은 워커가
+         다음 슬롯으로 재배정한다. -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>19</integer><key>Minute</key><integer>0</integer></dict>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/manggo-chaltteog/antigravity-workspace/dongpirang-grok-x-curator</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/manggo-chaltteog/antigravity-workspace/dongpirang-grok-x-curator/venv/bin/python</string>
+        <string>scripts/publish_worker.py</string>
+        <string>--live</string>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/dongpirang-publish.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/dongpirang-publish.err</string>
+</dict>
+</plist>

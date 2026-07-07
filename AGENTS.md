@@ -94,6 +94,14 @@ The image feature has two layers:
 
 Codex CLI image generation is a verified official path (`codex exec` + `$imagegen`, gpt-image-2). Still do not scrape or automate the ChatGPT/Claude/Grok web UIs, and do not treat chat subscriptions as raw API keys.
 
+## Publish Pipeline (stage 4)
+
+- `content_queue.py`: JSON-file queue (`content_queue/queue.json`, gitignored) shared by the 발행 큐 tab and batch scripts. Slots: weekdays 08:00/19:00, Sat 10:00, Sunday off.
+- `publisher.py`: OAuth 1.0a client for `POST /2/tweets`. Keys live in `.env` (gitignored) as X_API_KEY / X_API_KEY_SECRET / X_ACCESS_TOKEN / X_ACCESS_TOKEN_SECRET. Never print or log key values.
+- `scripts/publish_worker.py`: idempotent worker run by launchd at slot times. Dry-run by default; `--live` (or X_PUBLISH_LIVE=1) actually posts. Missed slots (>90min overdue) are reassigned, never force-posted.
+- `scripts/com.dongpirang.publish.plist`: launchd template. Install only after a manual `--live` test succeeds:
+  `cp scripts/com.dongpirang.publish.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.dongpirang.publish.plist`
+
 ## Git Hygiene
 
 - The repo may contain untracked `.DS_Store` files. Do not remove or stage them unless the user asks.
