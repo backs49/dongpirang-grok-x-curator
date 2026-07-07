@@ -8,3 +8,6 @@ docs/superpowers/
 .superpowers/
 .worktrees/
 generated_images/
+
+# 발행 큐 (로컬 데이터)
+content_queue/

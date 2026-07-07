@@ -233,6 +233,118 @@ _T = {
         "en": "📈 Performance",
         "ja": "📈 パフォーマンス",
     },
+    "tab_publish_queue": {
+        "ko": "📤 발행 큐",
+        "en": "📤 Queue",
+        "ja": "📤 発行キュー",
+    },
+
+    # ─── Publish Queue Tab ───
+    "pq_subheader": {
+        "ko": "발행 큐 & 소재 인박스",
+        "en": "Publish Queue & Material Inbox",
+        "ja": "発行キュー＆ネタ受信箱",
+    },
+    "pq_caption": {
+        "ko": "경험 한 줄을 던져두면 AI가 포스트로 빚어냅니다. 승인한 초안은 발행 슬롯(평일 08·19시, 토 10시)에 배정돼요.",
+        "en": "Drop a one-line experience and AI shapes it into a post. Approved drafts get assigned to publish slots (weekdays 08:00/19:00, Sat 10:00).",
+        "ja": "経験を一行置いておくと、AIがポストに仕上げます。承認した下書きは発行スロット（平日08・19時、土10時）に割り当てられます。",
+    },
+    "pq_inbox_title": {
+        "ko": "💡 소재 인박스",
+        "en": "💡 Material inbox",
+        "ja": "💡 ネタ受信箱",
+    },
+    "pq_inbox_caption": {
+        "ko": "오늘 겪은 일, 배운 것, 숫자 하나 — 짧아도 됩니다. 진짜 경험만이 좋은 포스트가 돼요.",
+        "en": "Something you did, learned, or measured today — one line is enough. Real experiences make the best posts.",
+        "ja": "今日あったこと、学んだこと、数字ひとつ — 短くてOK。本当の経験こそ良いポストになります。",
+    },
+    "pq_inbox_placeholder": {
+        "ko": "예: 오늘 버그 3시간 잡았는데 원인은 오타였다",
+        "en": "e.g. Spent 3 hours on a bug today — it was a typo",
+        "ja": "例: 今日3時間バグを追ったら原因はタイポだった",
+    },
+    "pq_inbox_add": {
+        "ko": "➕ 추가",
+        "en": "➕ Add",
+        "ja": "➕ 追加",
+    },
+    "pq_inbox_empty": {
+        "ko": "소재가 없어요. 한 줄 던져두면 초안이 시작됩니다.",
+        "en": "No materials yet. Drop a line to start a draft.",
+        "ja": "ネタがありません。一行置くと下書きが始まります。",
+    },
+    "pq_draft_btn": {
+        "ko": "✍️ 초안 만들기",
+        "en": "✍️ Draft it",
+        "ja": "✍️ 下書き作成",
+    },
+    "pq_draft_spinner": {
+        "ko": "소재를 포스트로 빚는 중…",
+        "en": "Shaping your material into a post…",
+        "ja": "ネタをポストに仕上げ中…",
+    },
+    "pq_queue_title": {
+        "ko": "📤 초안 큐",
+        "en": "📤 Draft queue",
+        "ja": "📤 下書きキュー",
+    },
+    "pq_queue_empty": {
+        "ko": "큐가 비어 있어요. 소재에서 초안을 만들어 보세요.",
+        "en": "The queue is empty. Create a draft from a material above.",
+        "ja": "キューは空です。上のネタから下書きを作ってみてください。",
+    },
+    "pq_draft_text_label": {
+        "ko": "초안 본문",
+        "en": "Draft text",
+        "ja": "下書き本文",
+    },
+    "pq_slot_label": {
+        "ko": "발행 예정",
+        "en": "Scheduled",
+        "ja": "発行予定",
+    },
+    "pq_approve": {
+        "ko": "✅ 승인",
+        "en": "✅ Approve",
+        "ja": "✅ 承認",
+    },
+    "pq_reject": {
+        "ko": "🚫 반려",
+        "en": "🚫 Reject",
+        "ja": "🚫 却下",
+    },
+    "pq_post_now": {
+        "ko": "𝕏 지금 올리기",
+        "en": "𝕏 Post now",
+        "ja": "𝕏 今すぐ投稿",
+    },
+    "pq_worker_note": {
+        "ko": "승인된 초안 {n}개가 슬롯에 배정돼 있어요. 자동 발행 워커(4c)가 연결되면 이 시각에 자동으로 올라갑니다. 그 전까지는 '지금 올리기'로 수동 발행하세요.",
+        "en": "{n} approved draft(s) assigned to slots. Once the auto-publish worker (4c) is connected they'll go out at those times. Until then, use 'Post now' to publish manually.",
+        "ja": "承認済み下書き{n}件がスロットに割り当てられています。自動発行ワーカー(4c)が接続されると、その時刻に自動投稿されます。それまでは「今すぐ投稿」で手動投稿してください。",
+    },
+    "pq_pillar_bip": {
+        "ko": "빌드 인 퍼블릭",
+        "en": "Build in public",
+        "ja": "ビルド・イン・パブリック",
+    },
+    "pq_pillar_retro": {
+        "ko": "회고",
+        "en": "Retrospective",
+        "ja": "振り返り",
+    },
+    "pq_pillar_tip": {
+        "ko": "팁",
+        "en": "Tip",
+        "ja": "ヒント",
+    },
+    "pq_pillar_curation": {
+        "ko": "큐레이션",
+        "en": "Curation",
+        "ja": "キュレーション",
+    },
 
     # ─── Performance Tab ───
     "perf_subheader": {

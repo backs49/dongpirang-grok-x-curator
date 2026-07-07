@@ -12,6 +12,7 @@ from utils import parse_thread_text
 from xalgo_prompts import (
     AB_COMPARE_SYSTEM_PROMPT,
     CURATOR_SYSTEM_PROMPT,
+    DRAFT_FROM_MATERIAL_SYSTEM_PROMPT,
     IDEAS_SYSTEM_PROMPT,
     OPTIMIZER_SYSTEM_PROMPT,
     PERFORMANCE_SYSTEM_PROMPT,
@@ -129,6 +130,12 @@ class GrokClient:
         return self.provider.generate_json(
             RISK_CHECK_SYSTEM_PROMPT + get_lang_instruction(),
             user_content,
+        )
+
+    def draft_from_material(self, material_text: str) -> dict:
+        return self.provider.generate_json(
+            DRAFT_FROM_MATERIAL_SYSTEM_PROMPT + get_lang_instruction(),
+            f"소재 메모:\n{material_text}",
         )
 
     def analyze_performance(self, summary: dict) -> dict:
