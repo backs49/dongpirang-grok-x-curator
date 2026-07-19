@@ -781,9 +781,9 @@ _T = {
         "ja": "ローカルのCodex CLIまたはxAI APIキーがあれば、ここで直接画像を生成できます。今は上のプロンプトをコピーして外部ツールで生成してください。",
     },
     "img_download": {
-        "ko": "⬇️ PNG 다운로드",
-        "en": "⬇️ Download PNG",
-        "ja": "⬇️ PNGをダウンロード",
+        "ko": "⬇️ 이미지 다운로드 (JPG)",
+        "en": "⬇️ Download image (JPG)",
+        "ja": "⬇️ 画像をダウンロード（JPG）",
     },
     "img_error": {
         "ko": "이미지 생성에 실패했어요: {err}",

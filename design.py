@@ -688,11 +688,34 @@ def _build_root_block(theme: str) -> str:
     return f":root {{\n{lines}\n}}"
 
 
+# 생성 이미지·영상이 화면을 넘지 않게 제한한다.
+# 세로(4:5) 미디어가 컬럼 폭을 가득 채우면 데스크톱에서 모니터 한 화면을
+# 넘어가므로, 뷰포트 높이 기준(62vh)으로 잡아 데스크톱·모바일 모두
+# 스크롤 없이 한눈에 들어오게 한다.
+_MEDIA_CSS = """
+[data-testid="stImage"] img,
+[data-testid="stImageContainer"] img {
+    max-height: 62vh;
+    width: auto !important;
+    max-width: 100%;
+    object-fit: contain;
+    display: block;
+}
+[data-testid="stVideo"] video,
+div.stVideo video {
+    max-height: 62vh;
+    width: auto !important;
+    max-width: 100%;
+    display: block;
+}
+"""
+
+
 def inject_css(theme: str = "light") -> None:
     """선택된 테마의 토큰을 :root 블록으로 emit하고 컴포넌트 CSS를 주입한다.
 
     theme: 'light' 또는 'dark'. 그 외 값은 'light'로 간주.
     """
     root_block = _build_root_block(theme)
-    payload = f"<style>\n{root_block}\n{_COMPONENT_CSS}\n</style>\n{_FONT_LINK}"
+    payload = f"<style>\n{root_block}\n{_COMPONENT_CSS}\n{_MEDIA_CSS}\n</style>\n{_FONT_LINK}"
     st.markdown(payload, unsafe_allow_html=True)

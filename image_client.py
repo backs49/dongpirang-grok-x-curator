@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import shutil
 import time
+from datetime import datetime
 from pathlib import Path
 
 from providers.codex_cli_image import CodexCliImageProvider
@@ -21,14 +23,36 @@ _IMAGE_RULES = (
     "unless explicitly requested. "
     "STYLE (mandatory, overrides the image prompt below if they conflict): render in a "
     "bold graphic style — flat editorial illustration, comic panel, or exaggerated "
-    "cartoon — with punchy high-contrast colors and clean shapes. NEVER render soft "
-    "photorealism or a stock-photo look: no golden-hour cinematic haze, no cozy "
-    "lamp-lit realism, no bland minimalism, no person gazing into the distance. "
-    "Photorealism is allowed only if the image prompt explicitly demands it. "
+    "cartoon — with clean shapes and a restrained palette of 2-3 strong colors. "
+    "No garish neon-on-neon. NEVER render soft photorealism or a stock-photo look: "
+    "no golden-hour cinematic haze, no cozy lamp-lit realism, no bland minimalism, "
+    "no person gazing into the distance. Photorealism is allowed only if the image "
+    "prompt explicitly demands it. "
+    "READABILITY (mandatory): a viewer must understand the situation within 3 seconds "
+    "without any caption — ONE focal point, a simple background, and a scene that "
+    "clearly matches the post's core message. "
+    "TONE (mandatory): exaggeration must stay playful and likable — NEVER gross, "
+    "grotesque, disturbing, or body-horror. No slime, goo, vomit, melting bodies, "
+    "or distorted anatomy. "
     "Build the whole image around ONE scroll-stopper: an unexpected juxtaposition, "
     "exaggerated humorous scale, a painfully relatable everyday moment, a bold single "
     "subject against strong color contrast, or a close-up with visible emotion."
 )
+
+
+def _log_generation(output_dir: Path, entry: dict) -> None:
+    """생성 이력을 gen_log.jsonl 에 남긴다.
+
+    UI 세션이 사라져도 어떤 프롬프트로 어떤 파일이 만들어졌는지 나중에
+    추적·품질 검토할 수 있게 하는 용도. 실패해도 생성 흐름을 막지 않는다.
+    """
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        entry = {"at": datetime.now().isoformat(timespec="seconds"), **entry}
+        with (output_dir / "gen_log.jsonl").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
 
 
 def build_copy_prompt(post_content: str, image_prompt: str) -> str:
@@ -90,7 +114,12 @@ class ImageClient:
         """프롬프트로 이미지를 생성해 X 규격으로 후처리하고 bytes 를 반환한다."""
         filename = f"idea_{time.strftime('%Y%m%d_%H%M%S')}_{int(time.time() * 1000) % 1000:03d}.png"
         out_path = self._provider.generate_image(prompt, self._output_dir / filename)
-        return postprocess_for_x(Path(out_path))
+        data = postprocess_for_x(Path(out_path))
+        _log_generation(
+            self._output_dir,
+            {"kind": "image", "engine": self.name, "file": Path(out_path).stem, "prompt": prompt},
+        )
+        return data
 
 
 # 사이드바 이미지 엔진 선택지. Grok CLI 가 기본 (Imagine 한도가 넉넉).
@@ -152,6 +181,10 @@ class VideoClient:
             image_bytes=image_bytes,
             duration=duration,
             resolution=resolution,
+        )
+        _log_generation(
+            self._output_dir,
+            {"kind": "video", "engine": self.name, "file": filename, "prompt": prompt},
         )
         return Path(out_path).read_bytes()
 
