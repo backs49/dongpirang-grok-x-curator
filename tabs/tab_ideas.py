@@ -1,6 +1,6 @@
 import streamlit as st
 
-from image_client import build_copy_prompt
+from image_client import MASCOT_PATH, build_copy_prompt
 from providers.base import ProviderError
 from utils import generate_tweet_intent_url
 from i18n import t
@@ -123,10 +123,12 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
                     st.caption(t("ideas_copy_image_prompt_caption"))
                     st.code(copy_prompt, language="", wrap_lines=True)
 
-                    _render_image_generation(image_client, video_client, copy_prompt, i)
+                    _render_image_generation(
+                        image_client, video_client, content, image_prompt, i
+                    )
 
 
-def _render_image_generation(image_client, video_client, copy_prompt, idea_index):
+def _render_image_generation(image_client, video_client, content, image_prompt, idea_index):
     """아이디어 카드 하단의 즉시 이미지 생성 UI."""
     if image_client is None:
         st.caption(t("img_engine_none"))
@@ -134,11 +136,22 @@ def _render_image_generation(image_client, video_client, copy_prompt, idea_index
 
     st.caption(t("img_engine_note", engine=image_client.name))
 
+    use_mascot = st.checkbox(
+        t("img_mascot_toggle"),
+        value=True,
+        key=f"mascot_{idea_index}",
+        help=t("img_mascot_help"),
+    )
+
     image_key = f"generated_image_{idea_index}"
     if st.button(t("img_generate_btn"), key=f"gen_img_btn_{idea_index}"):
+        prompt = build_copy_prompt(content, image_prompt, mascot=use_mascot)
+        reference = MASCOT_PATH if use_mascot else None
         with st.spinner(t("img_generating", engine=image_client.name)):
             try:
-                st.session_state[image_key] = image_client.generate(copy_prompt)
+                st.session_state[image_key] = image_client.generate(
+                    prompt, reference=reference
+                )
             except ProviderError as exc:
                 st.error(t("img_error", err=str(exc)))
 
@@ -152,7 +165,8 @@ def _render_image_generation(image_client, video_client, copy_prompt, idea_index
             mime="image/jpeg",
             key=f"dl_img_{idea_index}",
         )
-        _render_video_generation(video_client, copy_prompt, image_bytes, idea_index)
+        video_prompt = build_copy_prompt(content, image_prompt, mascot=use_mascot)
+        _render_video_generation(video_client, video_prompt, image_bytes, idea_index)
 
 
 def _render_video_generation(video_client, copy_prompt, image_bytes, idea_index):

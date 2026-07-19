@@ -55,17 +55,45 @@ def _log_generation(output_dir: Path, entry: dict) -> None:
         pass
 
 
-def build_copy_prompt(post_content: str, image_prompt: str) -> str:
+# ─── 고정 마스코트 (동피랑고양이) ───
+# 프로필의 갈색 태비 고양이를 3D 캐릭터화한 브랜드 마스코트.
+# 참조 이미지를 지원하는 엔진(Grok CLI image_edit)은 이 파일을 레퍼런스로
+# 사용해 캐릭터 일관성을 유지하고, 미지원 엔진은 텍스트 묘사로 근사한다.
+MASCOT_PATH = Path("assets/mascot_dongpi.jpg")
+
+_MASCOT_RULES = (
+    "Aspect ratio: portrait 4:5. "
+    "Do not include readable text, letters, UI captions, watermarks, or logos "
+    "unless explicitly requested. "
+    "MASCOT (mandatory): the protagonist is the fixed brand mascot — an adorable "
+    "chubby brown tabby cat with dark stripes, white chest, muzzle and paws, big "
+    "glossy green eyes, a pink nose and pink paw pads. Its fur markings, colors and "
+    "proportions must stay identical in every image so it is recognizably the same "
+    "character. Replace any human protagonist in the scene with this cat acting out "
+    "the situation — anthropomorphic poses are encouraged (typing, driving, holding "
+    "coffee). "
+    "STYLE (mandatory): cute 3D animated-movie render — soft detailed fur, big "
+    "expressive eyes, warm soft lighting, clean simple background. "
+    "READABILITY (mandatory): a viewer must understand the situation within 3 seconds "
+    "without any caption — ONE focal point, and a scene that clearly matches the "
+    "post's core message. "
+    "TONE (mandatory): exaggeration stays playful and lovable — NEVER gross, "
+    "grotesque, disturbing, or body-horror."
+)
+
+
+def build_copy_prompt(post_content: str, image_prompt: str, mascot: bool = False) -> str:
     post_content = post_content.strip()
     image_prompt = image_prompt.strip()
+    rules = _MASCOT_RULES if mascot else _IMAGE_RULES
     if post_content:
         return (
-            f"Create a scroll-stopping image for this X post. {_IMAGE_RULES}\n\n"
+            f"Create a scroll-stopping image for this X post. {rules}\n\n"
             f"Post context:\n{post_content}\n\n"
             f"Image prompt:\n{image_prompt}"
         )
     return (
-        f"Create a scroll-stopping image from this prompt. {_IMAGE_RULES}\n\n"
+        f"Create a scroll-stopping image from this prompt. {rules}\n\n"
         f"Image prompt:\n{image_prompt}"
     )
 
@@ -110,14 +138,34 @@ class ImageClient:
     def name(self) -> str:
         return self._provider.name
 
-    def generate(self, prompt: str) -> bytes:
-        """프롬프트로 이미지를 생성해 X 규격으로 후처리하고 bytes 를 반환한다."""
+    def generate(self, prompt: str, reference: Path | None = None) -> bytes:
+        """프롬프트로 이미지를 생성해 X 규격으로 후처리하고 bytes 를 반환한다.
+
+        reference: 캐릭터 일관성용 참조 이미지. 지원 프로바이더(Grok CLI)만
+        실제로 사용하고, 미지원 프로바이더는 프롬프트 텍스트만으로 생성한다.
+        """
         filename = f"idea_{time.strftime('%Y%m%d_%H%M%S')}_{int(time.time() * 1000) % 1000:03d}.png"
-        out_path = self._provider.generate_image(prompt, self._output_dir / filename)
+        use_ref = (
+            reference is not None
+            and Path(reference).is_file()
+            and getattr(self._provider, "supports_reference", False)
+        )
+        if use_ref:
+            out_path = self._provider.generate_image(
+                prompt, self._output_dir / filename, reference=Path(reference)
+            )
+        else:
+            out_path = self._provider.generate_image(prompt, self._output_dir / filename)
         data = postprocess_for_x(Path(out_path))
         _log_generation(
             self._output_dir,
-            {"kind": "image", "engine": self.name, "file": Path(out_path).stem, "prompt": prompt},
+            {
+                "kind": "image",
+                "engine": self.name,
+                "file": Path(out_path).stem,
+                "mascot_ref": bool(use_ref),
+                "prompt": prompt,
+            },
         )
         return data
 

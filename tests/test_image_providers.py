@@ -351,3 +351,74 @@ class TestGrokCliMediaProviders:
         prompt_arg = calls["cmd"][2]
         assert "10-second" in prompt_arg
         assert "image_gen,image_to_video" in calls["cmd"]
+
+
+# ─── 마스코트 모드 ───
+
+
+class TestMascotMode:
+    def test_mascot_prompt_swaps_style_rules(self):
+        from image_client import build_copy_prompt
+
+        plain = build_copy_prompt("post", "scene")
+        mascot = build_copy_prompt("post", "scene", mascot=True)
+        assert "MASCOT (mandatory)" in mascot
+        assert "brown tabby cat" in mascot
+        assert "3D animated-movie render" in mascot
+        assert "MASCOT" not in plain
+
+    def test_generate_passes_reference_to_supporting_provider(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(image_client.shutil, "which", lambda _: "/usr/bin/grok")
+        client = build_image_client(api_key="", output_dir=tmp_path)
+        assert client.name == "Grok CLI"
+
+        ref = tmp_path / "mascot.jpg"
+        ref.write_bytes(b"\xff\xd8ref")
+        seen = {}
+
+        def fake_generate_image(prompt, out_path, *, reference=None, timeout=None):
+            seen["reference"] = reference
+            Path(out_path).write_bytes(PNG_BYTES)
+            return Path(out_path)
+
+        client._provider.generate_image = fake_generate_image
+        client.generate("scene", reference=ref)
+        assert seen["reference"] == ref
+
+    def test_generate_skips_reference_when_unsupported(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(image_client.shutil, "which", lambda _: "/usr/bin/cli")
+        client = build_image_client(api_key="", engine="Codex CLI", output_dir=tmp_path)
+        assert client.name == "Codex CLI"
+
+        ref = tmp_path / "mascot.jpg"
+        ref.write_bytes(b"\xff\xd8ref")
+
+        def fake_generate_image(prompt, out_path, *, timeout=None):
+            # reference 키워드가 오면 TypeError 가 났을 것 — 순수 시그니처 확인
+            Path(out_path).write_bytes(PNG_BYTES)
+            return Path(out_path)
+
+        client._provider.generate_image = fake_generate_image
+        assert client.generate("scene", reference=ref) == PNG_BYTES
+
+    def test_grok_provider_uses_image_edit_with_reference(self, monkeypatch, tmp_path):
+        from providers.grok_cli_media import GrokCliImageProvider
+        import providers.grok_cli_media as media_mod
+
+        session_file = tmp_path / "1.jpg"
+        session_file.write_bytes(b"\xff\xd8fake")
+        calls = {}
+
+        def fake_run(cmd, capture_output, text, timeout, check):
+            calls["cmd"] = cmd
+            return type("R", (), {"returncode": 0, "stdout": str(session_file), "stderr": ""})()
+
+        monkeypatch.setattr(media_mod.subprocess, "run", fake_run)
+        ref = tmp_path / "mascot.jpg"
+        ref.write_bytes(b"\xff\xd8ref")
+        GrokCliImageProvider().generate_image("scene", tmp_path / "out.png", reference=ref)
+
+        prompt_arg = calls["cmd"][2]
+        assert "image_edit" in prompt_arg
+        assert str(ref) in prompt_arg
+        assert "image_edit" in calls["cmd"]  # --tools 값

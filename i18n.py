@@ -775,6 +775,16 @@ _T = {
         "en": "Image Engine",
         "ja": "画像エンジン",
     },
+    "img_mascot_toggle": {
+        "ko": "🐾 동피랑 고양이 마스코트로 생성",
+        "en": "🐾 Generate with the Dongpirang cat mascot",
+        "ja": "🐾 トンピランねこマスコットで生成",
+    },
+    "img_mascot_help": {
+        "ko": "프로필의 고양이를 3D 캐릭터화한 고정 마스코트가 게시글 상황을 연기하는 이미지를 만들어요. 끄면 일반 일러스트로 생성합니다.",
+        "en": "The fixed 3D mascot (your profile cat) acts out the post's situation. Turn off for a generic illustration instead.",
+        "ja": "プロフィールの猫を3Dキャラ化した固定マスコットが投稿の状況を演じる画像を作ります。オフにすると通常のイラストで生成します。",
+    },
     "img_engine_none": {
         "ko": "로컬 Codex CLI 또는 xAI API 키가 있으면 여기서 바로 이미지를 만들 수 있어요. 지금은 위 프롬프트를 복사해 외부 도구에서 생성해 주세요.",
         "en": "With a local Codex CLI or an xAI API key you can generate the image right here. For now, copy the prompt above into an external tool.",

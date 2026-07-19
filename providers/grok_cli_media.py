@@ -61,24 +61,45 @@ class GrokCliImageProvider:
 
     name = "Grok CLI"
     command = "grok"
+    supports_reference = True  # image_edit 로 참조 이미지(마스코트) 기반 생성 가능
 
     def is_available(self) -> ProviderStatus:
         if shutil.which(self.command):
             return ProviderStatus(True, "grok CLI is available")
         return ProviderStatus(False, "grok CLI not found")
 
-    def generate_image(self, prompt: str, out_path: Path, *, timeout: int = 360) -> Path:
+    def generate_image(
+        self,
+        prompt: str,
+        out_path: Path,
+        *,
+        reference: Path | None = None,
+        timeout: int = 360,
+    ) -> Path:
         out_path = Path(out_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
-        instruction = (
-            "Use the image_gen tool to generate exactly one image from the prompt below, "
-            "portrait 3:4 aspect ratio. After it is generated, your entire final answer "
-            "must be ONLY the absolute filesystem path of the saved image file, "
-            "nothing else.\n\n"
-            f"Prompt:\n{prompt.strip()}"
-        )
-        stdout = _run_grok(instruction, "image_gen", timeout, self.name)
+        if reference is not None:
+            instruction = (
+                f"Use the image_edit tool with the reference image at {Path(reference)} "
+                "to generate exactly one new image following the prompt below. The "
+                "character in the reference image must appear in the new image with "
+                "identical fur markings, colors, and proportions. Portrait 3:4 aspect "
+                "ratio. After it is generated, your entire final answer must be ONLY "
+                "the absolute filesystem path of the saved image file, nothing else.\n\n"
+                f"Prompt:\n{prompt.strip()}"
+            )
+            tools = "image_edit"
+        else:
+            instruction = (
+                "Use the image_gen tool to generate exactly one image from the prompt below, "
+                "portrait 3:4 aspect ratio. After it is generated, your entire final answer "
+                "must be ONLY the absolute filesystem path of the saved image file, "
+                "nothing else.\n\n"
+                f"Prompt:\n{prompt.strip()}"
+            )
+            tools = "image_gen"
+        stdout = _run_grok(instruction, tools, timeout, self.name)
         src = _extract_media_path(stdout, (".png", ".jpg", ".jpeg", ".webp"), self.name)
         shutil.copyfile(src, out_path)
         return out_path
