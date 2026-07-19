@@ -19,6 +19,9 @@ WATCH_LOG="$LOG_DIR/tunnel-watch.log"
 PORT=8501   # 주의: 8502는 ai-trader 대시보드가 사용 중
 CLOUDFLARED_BIN="/opt/homebrew/bin/cloudflared"
 PYTHON="$REPO/venv/bin/python"
+# launchd는 최소 PATH(/usr/bin:/bin:/usr/sbin:/sbin)만 물려줘서
+# ~/.npm-global/bin의 claude/codex CLI를 shutil.which()가 못 찾는다.
+export PATH="$HOME/.npm-global/bin:$PATH"
 
 mkdir -p "$LOG_DIR"
 
