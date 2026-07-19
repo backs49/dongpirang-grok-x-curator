@@ -181,3 +181,70 @@ def test_img_i18n_keys_cover_all_languages():
                 "vid_duration_label", "vid_resolution_label", "vid_cost_note",
                 "vid_download", "vid_error"):
         assert set(_T[key]) >= set(LANGUAGES), f"missing translations for {key}"
+
+
+# ─── X 규격 후처리 (postprocess_for_x) ───
+
+
+class TestPostprocessForX:
+    def _make_png(self, tmp_path, width, height):
+        from PIL import Image
+
+        path = tmp_path / "src.png"
+        Image.new("RGB", (width, height), (200, 50, 50)).save(path, "PNG")
+        return path
+
+    def _open(self, data):
+        import io
+
+        from PIL import Image
+
+        return Image.open(io.BytesIO(data))
+
+    def test_tall_image_center_cropped_to_4x5_and_jpeg(self, tmp_path):
+        from image_client import postprocess_for_x
+
+        src = self._make_png(tmp_path, 941, 1672)  # 9:16급 세로
+        data = postprocess_for_x(src)
+
+        assert data[:2] == b"\xff\xd8"  # JPEG magic
+        im = self._open(data)
+        assert abs(im.height / im.width - 1.25) < 0.01  # 4:5
+        assert im.width <= 1080 and im.height <= 1350
+        assert not src.exists()  # 원본 PNG 는 제거
+        assert (tmp_path / "src.jpg").exists()
+
+    def test_oversized_image_downscaled(self, tmp_path):
+        from image_client import postprocess_for_x
+
+        src = self._make_png(tmp_path, 2048, 2048)
+        im = self._open(postprocess_for_x(src))
+        assert im.width <= 1080 and im.height <= 1350
+
+    def test_landscape_image_kept_and_converted(self, tmp_path):
+        from image_client import postprocess_for_x
+
+        src = self._make_png(tmp_path, 1536, 1024)
+        im = self._open(postprocess_for_x(src))
+        assert abs(im.width / im.height - 1.5) < 0.01  # 비율 유지
+        assert im.width <= 1080
+
+    def test_unparseable_file_returned_as_is(self, tmp_path):
+        from image_client import postprocess_for_x
+
+        src = tmp_path / "bad.png"
+        src.write_bytes(PNG_BYTES)  # 진짜 PNG 가 아닌 페이로드
+        assert postprocess_for_x(src) == PNG_BYTES
+        assert src.exists()
+
+
+def test_copy_prompt_contains_viral_and_aspect_rules():
+    from image_client import build_copy_prompt
+
+    for prompt in (
+        build_copy_prompt("post body", "a red mug"),
+        build_copy_prompt("", "a red mug"),
+    ):
+        assert "4:5" in prompt
+        assert "scroll-stopper" in prompt
+        assert "no golden-hour" in prompt.lower() or "golden-hour" in prompt

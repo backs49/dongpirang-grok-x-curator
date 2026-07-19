@@ -142,20 +142,20 @@ def _render_image_generation(image_client, video_client, copy_prompt, idea_index
             except ProviderError as exc:
                 st.error(t("img_error", err=str(exc)))
 
-    png_bytes = st.session_state.get(image_key)
-    if png_bytes:
-        st.image(png_bytes)
+    image_bytes = st.session_state.get(image_key)
+    if image_bytes:
+        st.image(image_bytes)
         st.download_button(
             t("img_download"),
-            data=png_bytes,
-            file_name=f"idea_{idea_index + 1}.png",
-            mime="image/png",
+            data=image_bytes,
+            file_name=f"idea_{idea_index + 1}.jpg",
+            mime="image/jpeg",
             key=f"dl_img_{idea_index}",
         )
-        _render_video_generation(video_client, copy_prompt, png_bytes, idea_index)
+        _render_video_generation(video_client, copy_prompt, image_bytes, idea_index)
 
 
-def _render_video_generation(video_client, copy_prompt, png_bytes, idea_index):
+def _render_video_generation(video_client, copy_prompt, image_bytes, idea_index):
     """생성된 이미지를 영상으로 애니메이팅하는 UI (xAI 키 필요)."""
     if video_client is None:
         st.caption(t("vid_need_key"))
@@ -181,7 +181,7 @@ def _render_video_generation(video_client, copy_prompt, png_bytes, idea_index):
             try:
                 st.session_state[video_key] = video_client.generate(
                     copy_prompt,
-                    image_bytes=png_bytes,
+                    image_bytes=image_bytes,
                     duration=duration,
                     resolution=resolution,
                 )

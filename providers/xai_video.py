@@ -70,8 +70,9 @@ class XaiVideoProvider:
         }
         if image_bytes:
             # API 스펙: image 는 {"url": ...} 객체이며 url 에 base64 data URI 허용.
+            mime = "image/jpeg" if image_bytes[:2] == b"\xff\xd8" else "image/png"
             encoded = base64.b64encode(image_bytes).decode()
-            body["image"] = {"url": f"data:image/png;base64,{encoded}"}
+            body["image"] = {"url": f"data:{mime};base64,{encoded}"}
 
         try:
             response = requests.post(

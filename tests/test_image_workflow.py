@@ -10,5 +10,5 @@ class TestBuildCopyPrompt:
 
     def test_handles_empty_post_content(self):
         result = build_copy_prompt("", "A cinematic portrait")
-        assert result.startswith("Create an image")
+        assert result.startswith("Create a scroll-stopping image")
         assert "A cinematic portrait" in result
