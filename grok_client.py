@@ -42,7 +42,7 @@ class GrokClient:
             user_content += f"\n\n해시태그: {hashtags}"
 
         return self.provider.generate_json(
-            OPTIMIZER_SYSTEM_PROMPT + get_lang_instruction(),
+            OPTIMIZER_SYSTEM_PROMPT + NATURAL_STYLE_GUIDE + get_lang_instruction(),
             user_content,
         )
 
@@ -99,7 +99,7 @@ class GrokClient:
         user_content = f"스레드 분석 요청 (총 {len(tweets)}개 트윗):\n\n" + "\n\n".join(parts)
 
         return self.provider.generate_json(
-            THREAD_SYSTEM_PROMPT + get_lang_instruction(),
+            THREAD_SYSTEM_PROMPT + NATURAL_STYLE_GUIDE + get_lang_instruction(),
             user_content,
         )
 
@@ -129,7 +129,7 @@ class GrokClient:
             user_content += f"\n\n이미지 설명: {image_desc}"
 
         return self.provider.generate_json(
-            RISK_CHECK_SYSTEM_PROMPT + get_lang_instruction(),
+            RISK_CHECK_SYSTEM_PROMPT + NATURAL_STYLE_GUIDE + get_lang_instruction(),
             user_content,
         )
 
@@ -173,6 +173,6 @@ class GrokClient:
         user_content = f"두 포스트를 비교 분석해주세요:\n\n=== 포스트 A ===\n{post_a}\n\n=== 포스트 B ===\n{post_b}"
 
         return self.provider.generate_json(
-            AB_COMPARE_SYSTEM_PROMPT + get_lang_instruction(),
+            AB_COMPARE_SYSTEM_PROMPT + NATURAL_STYLE_GUIDE + get_lang_instruction(),
             user_content,
         )
