@@ -8,7 +8,8 @@ from providers.grok_cli import GrokCliProvider
 from providers.xai_api import XaiApiProvider
 
 
-ENGINE_OPTIONS = ["Claude CLI", "Grok CLI", "Codex CLI", "xAI API", "Demo"]
+# 첫 항목이 사이드바 기본값이다. Grok CLI 가 기본 (구독 한도가 넉넉).
+ENGINE_OPTIONS = ["Grok CLI", "Claude CLI", "Codex CLI", "xAI API", "Demo"]
 API_MODEL_OPTIONS = [
     "grok-4.3",
     "grok-build-0.1",

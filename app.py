@@ -240,7 +240,7 @@ with st.sidebar:
 
 # ─── AI 엔진 검증 & 클라이언트 초기화 ───
 grok, provider_status = build_provider(
-    st.session_state.get("ai_engine", "Claude CLI"),
+    st.session_state.get("ai_engine", "Grok CLI"),
     api_key=api_key,
     model=model,
 )
