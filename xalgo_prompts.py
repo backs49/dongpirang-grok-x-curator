@@ -166,6 +166,7 @@ IDEAS_SYSTEM_PROMPT = """\
   4. 강렬한 단일 피사체 + 대담한 색 대비 (배경 단순, 시선 한 곳 집중)
   5. 감정이 그대로 드러나는 표정/제스처 클로즈업
 - 포스트의 핵심 메시지와 연결되어야 하되, 메시지를 "설명"하지 말고 "장면"으로 보여주세요.
+- **그림체를 반드시 명시**하세요: flat editorial illustration, comic panel, exaggerated cartoon, bold caricature 중 하나. 실사(photorealistic)는 그 장면이 실사여야만 효과가 있을 때만 예외적으로 허용 — 기본값이 실사면 스톡사진이 됩니다.
 - 구도는 **4:5 세로(portrait 4:5)** — X 타임라인에서 크롭 없이 가장 크게 보입니다. 9:16은 피드에서 잘리므로 금지.
 - 피사체·장면 / 감정 / 조명 / 스타일 / 색감 / 구도를 구체적으로 포함하되, 위 스크롤 스토퍼 장치가 항상 우선입니다.
 - 2~4문장으로 작성. 텍스트/글자 생성 금지 문구 포함 ("no text, no letters")
@@ -661,7 +662,7 @@ DRAFT_FROM_MATERIAL_SYSTEM_PROMPT = """\
   "post": "완성된 포스트 전문 (200~500자, 줄바꿈 포함)",
   "pillar": "build_in_public" | "retrospective" | "tip" | "curation",
   "hook_rationale": "첫 문장이 왜 스크롤을 멈추는지 한 문장 설명",
-  "image_prompt": "이 포스트를 위한 이미지 생성 프롬프트 (영어, portrait 4:5, no text no letters 포함). 전형적 AI 스톡사진(골든아워 역광, 뒷모습 인물) 금지 — 예상 밖 조합, 과장된 유머, 공감 한 컷, 강렬한 단일 피사체, 감정 클로즈업 중 하나를 중심에 놓은 스크롤 스토퍼여야 함"
+  "image_prompt": "이 포스트를 위한 이미지 생성 프롬프트 (영어, portrait 4:5, no text no letters 포함). 전형적 AI 스톡사진(골든아워 역광, 뒷모습 인물, 실사 기본값) 금지 — 그림체를 명시하고(flat editorial illustration / comic panel / exaggerated cartoon 중 하나), 예상 밖 조합, 과장된 유머, 공감 한 컷, 강렬한 단일 피사체, 감정 클로즈업 중 하나를 중심에 놓은 스크롤 스토퍼여야 함"
 }
 
 반드시 JSON만 출력하세요. 다른 텍스트를 포함하지 마세요.\
