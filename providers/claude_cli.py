@@ -3,6 +3,11 @@ from __future__ import annotations
 from providers.cli import CliProvider
 
 
+# 이 앱의 작업(한국어 카피라이팅 + JSON 출력)에는 최상위 프론티어 모델이
+# 과하다. Sonnet 이 품질 저하 없이 구독 한도를 훨씬 아낀다.
+DEFAULT_CLAUDE_MODEL = "sonnet"
+
+
 class ClaudeCliProvider(CliProvider):
     name = "Claude CLI"
     command = "claude"
@@ -17,6 +22,8 @@ class ClaudeCliProvider(CliProvider):
             "claude",
             "-p",
             prompt,
+            "--model",
+            DEFAULT_CLAUDE_MODEL,
             "--output-format",
             "text",
             "--tools",
@@ -29,6 +36,8 @@ class ClaudeCliProvider(CliProvider):
             "claude",
             "-p",
             self._prompt(system_prompt, user_prompt),
+            "--model",
+            DEFAULT_CLAUDE_MODEL,
             "--output-format",
             "text",
             "--tools",

@@ -127,9 +127,9 @@ _T = {
         "ja": "grok-4.1-fast-reasoning: 高速 / grok-4.20-reasoning: 深い分析",
     },
     "cli_default_model_note": {
-        "ko": "CLI에 설정된 기본 모델을 사용합니다.",
-        "en": "Uses the default model configured in the local CLI.",
-        "ja": "ローカルCLIに設定された既定モデルを使用します。",
+        "ko": "비용 효율 모델로 고정: Grok=grok-4.5(CLI 기본) · Claude=Sonnet · Codex=기본 모델(추론 medium)",
+        "en": "Cost-efficient models pinned: Grok=grok-4.5 (CLI default) · Claude=Sonnet · Codex=default model (medium reasoning)",
+        "ja": "コスト効率モデルに固定: Grok=grok-4.5（CLI既定）・Claude=Sonnet・Codex=既定モデル（推論medium）",
     },
     "ja_model_warning": {
         "ko": "💡 일본어는 **grok-4.20-reasoning** 모델을 권장합니다. grok-4.1-fast-reasoning 은 간혹 큐레이터의 추천 리플이 한국어로 섞여 나올 수 있어요.",

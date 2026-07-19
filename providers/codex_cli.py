@@ -40,6 +40,10 @@ class CodexCliProvider:
                 "read-only",
                 "--color",
                 "never",
+                # 카피라이팅에는 high reasoning 이 과하다 — 품질 차이 없이
+                # 사용량만 아끼도록 medium 으로 고정 (모델 자체는 CLI 기본).
+                "-c",
+                'model_reasoning_effort="medium"',
                 "-o",
                 str(out_file),
                 prompt,

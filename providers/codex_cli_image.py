@@ -39,6 +39,9 @@ class CodexCliImageProvider:
             "--skip-git-repo-check",
             "--sandbox",
             "workspace-write",
+            # 이미지 품질은 $imagegen 모델이 결정한다 — 에이전트 추론은 medium 으로 충분.
+            "-c",
+            'model_reasoning_effort="medium"',
             "-C",
             str(out_path.parent),
             instruction,
