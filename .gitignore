@@ -12,3 +12,7 @@ generated_images/
 # 발행 큐 (로컬 데이터)
 content_queue/
 logs/
+
+# macOS / GSD 플래닝 로컬 산출물
+.DS_Store
+.planning/
