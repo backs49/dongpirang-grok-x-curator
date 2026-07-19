@@ -770,6 +770,11 @@ _T = {
         "en": "Image engine: {engine}",
         "ja": "画像エンジン: {engine}",
     },
+    "img_engine_label": {
+        "ko": "이미지 엔진",
+        "en": "Image Engine",
+        "ja": "画像エンジン",
+    },
     "img_engine_none": {
         "ko": "로컬 Codex CLI 또는 xAI API 키가 있으면 여기서 바로 이미지를 만들 수 있어요. 지금은 위 프롬프트를 복사해 외부 도구에서 생성해 주세요.",
         "en": "With a local Codex CLI or an xAI API key you can generate the image right here. For now, copy the prompt above into an external tool.",
@@ -796,9 +801,9 @@ _T = {
         "ja": "動画を生成中… 通常1〜3分かかります。",
     },
     "vid_need_key": {
-        "ko": "🎬 xAI API 키를 사이드바에 입력하면 이 이미지를 영상으로 만들 수 있어요.",
-        "en": "🎬 Enter an xAI API key in the sidebar to animate this image into a video.",
-        "ja": "🎬 サイドバーにxAI APIキーを入力すると、この画像から動画を作成できます。",
+        "ko": "🎬 로컬 Grok CLI 또는 xAI API 키가 있으면 이 이미지를 영상으로 만들 수 있어요.",
+        "en": "🎬 Install the local Grok CLI or enter an xAI API key to animate this image into a video.",
+        "ja": "🎬 ローカルGrok CLIかxAI APIキーがあれば、この画像から動画を作成できます。",
     },
     "vid_duration_label": {
         "ko": "영상 길이 (초)",
@@ -814,6 +819,11 @@ _T = {
         "ko": "비용 안내: 480p 초당 $0.01 · 720p 초당 $0.05 (xAI 과금)",
         "en": "Cost: $0.01/sec at 480p · $0.05/sec at 720p (billed by xAI)",
         "ja": "料金: 480pは秒あたり$0.01・720pは秒あたり$0.05（xAI課金）",
+    },
+    "vid_free_note": {
+        "ko": "Grok CLI(Imagine)로 생성 — 구독 사용량에 포함, 추가 과금 없음. 길이는 6초/10초로 맞춰져요.",
+        "en": "Generated with Grok CLI (Imagine) — included in your subscription, no extra billing. Length snaps to 6s/10s.",
+        "ja": "Grok CLI（Imagine）で生成 — サブスクリプションに含まれ、追加課金なし。長さは6秒/10秒になります。",
     },
     "vid_download": {
         "ko": "⬇️ MP4 다운로드",

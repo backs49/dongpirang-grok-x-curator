@@ -161,19 +161,28 @@ def _render_video_generation(video_client, copy_prompt, image_bytes, idea_index)
         st.caption(t("vid_need_key"))
         return
 
-    col_dur, col_res = st.columns(2)
-    with col_dur:
-        duration = st.slider(
-            t("vid_duration_label"), 3, 15, 6, key=f"vid_dur_{idea_index}"
+    is_grok_cli = video_client.name == "Grok CLI"
+    if is_grok_cli:
+        # Grok Imagine 은 6초/10초 클립만 지원하고 해상도 제어가 없다.
+        duration = st.select_slider(
+            t("vid_duration_label"), options=[6, 10], value=6, key=f"vid_dur_{idea_index}"
         )
-    with col_res:
-        resolution = st.selectbox(
-            t("vid_resolution_label"),
-            ["480p", "720p", "1080p"],
-            index=1,
-            key=f"vid_res_{idea_index}",
-        )
-    st.caption(t("vid_cost_note"))
+        resolution = "720p"
+        st.caption(t("vid_free_note"))
+    else:
+        col_dur, col_res = st.columns(2)
+        with col_dur:
+            duration = st.slider(
+                t("vid_duration_label"), 3, 15, 6, key=f"vid_dur_{idea_index}"
+            )
+        with col_res:
+            resolution = st.selectbox(
+                t("vid_resolution_label"),
+                ["480p", "720p", "1080p"],
+                index=1,
+                key=f"vid_res_{idea_index}",
+            )
+        st.caption(t("vid_cost_note"))
 
     video_key = f"generated_video_{idea_index}"
     if st.button(t("vid_generate_btn"), key=f"gen_vid_btn_{idea_index}"):

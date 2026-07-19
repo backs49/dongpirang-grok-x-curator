@@ -141,9 +141,25 @@ class TestXaiImageProvider:
 
 
 class TestBuildImageClient:
-    def test_prefers_codex_when_installed(self, monkeypatch):
-        monkeypatch.setattr(image_client.shutil, "which", lambda _: "/usr/bin/codex")
+    def test_prefers_grok_by_default(self, monkeypatch):
+        monkeypatch.setattr(image_client.shutil, "which", lambda _: "/usr/bin/cli")
         client = build_image_client(api_key="xai-test")
+        assert client is not None
+        assert client.name == "Grok CLI"
+
+    def test_engine_codex_when_selected(self, monkeypatch):
+        monkeypatch.setattr(image_client.shutil, "which", lambda _: "/usr/bin/cli")
+        client = build_image_client(api_key="", engine="Codex CLI")
+        assert client is not None
+        assert client.name == "Codex CLI"
+
+    def test_falls_back_when_selected_cli_missing(self, monkeypatch):
+        monkeypatch.setattr(
+            image_client.shutil,
+            "which",
+            lambda cmd: "/usr/bin/codex" if cmd == "codex" else None,
+        )
+        client = build_image_client(api_key="", engine="Grok CLI")
         assert client is not None
         assert client.name == "Codex CLI"
 
@@ -156,6 +172,18 @@ class TestBuildImageClient:
     def test_none_when_no_backend(self, monkeypatch):
         monkeypatch.setattr(image_client.shutil, "which", lambda _: None)
         assert build_image_client(api_key="") is None
+
+    def test_video_prefers_grok_cli(self, monkeypatch):
+        monkeypatch.setattr(image_client.shutil, "which", lambda _: "/usr/bin/grok")
+        client = image_client.build_video_client(api_key="")
+        assert client is not None
+        assert client.name == "Grok CLI"
+
+    def test_video_falls_back_to_xai(self, monkeypatch):
+        monkeypatch.setattr(image_client.shutil, "which", lambda _: None)
+        client = image_client.build_video_client(api_key="xai-test")
+        assert client is not None
+        assert client.name == "xAI API"
 
     def test_generate_writes_under_output_dir(self, monkeypatch, tmp_path):
         monkeypatch.setattr(image_client.shutil, "which", lambda _: "/usr/bin/codex")
@@ -248,3 +276,78 @@ def test_copy_prompt_contains_viral_and_aspect_rules():
         assert "4:5" in prompt
         assert "scroll-stopper" in prompt
         assert "no golden-hour" in prompt.lower() or "golden-hour" in prompt
+
+
+# ─── Grok CLI 미디어 프로바이더 ───
+
+
+class TestGrokCliMediaProviders:
+    def _fake_run(self, monkeypatch, stdout, returncode=0):
+        import providers.grok_cli_media as media_mod
+
+        calls = {}
+
+        def fake_run(cmd, capture_output, text, timeout, check):
+            calls["cmd"] = cmd
+            return type(
+                "R", (), {"returncode": returncode, "stdout": stdout, "stderr": ""}
+            )()
+
+        monkeypatch.setattr(media_mod.subprocess, "run", fake_run)
+        return calls
+
+    def test_image_copies_session_file_to_out_path(self, monkeypatch, tmp_path):
+        from providers.grok_cli_media import GrokCliImageProvider
+
+        session_file = tmp_path / "1.jpg"
+        session_file.write_bytes(b"\xff\xd8fake")
+        calls = self._fake_run(
+            monkeypatch, f"Generating now.{session_file}"
+        )
+
+        out = tmp_path / "out.png"
+        result = GrokCliImageProvider().generate_image("a cat", out)
+
+        assert result == out
+        assert out.read_bytes() == b"\xff\xd8fake"
+        assert "--tools" in calls["cmd"] and "image_gen" in calls["cmd"]
+
+    def test_image_raises_when_no_path_in_output(self, monkeypatch, tmp_path):
+        from providers.grok_cli_media import GrokCliImageProvider
+
+        self._fake_run(monkeypatch, "something went sideways, no file")
+        with pytest.raises(ProviderError):
+            GrokCliImageProvider().generate_image("a cat", tmp_path / "out.png")
+
+    def test_video_with_source_image_uses_image_to_video(self, monkeypatch, tmp_path):
+        from providers.grok_cli_media import GrokCliVideoProvider
+
+        session_mp4 = tmp_path / "1.mp4"
+        session_mp4.write_bytes(b"mp4data")
+        calls = self._fake_run(monkeypatch, f"done {session_mp4}")
+
+        out = tmp_path / "clip.mp4"
+        result = GrokCliVideoProvider().generate_video(
+            "cat types", out, image_bytes=b"\xff\xd8img", duration=6
+        )
+
+        assert result == out
+        assert out.read_bytes() == b"mp4data"
+        prompt_arg = calls["cmd"][2]
+        assert "image_to_video" in prompt_arg
+        assert "6-second" in prompt_arg
+        assert not (tmp_path / "clip.src.jpg").exists()  # 소스 임시파일 정리됨
+
+    def test_video_duration_snaps_to_ten(self, monkeypatch, tmp_path):
+        from providers.grok_cli_media import GrokCliVideoProvider
+
+        session_mp4 = tmp_path / "2.mp4"
+        session_mp4.write_bytes(b"mp4data")
+        calls = self._fake_run(monkeypatch, str(session_mp4))
+
+        GrokCliVideoProvider().generate_video(
+            "cat", tmp_path / "c.mp4", image_bytes=None, duration=9
+        )
+        prompt_arg = calls["cmd"][2]
+        assert "10-second" in prompt_arg
+        assert "image_gen,image_to_video" in calls["cmd"]

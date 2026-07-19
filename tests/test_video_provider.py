@@ -144,10 +144,16 @@ class TestXaiVideoProvider:
 
 
 class TestBuildVideoClient:
-    def test_none_without_key(self):
+    def test_none_without_key_or_cli(self, monkeypatch):
+        import image_client as ic
+
+        monkeypatch.setattr(ic.shutil, "which", lambda _: None)
         assert build_video_client(api_key="") is None
 
-    def test_client_with_key(self, tmp_path):
+    def test_client_with_key(self, monkeypatch, tmp_path):
+        import image_client as ic
+
+        monkeypatch.setattr(ic.shutil, "which", lambda _: None)
         client = build_video_client(api_key="xai-x", output_dir=tmp_path)
         assert client is not None
         assert client.name == "xAI API"

@@ -3,7 +3,7 @@ import streamlit_analytics2 as streamlit_analytics
 import extra_streamlit_components as stx
 from utils import generate_tweet_intent_url, generate_follow_url
 from i18n import t, LANGUAGES, get_lang
-from image_client import build_image_client, build_video_client
+from image_client import IMAGE_ENGINE_OPTIONS, build_image_client, build_video_client
 from provider_selection import API_MODEL_OPTIONS, ENGINE_OPTIONS, build_provider, uses_api_model_selector
 from tabs.tab_optimizer import render_optimizer_tab
 from tabs.tab_ideas import render_ideas_tab
@@ -177,6 +177,14 @@ with st.sidebar:
             key="ai_engine",
         )
 
+        # 이미지 생성 엔진: Grok CLI 기본 (Imagine 한도가 넉넉), 필요시 Codex 선택.
+        img_engine = st.selectbox(
+            t("img_engine_label"),
+            IMAGE_ENGINE_OPTIONS,
+            index=0,
+            key="img_engine",
+        )
+
         # xAI 키는 xAI 엔진뿐 아니라 이미지·영상 생성 백엔드에도 쓰이므로
         # 엔진과 무관하게 항상 입력 가능하게 둔다.
         # 원본 text_input 으로 호출해 analytics 추적에서 제외 (위 주석 참조).
@@ -234,10 +242,10 @@ grok, provider_status = build_provider(
     model=model,
 )
 
-# 이미지 생성 백엔드: 로컬 codex CLI 우선, 없으면 xAI API 키. 둘 다 없으면
-# 아이디어 탭이 기존 복사용 프롬프트만 보여준다.
-# 영상은 CLI 경로가 없어 xAI API 키가 있을 때만 활성화된다.
-image_client = build_image_client(api_key)
+# 이미지 생성 백엔드: 사이드바에서 고른 엔진(기본 Grok CLI) 우선, 없으면
+# Grok → Codex → xAI API 순 폴백. 전부 없으면 복사용 프롬프트만 보여준다.
+# 영상은 grok CLI(Imagine) 우선, 없으면 xAI API 키가 있을 때 활성화된다.
+image_client = build_image_client(api_key, engine=img_engine)
 video_client = build_video_client(api_key)
 if provider_status.available:
     st.sidebar.success(f"{t('provider_status_ready')}: {provider_status.message}")

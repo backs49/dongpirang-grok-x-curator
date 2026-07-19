@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 
 from providers.codex_cli_image import CodexCliImageProvider
+from providers.grok_cli_media import GrokCliImageProvider, GrokCliVideoProvider
 from providers.xai_image import XaiImageProvider
 from providers.xai_video import XaiVideoProvider
 
@@ -92,15 +93,34 @@ class ImageClient:
         return postprocess_for_x(Path(out_path))
 
 
-def build_image_client(api_key: str, output_dir: Path = GENERATED_DIR) -> ImageClient | None:
-    """사용 가능한 이미지 백엔드를 자동 선택한다.
+# 사이드바 이미지 엔진 선택지. Grok CLI 가 기본 (Imagine 한도가 넉넉).
+IMAGE_ENGINE_OPTIONS = ["Grok CLI", "Codex CLI"]
 
-    1. 로컬 codex CLI 가 있으면 Codex CLI (구독 포함, 추가 과금 없음)
-    2. 없으면 xAI API 키가 있을 때 xAI 이미지 API
-    3. 둘 다 없으면 None — UI 는 기존 복사용 프롬프트만 보여준다.
+
+def build_image_client(
+    api_key: str,
+    output_dir: Path = GENERATED_DIR,
+    engine: str = "Grok CLI",
+) -> ImageClient | None:
+    """이미지 백엔드를 선택한다.
+
+    사용자가 고른 engine(기본 Grok CLI)을 우선 시도하고, 없으면
+    Grok CLI → Codex CLI → xAI API 순서로 폴백한다.
+    전부 없으면 None — UI 는 기존 복사용 프롬프트만 보여준다.
     """
-    if shutil.which(CodexCliImageProvider.command):
-        return ImageClient(CodexCliImageProvider(), output_dir)
+    preferred = {
+        "Grok CLI": GrokCliImageProvider,
+        "Codex CLI": CodexCliImageProvider,
+    }.get(engine, GrokCliImageProvider)
+
+    chain = [preferred] + [
+        cls
+        for cls in (GrokCliImageProvider, CodexCliImageProvider)
+        if cls is not preferred
+    ]
+    for cls in chain:
+        if shutil.which(cls.command):
+            return ImageClient(cls(), output_dir)
     if (api_key or "").strip():
         return ImageClient(XaiImageProvider(api_key), output_dir)
     return None
@@ -137,7 +157,9 @@ class VideoClient:
 
 
 def build_video_client(api_key: str, output_dir: Path = GENERATED_DIR) -> VideoClient | None:
-    """영상 백엔드 선택. 영상은 CLI 경로가 없어 xAI API 키가 필수다."""
+    """영상 백엔드 선택. 로컬 grok CLI(Imagine) 우선, 없으면 xAI API 키."""
+    if shutil.which(GrokCliVideoProvider.command):
+        return VideoClient(GrokCliVideoProvider(), output_dir)
     if (api_key or "").strip():
         return VideoClient(XaiVideoProvider(api_key), output_dir)
     return None
