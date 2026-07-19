@@ -1,6 +1,10 @@
+import json
+from pathlib import Path
+
 import streamlit as st
 
-from image_client import MASCOT_PATH, build_copy_prompt
+from ideas_history import append_history, load_history
+from image_client import GENERATED_DIR, MASCOT_PATH, build_copy_prompt
 from providers.base import ProviderError
 from utils import generate_tweet_intent_url
 from i18n import t
@@ -16,7 +20,30 @@ def _sync_from_input():
     st.session_state.length_slider = st.session_state.length_input
 
 
+def _clear_stale_media_state():
+    """이전 아이디어 세트의 생성 이미지/영상이 새 세트에 매칭되지 않게 정리."""
+    stale_prefixes = ("generated_image_", "generated_video_")
+    for key in [k for k in st.session_state if str(k).startswith(stale_prefixes)]:
+        del st.session_state[key]
+
+
+def _apply_pending_restore():
+    """이력에서 요청된 복원을 위젯 인스턴스화 전에 session_state 에 반영한다."""
+    restore = st.session_state.pop("_ideas_restore", None)
+    if restore is None:
+        return
+    st.session_state.keywords_input = restore.get("keywords", "")
+    length = min(max(int(restore.get("length") or 0), 0), 1000)
+    st.session_state.post_length = length
+    st.session_state.length_slider = length
+    st.session_state.length_input = length
+    if restore.get("result") is not None:
+        st.session_state.ideas_result = restore["result"]
+        _clear_stale_media_state()
+
+
 def render_ideas_tab(grok, image_client=None, video_client=None):
+    _apply_pending_restore()
     st.subheader(t("ideas_subheader"))
     st.caption(t("ideas_caption"))
 
@@ -73,14 +100,14 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
                 st.error(result["error"])
             else:
                 st.session_state.ideas_result = result
-                # 이전 아이디어 세트에서 생성한 이미지/영상이 새 아이디어에
-                # 잘못 매칭되지 않도록 정리한다.
-                stale_prefixes = ("generated_image_", "generated_video_")
-                for key in [k for k in st.session_state if str(k).startswith(stale_prefixes)]:
-                    del st.session_state[key]
+                append_history(keywords, post_length, result)
+                _clear_stale_media_state()
 
     if "ideas_error" in st.session_state:
         st.error(st.session_state.pop("ideas_error"))
+
+    _render_history_section()
+    _render_media_history_section()
 
     if "ideas_result" not in st.session_state:
         return
@@ -126,6 +153,105 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
                     _render_image_generation(
                         image_client, video_client, content, image_prompt, i
                     )
+
+
+def _render_history_section():
+    """과거 아이디어 생성 이력 조회 + 재등록/재생성 UI."""
+    entries = load_history()
+    with st.expander(t("hist_expander")):
+        if not entries:
+            st.caption(t("hist_empty"))
+            return
+        st.caption(t("hist_count_caption", n=len(entries)))
+        for idx, entry in enumerate(entries):
+            n_ideas = len(entry.get("result", {}).get("ideas", []))
+            length = entry.get("length") or 0
+            col_info, col_load, col_edit = st.columns([6, 2, 3])
+            with col_info:
+                st.markdown(f"**{entry.get('keywords', '') or '-'}**")
+                length_label = f"{length}" if length else "auto"
+                st.caption(f"🕐 {entry.get('at', '')} · 💡 {n_ideas} · 📏 {length_label}")
+            with col_load:
+                if st.button(t("hist_restore_btn"), key=f"hist_load_{idx}"):
+                    st.session_state._ideas_restore = entry
+                    st.rerun()
+            with col_edit:
+                if st.button(t("hist_edit_btn"), key=f"hist_edit_{idx}"):
+                    st.session_state._ideas_restore = {
+                        "keywords": entry.get("keywords", ""),
+                        "length": length,
+                        "result": None,
+                    }
+                    st.rerun()
+
+
+def _media_history_entries():
+    """generated_images 폴더의 미디어 파일 목록(최신순)과 gen_log 메타를 돌려준다."""
+    if not GENERATED_DIR.is_dir():
+        return [], {}
+    log = {}
+    log_path = GENERATED_DIR / "gen_log.jsonl"
+    if log_path.is_file():
+        try:
+            lines = log_path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            lines = []
+        for line in lines:
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            stem = Path(str(entry.get("file", ""))).stem
+            if stem:
+                log[stem] = entry
+    files = sorted(
+        (
+            p
+            for p in GENERATED_DIR.glob("*")
+            if p.suffix.lower() in (".jpg", ".jpeg", ".png", ".mp4")
+        ),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    return files, log
+
+
+def _render_media_history_section():
+    """과거 생성 이미지·영상 전체 조회 UI (gen_log 메타와 함께)."""
+    files, log = _media_history_entries()
+    with st.expander(t("media_hist_expander")):
+        if not files:
+            st.caption(t("media_hist_empty"))
+            return
+        show_n = st.number_input(
+            t("media_hist_count"),
+            min_value=1,
+            max_value=len(files),
+            value=min(6, len(files)),
+            step=1,
+            key="media_hist_show_n",
+        )
+        for p in files[: int(show_n)]:
+            meta = log.get(p.stem, {})
+            is_video = p.suffix.lower() == ".mp4"
+            if is_video:
+                st.video(str(p))
+            else:
+                st.image(str(p))
+            info_bits = [meta.get("at", ""), meta.get("engine", "")]
+            if meta.get("mascot_ref"):
+                info_bits.append("🐾")
+            st.caption(" · ".join(b for b in info_bits if b) or p.name)
+            prompt = (meta.get("prompt") or "").strip()
+            if prompt:
+                st.caption(prompt[:160] + ("…" if len(prompt) > 160 else ""))
+            st.download_button(
+                t("vid_download") if is_video else t("img_download"),
+                data=p.read_bytes(),
+                file_name=p.name,
+                mime="video/mp4" if is_video else "image/jpeg",
+                key=f"media_hist_dl_{p.name}",
+            )
 
 
 def _render_image_generation(image_client, video_client, content, image_prompt, idea_index):

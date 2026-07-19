@@ -98,11 +98,14 @@ cookie_manager = stx.CookieManager()
 # API 키 쿠키 로딩.
 # extra_streamlit_components의 CookieManager는 iframe postMessage로 쿠키를
 # 보고하므로, fresh page load 직후 첫 렌더에서는 get_all()이 빈 dict를 돌려줄 수
-# 있다. 받아올 때까지 _cookies_loaded 플래그를 잠그지 않고 다음 rerun에서 다시
-# 시도한다. 탭 상태 리셋 회귀(86fb3f5)는 "사용자가 탭을 클릭한 이후의 rerun"에서
-# 발생하는데, 이 재시도는 초기 1~2 rerun 사이에만 일어나므로 안전하다.
+# 있다. 받아올 때까지 _cookies_loaded 플래그를 잠그지 않는다.
+#
+# 중요: get_all()은 iframe 컴포넌트를 렌더하므로 반드시 매 rerun 무조건
+# 호출해야 한다. 과거처럼 _cookies_loaded 이후 호출을 생략하면 쿠키 도착
+# 직후의 rerun에서 컴포넌트가 언마운트되어 st.tabs 위의 요소 트리가 바뀌고,
+# 활성 탭이 첫 탭으로 리셋되는 버그가 생긴다 (첫 위젯 상호작용 시 탭 점프).
+cookies = cookie_manager.get_all()
 if not st.session_state.get("_cookies_loaded"):
-    cookies = cookie_manager.get_all()
     if cookies:
         st.session_state._saved_api_key = cookies.get(COOKIE_KEY, "")
         st.session_state._cookies_loaded = True

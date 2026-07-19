@@ -1,0 +1,61 @@
+"""아이디어 생성 이력 영속화 테스트."""
+
+from __future__ import annotations
+
+import json
+
+import ideas_history
+
+
+def _patch_path(monkeypatch, tmp_path):
+    path = tmp_path / "ideas_history.jsonl"
+    monkeypatch.setattr(ideas_history, "HISTORY_PATH", path)
+    return path
+
+
+def test_append_and_load_roundtrip(monkeypatch, tmp_path):
+    _patch_path(monkeypatch, tmp_path)
+    result = {"ideas": [{"title": "t1", "content": "c1"}]}
+
+    ideas_history.append_history("AI 사이드프로젝트", 300, result)
+    ideas_history.append_history("출퇴근", 0, {"ideas": []})
+
+    entries = ideas_history.load_history()
+    assert len(entries) == 2
+    # 최신순
+    assert entries[0]["keywords"] == "출퇴근"
+    assert entries[1]["keywords"] == "AI 사이드프로젝트"
+    assert entries[1]["length"] == 300
+    assert entries[1]["result"] == result
+    assert entries[0]["at"]
+
+
+def test_load_skips_corrupt_lines(monkeypatch, tmp_path):
+    path = _patch_path(monkeypatch, tmp_path)
+    good = {"at": "2026-07-19", "keywords": "k", "length": 0, "result": {"ideas": []}}
+    path.write_text(
+        "not json\n"
+        + json.dumps(good, ensure_ascii=False)
+        + "\n"
+        + json.dumps({"result": "not-a-dict"})
+        + "\n",
+        encoding="utf-8",
+    )
+    entries = ideas_history.load_history()
+    assert len(entries) == 1
+    assert entries[0]["keywords"] == "k"
+
+
+def test_load_empty_when_no_file(monkeypatch, tmp_path):
+    _patch_path(monkeypatch, tmp_path)
+    assert ideas_history.load_history() == []
+
+
+def test_history_i18n_keys_cover_all_languages():
+    from i18n import _T, LANGUAGES
+
+    for key in ("hist_expander", "hist_empty", "hist_count_caption",
+                "hist_restore_btn", "hist_edit_btn", "media_hist_expander",
+                "media_hist_empty", "media_hist_count",
+                "img_mascot_toggle", "img_mascot_help"):
+        assert set(_T[key]) >= set(LANGUAGES), f"missing translations for {key}"

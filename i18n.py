@@ -780,6 +780,46 @@ _T = {
         "en": "🐾 Generate with the Dongpirang cat mascot",
         "ja": "🐾 トンピランねこマスコットで生成",
     },
+    "hist_expander": {
+        "ko": "🗂 아이디어 생성 이력",
+        "en": "🗂 Idea generation history",
+        "ja": "🗂 アイデア生成履歴",
+    },
+    "hist_empty": {
+        "ko": "아직 저장된 생성 이력이 없어요. 아이디어를 생성하면 자동으로 여기에 쌓입니다.",
+        "en": "No saved history yet. Generated ideas are archived here automatically.",
+        "ja": "保存された履歴はまだありません。アイデアを生成すると自動的にここに保存されます。",
+    },
+    "hist_count_caption": {
+        "ko": "총 {n}건 · 최신순",
+        "en": "{n} entries · newest first",
+        "ja": "全{n}件・新しい順",
+    },
+    "hist_restore_btn": {
+        "ko": "📥 불러오기",
+        "en": "📥 Load",
+        "ja": "📥 読み込む",
+    },
+    "hist_edit_btn": {
+        "ko": "✏️ 키워드로 재생성",
+        "en": "✏️ Reuse keywords",
+        "ja": "✏️ キーワードで再生成",
+    },
+    "media_hist_expander": {
+        "ko": "🖼 이미지·영상 생성 이력",
+        "en": "🖼 Generated media history",
+        "ja": "🖼 画像・動画の生成履歴",
+    },
+    "media_hist_empty": {
+        "ko": "아직 생성된 이미지/영상이 없어요.",
+        "en": "No generated images or videos yet.",
+        "ja": "生成された画像・動画はまだありません。",
+    },
+    "media_hist_count": {
+        "ko": "표시 개수",
+        "en": "Items to show",
+        "ja": "表示件数",
+    },
     "img_mascot_help": {
         "ko": "프로필의 고양이를 3D 캐릭터화한 고정 마스코트가 게시글 상황을 연기하는 이미지를 만들어요. 끄면 일반 일러스트로 생성합니다.",
         "en": "The fixed 3D mascot (your profile cat) acts out the post's situation. Turn off for a generic illustration instead.",
