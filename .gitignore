@@ -16,3 +16,6 @@ logs/
 # macOS / GSD 플래닝 로컬 산출물
 .DS_Store
 .planning/
+
+# 지식 그래프 빌드 산출물 (graphify)
+graphify-out/
