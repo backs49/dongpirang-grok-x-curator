@@ -22,8 +22,13 @@ FUNNEL_PORT=10000
 TS_BIN="/opt/homebrew/bin/tailscale"
 PYTHON="$REPO/venv/bin/python"
 # launchd는 최소 PATH(/usr/bin:/bin:/usr/sbin:/sbin)만 물려줘서
-# ~/.npm-global/bin의 claude/codex CLI를 shutil.which()가 못 찾는다.
-export PATH="$HOME/.npm-global/bin:$PATH"
+# CLI 프로바이더가 shutil.which()로 실행 파일을 못 찾는다.
+# 설치 위치가 CLI마다 다르므로 전부 넣는다:
+#   claude, codex -> ~/.npm-global/bin
+#   grok          -> ~/.local/bin (심볼릭 링크) / ~/.grok/bin (실제 위치)
+# 새 CLI 프로바이더를 추가하면 여기도 같이 갱신할 것.
+# tests/test_tunnel_path.py 가 이 줄과 프로바이더 command 목록의 정합성을 검사한다.
+export PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$HOME/.grok/bin:$PATH"
 
 mkdir -p "$LOG_DIR"
 
