@@ -11,7 +11,14 @@ from pathlib import Path
 import pytest
 
 import publisher as publisher_mod
-from content_queue import add_draft, approve_draft, empty_queue, load_queue, save_queue
+from content_queue import (
+    add_draft,
+    approve_draft,
+    empty_queue,
+    load_queue,
+    queue_transaction,
+    save_queue,
+)
 from providers.base import ProviderError
 from publisher import XPublisher, load_env
 
@@ -290,6 +297,45 @@ class TestPublishWorker:
         publish_worker.run(now=WED_EVENING, live=True, queue_path=path, publisher=fake)
 
         assert fake.posted == []  # 이중 발행 없음
+
+    def test_published_untracked_when_draft_deleted_mid_flight(self, tmp_path, monkeypatch):
+        """t1(클레임)과 t2(기록) 사이(락 밖의 네트워크 왕복 구간)에 앱에서
+        초안이 삭제돼도, 이미 성공한 발행은 로그에 남아야 한다 — 그렇지
+        않으면 트윗은 X에 올라갔는데 tweet_id 를 어디서도 찾을 수 없고
+        posted 카운트도 실제보다 줄어든다."""
+        self._silence_log(monkeypatch, tmp_path)
+        path, draft_id = _queue_with_approved(tmp_path, slot_iso="2026-07-08T19:00:00")
+
+        class _DeletingPublisher:
+            """post_text 는 t1~t2 사이(락 밖)에서 호출되므로, 여기서 직접
+            같은 큐에 트랜잭션을 열어 초안을 지워도 데드락이 없다."""
+
+            def __init__(self, queue_path):
+                self.queue_path = queue_path
+                self.posted = []
+
+            def post_text(self, text):
+                with queue_transaction(self.queue_path) as data:
+                    data["drafts"] = [d for d in data["drafts"] if d["id"] != draft_id]
+                self.posted.append(text)
+                return {"id": "tw1", "text": text}
+
+        fake = _DeletingPublisher(path)
+
+        summary = publish_worker.run(
+            now=WED_EVENING, live=True, queue_path=path, publisher=fake
+        )
+
+        assert summary["posted"] == 1
+        data = load_queue(path)
+        assert data["drafts"] == []  # 삭제된 초안이 부활하지 않음
+        events = _read_events(tmp_path)
+        assert any(
+            e["event"] == "published_untracked"
+            and e["draft_id"] == draft_id
+            and e["tweet_id"] == "tw1"
+            for e in events
+        )
 
     def test_non_provider_error_does_not_orphan_other_claims(self, tmp_path, monkeypatch):
         """post_text 가 ProviderError 가 아닌 평범한 예외(예: JSON 파싱 실패)를

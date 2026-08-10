@@ -109,6 +109,20 @@ class TestGenerateDrafts:
         # 소재는 소모되지 않고 남는다
         assert not saved["materials"][0]["used"]
 
+    def test_error_status_counts_toward_stock(self, tmp_path):
+        # error 상태(발행 결과 불명 등)를 재고에서 빼면 해소되지 않은 에러가
+        # 쌓인 채로 새 초안이 계속 생성돼 문제를 가린다.
+        data = empty_queue()
+        draft = add_draft(data, text="에러 상태", pillar="tip")
+        draft["status"] = "error"
+        for i in range(generate_drafts.STOCK_TARGET - 1):
+            add_draft(data, text=f"재고 {i}", pillar="tip")
+
+        summary, saved, grok = _run(tmp_path, data)
+
+        assert summary == {"from_materials": 0, "tip_drafts": 0, "skipped": True}
+        assert not grok.material_calls
+
     def test_generation_error_leaves_material_unused(self, tmp_path):
         class _ErrorGrok(_FakeGrok):
             def draft_from_material(self, text):

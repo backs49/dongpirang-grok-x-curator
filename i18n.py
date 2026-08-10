@@ -326,9 +326,9 @@ _T = {
         "ja": "承認済み下書き{n}件がスロットに割り当てられています。自動発行ワーカー(4c)が接続されると、その時刻に自動投稿されます。それまでは「今すぐ投稿」で手動投稿してください。",
     },
     "pq_error_note": {
-        "ko": "⚠️ 발행에 실패했어요. 내용을 확인하고 다시 승인하면 재시도합니다.",
-        "en": "⚠️ Publishing failed. Review the text and approve again to retry.",
-        "ja": "⚠️ 発行に失敗しました。内容を確認して再度承認すると再試行します。",
+        "ko": "⚠️ 발행 결과를 알 수 없어요 (처리 중 중단됨). X에 이미 올라갔는지 확인한 뒤 다시 승인하세요.",
+        "en": "⚠️ Publish outcome unknown (interrupted mid-flight). Check X to see if it was already posted before re-approving.",
+        "ja": "⚠️ 公開結果が不明です（処理中に中断）。再承認する前に、Xに既に投稿されていないか確認してください。",
     },
     "pq_publishing_note": {
         "ko": "🔄 지금 발행 처리 중이에요. 잠시 후 새로고침해서 결과를 확인하세요.",

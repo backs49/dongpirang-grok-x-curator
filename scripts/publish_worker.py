@@ -128,27 +128,46 @@ def run(
         with queue_transaction(queue_path) as data:
             by_id = {d["id"]: d for d in data["drafts"]}
             for r in results:
+                # draft 가 None 인 경우는 t1(클레임)과 t2(기록) 사이에 앱에서
+                # 초안이 삭제된 경우다. 그래도 결과는 기록해야 한다 — 특히
+                # 성공했다면 트윗은 이미 X에 올라갔고, 여기서 조용히 넘기면
+                # tweet_id 를 어디서도 찾을 수 없고 posted 도 실제보다 줄어든다.
+                # 큐 변경(상태/tweet_id/되돌림)만 draft 존재 여부로 게이트한다.
                 draft = by_id.get(r["id"])
-                if draft is None:
-                    continue
                 if r["ok"]:
-                    draft["status"] = "published"
-                    draft["tweet_id"] = r["tweet_id"]
-                    draft["published_at"] = now.isoformat(timespec="seconds")
                     posted += 1
-                    log_event({
-                        "event": "published",
-                        "draft_id": draft["id"],
-                        "tweet_id": r["tweet_id"],
-                        "url": f"https://x.com/i/status/{r['tweet_id']}",
-                    })
+                    if draft is not None:
+                        draft["status"] = "published"
+                        draft["tweet_id"] = r["tweet_id"]
+                        draft["published_at"] = now.isoformat(timespec="seconds")
+                        log_event({
+                            "event": "published",
+                            "draft_id": draft["id"],
+                            "tweet_id": r["tweet_id"],
+                            "url": f"https://x.com/i/status/{r['tweet_id']}",
+                        })
+                    else:
+                        log_event({
+                            "event": "published_untracked",
+                            "draft_id": r["id"],
+                            "tweet_id": r["tweet_id"],
+                            "url": f"https://x.com/i/status/{r['tweet_id']}",
+                        })
                 else:
-                    draft["status"] = "approved"
-                    log_event({
-                        "event": "publish_failed",
-                        "draft_id": draft["id"],
-                        "error": r["error"],
-                    })
+                    if draft is not None:
+                        draft["status"] = "approved"
+                        log_event({
+                            "event": "publish_failed",
+                            "draft_id": draft["id"],
+                            "error": r["error"],
+                        })
+                    else:
+                        log_event({
+                            "event": "publish_failed",
+                            "draft_id": r["id"],
+                            "error": r["error"],
+                            "note": "draft removed before result could be recorded",
+                        })
 
     summary = {"posted": posted, "reassigned": reassigned, "pending": pending}
     log_event({"event": "run_summary", "live": live, **summary})

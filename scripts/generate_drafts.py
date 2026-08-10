@@ -5,8 +5,10 @@ launchd 가 매일 밤 23시에 실행한다. 절제형 설계:
 
 0. 승인 대기 초안이 STALE_DRAFT_DAYS 일 넘게 방치돼 있으면 관리자에게
    리마인드한다 (생성 여부와 무관하게 매일 밤 확인).
-1. 초안 재고(draft+approved)가 STOCK_TARGET 개 이상이면 아무것도 하지 않는다.
-   억지로 콘텐츠를 늘리는 것보다 승인 큐가 얇게 유지되는 편이 낫다.
+1. 초안 재고(draft+approved+publishing+error)가 STOCK_TARGET 개 이상이면
+   아무것도 하지 않는다. error 를 빼면 해소되지 않은 에러가 쌓인 채로
+   계속 새 초안을 찍어내 문제를 가린다 — 억지로 콘텐츠를 늘리는 것보다
+   승인 큐가 얇게 유지되는 편이 낫다.
 2. 소재 인박스에 미사용 소재가 있으면 최대 MAX_MATERIALS_PER_NIGHT 개를
    초안으로 변환한다 (진정성 원칙이 담긴 draft_from_material 프롬프트 사용).
 3. 소재가 하나도 없을 때만 팁(tip) 초안 1개를 키워드 기반으로 보충한다.
@@ -172,7 +174,9 @@ def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None) -> dict:
     # _remind_stale_drafts 안에서 자체 트랜잭션으로 처리된다.
     _remind_stale_drafts(data, now=now, notify=notify, queue_path=queue_path)
 
-    stock = sum(1 for d in data["drafts"] if d["status"] in ("draft", "approved"))
+    stock = sum(
+        1 for d in data["drafts"] if d["status"] in ("draft", "approved", "publishing", "error")
+    )
     if stock >= STOCK_TARGET:
         log_event({"event": "skipped_stock_sufficient", "stock": stock})
         return {"from_materials": 0, "tip_drafts": 0, "skipped": True}
