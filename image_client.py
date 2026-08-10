@@ -18,29 +18,6 @@ GENERATED_DIR = Path("generated_images")
 X_IMAGE_MAX = (1080, 1440)
 X_IMAGE_MAX_RATIO = 4 / 3  # height/width — 이보다 길면 피드에서 잘린다
 
-_IMAGE_RULES = (
-    "Aspect ratio: portrait 4:5. "
-    "Do not include readable text, letters, UI captions, watermarks, or logos "
-    "unless explicitly requested. "
-    "STYLE (mandatory, overrides the image prompt below if they conflict): render in a "
-    "bold graphic style — flat editorial illustration, comic panel, or exaggerated "
-    "cartoon — with clean shapes and a restrained palette of 2-3 strong colors. "
-    "No garish neon-on-neon. NEVER render soft photorealism or a stock-photo look: "
-    "no golden-hour cinematic haze, no cozy lamp-lit realism, no bland minimalism, "
-    "no person gazing into the distance. Photorealism is allowed only if the image "
-    "prompt explicitly demands it. "
-    "READABILITY (mandatory): a viewer must understand the situation within 3 seconds "
-    "without any caption — ONE focal point, a simple background, and a scene that "
-    "clearly matches the post's core message. "
-    "TONE (mandatory): exaggeration must stay playful and likable — NEVER gross, "
-    "grotesque, disturbing, or body-horror. No slime, goo, vomit, melting bodies, "
-    "or distorted anatomy. "
-    "Build the whole image around ONE scroll-stopper: an unexpected juxtaposition, "
-    "exaggerated humorous scale, a painfully relatable everyday moment, a bold single "
-    "subject against strong color contrast, or a close-up with visible emotion."
-)
-
-
 def _log_generation(output_dir: Path, entry: dict) -> None:
     """생성 이력을 gen_log.jsonl 에 남긴다.
 
@@ -61,42 +38,6 @@ def _log_generation(output_dir: Path, entry: dict) -> None:
 # 참조 이미지를 지원하는 엔진(Grok CLI image_edit)은 이 파일을 레퍼런스로
 # 사용해 캐릭터 일관성을 유지하고, 미지원 엔진은 텍스트 묘사로 근사한다.
 MASCOT_PATH = Path("assets/mascot_dongpi.jpg")
-
-_MASCOT_RULES = (
-    "Aspect ratio: portrait 4:5. "
-    "Do not include readable text, letters, UI captions, watermarks, or logos "
-    "unless explicitly requested. "
-    "MASCOT (mandatory): the protagonist is the fixed brand mascot — an adorable "
-    "chubby brown tabby cat with dark stripes, white chest, muzzle and paws, big "
-    "glossy green eyes, a pink nose and pink paw pads. Its fur markings, colors and "
-    "proportions must stay identical in every image so it is recognizably the same "
-    "character. Replace any human protagonist in the scene with this cat acting out "
-    "the situation — anthropomorphic poses are encouraged (typing, driving, holding "
-    "coffee). "
-    "STYLE (mandatory): cute 3D animated-movie render — soft detailed fur, big "
-    "expressive eyes, warm soft lighting, clean simple background. "
-    "READABILITY (mandatory): a viewer must understand the situation within 3 seconds "
-    "without any caption — ONE focal point, and a scene that clearly matches the "
-    "post's core message. "
-    "TONE (mandatory): exaggeration stays playful and lovable — NEVER gross, "
-    "grotesque, disturbing, or body-horror."
-)
-
-
-def build_copy_prompt(post_content: str, image_prompt: str, mascot: bool = False) -> str:
-    post_content = post_content.strip()
-    image_prompt = image_prompt.strip()
-    rules = _MASCOT_RULES if mascot else _IMAGE_RULES
-    if post_content:
-        return (
-            f"Create a scroll-stopping image for this X post. {rules}\n\n"
-            f"Post context:\n{post_content}\n\n"
-            f"Image prompt:\n{image_prompt}"
-        )
-    return (
-        f"Create a scroll-stopping image from this prompt. {rules}\n\n"
-        f"Image prompt:\n{image_prompt}"
-    )
 
 
 def postprocess_for_x(src_path: Path) -> bytes:

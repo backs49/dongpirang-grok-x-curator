@@ -273,16 +273,14 @@ class TestPostprocessForX:
         assert src.exists()
 
 
-def test_copy_prompt_contains_viral_and_aspect_rules():
-    from image_client import build_copy_prompt
+def test_image_prompt_contains_aspect_and_no_text_rules():
+    from image_modes import IMAGE_MODES, build_image_prompt
 
-    for prompt in (
-        build_copy_prompt("post body", "a red mug"),
-        build_copy_prompt("", "a red mug"),
-    ):
-        assert "4:5" in prompt
-        assert "scroll-stopper" in prompt
-        assert "no golden-hour" in prompt.lower() or "golden-hour" in prompt
+    for key in IMAGE_MODES:
+        prompt = build_image_prompt("a red mug", key)
+        assert "3:4" in prompt
+        assert "4:5" not in prompt
+        assert "readable text" in prompt
 
 
 # ─── Grok CLI 미디어 프로바이더 ───
@@ -365,13 +363,12 @@ class TestGrokCliMediaProviders:
 
 class TestMascotMode:
     def test_mascot_prompt_swaps_style_rules(self):
-        from image_client import build_copy_prompt
+        from image_modes import build_image_prompt
 
-        plain = build_copy_prompt("post", "scene")
-        mascot = build_copy_prompt("post", "scene", mascot=True)
+        plain = build_image_prompt("scene", "comic")
+        mascot = build_image_prompt("scene", "mascot")
         assert "MASCOT (mandatory)" in mascot
         assert "brown tabby cat" in mascot
-        assert "3D animated-movie render" in mascot
         assert "MASCOT" not in plain
 
     def test_generate_passes_reference_to_supporting_provider(self, monkeypatch, tmp_path):

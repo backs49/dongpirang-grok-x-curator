@@ -3,10 +3,15 @@ from pathlib import Path
 
 import streamlit as st
 
+import image_modes
+import voice_card
+import writing_modes
+from content_queue import QUEUE_PATH, add_draft, load_queue, save_queue
 from ideas_history import append_history, load_history
-from image_client import GENERATED_DIR, MASCOT_PATH, build_copy_prompt
+from image_client import GENERATED_DIR, MASCOT_PATH
 from providers.base import ProviderError
 from utils import generate_tweet_intent_url
+from xalgo_prompts import PROMPT_VERSION
 from i18n import t
 
 
@@ -22,7 +27,7 @@ def _sync_from_input():
 
 def _clear_stale_media_state():
     """이전 아이디어 세트의 생성 이미지/영상이 새 세트에 매칭되지 않게 정리."""
-    stale_prefixes = ("generated_image_", "generated_video_")
+    stale_prefixes = ("generated_image_", "generated_video_", "queued_")
     for key in [k for k in st.session_state if str(k).startswith(stale_prefixes)]:
         del st.session_state[key]
 
@@ -33,6 +38,7 @@ def _apply_pending_restore():
     if restore is None:
         return
     st.session_state.keywords_input = restore.get("keywords", "")
+    st.session_state.ideas_mode = restore.get("mode") or writing_modes.AUTO_MIX
     length = min(max(int(restore.get("length") or 0), 0), 1000)
     st.session_state.post_length = length
     st.session_state.length_slider = length
@@ -40,6 +46,26 @@ def _apply_pending_restore():
     if restore.get("result") is not None:
         st.session_state.ideas_result = restore["result"]
         _clear_stale_media_state()
+
+
+def _idea_caption_bits(idea: dict, post_length: int) -> list[str]:
+    """카드 캡션 조각: 모드 배지 + 글자 수 + 길이 이탈 경고."""
+    bits = []
+    mode_lbl = (idea.get("mode") or "").strip()
+    if mode_lbl:
+        bits.append(f"✍️ {mode_lbl}")
+    n = len(idea.get("content", ""))
+    bits.append(t("ideas_char_count", n=n))
+    if post_length and abs(n - post_length) > post_length * 0.1:
+        bits.append(f"⚠️ {t('ideas_len_warn', target=post_length)}")
+    return bits
+
+
+def _resolved_image_style(selected: str | None, idea: dict, idea_index: int) -> str:
+    """pills 선택값(None=자동 취급)과 아이디어 제안으로 실제 스타일을 정한다."""
+    if selected and selected != image_modes.AUTO:
+        return selected
+    return image_modes.resolve_auto_style(idea.get("suggested_style"), idea_index)
 
 
 def render_ideas_tab(grok, image_client=None, video_client=None):
@@ -87,6 +113,16 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
 
     post_length = st.session_state.post_length
 
+    if "ideas_mode" not in st.session_state:
+        st.session_state.ideas_mode = writing_modes.AUTO_MIX
+    selected_mode = st.pills(
+        t("ideas_mode_label"),
+        options=writing_modes.mode_options(),
+        format_func=writing_modes.mode_label,
+        key="ideas_mode",
+    )
+    mode = selected_mode or writing_modes.AUTO_MIX
+
     if st.button(t("ideas_generate_btn"), use_container_width=True, type="primary"):
         if grok is None:
             st.warning(t("demo_key_needed"))
@@ -94,18 +130,26 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
             st.warning(t("ideas_enter_keyword"))
         else:
             with st.spinner(t("ideas_spinner")):
-                result = grok.generate_ideas(keywords, length=post_length)
+                result = grok.generate_ideas(keywords, length=post_length, mode=mode)
 
             if "error" in result:
                 st.error(result["error"])
             else:
                 st.session_state.ideas_result = result
-                append_history(keywords, post_length, result)
+                append_history(
+                    keywords,
+                    post_length,
+                    result,
+                    mode=mode,
+                    engine=getattr(getattr(grok, "provider", None), "name", ""),
+                    prompt_version=PROMPT_VERSION,
+                )
                 _clear_stale_media_state()
 
     if "ideas_error" in st.session_state:
         st.error(st.session_state.pop("ideas_error"))
 
+    _render_voice_card_section(grok)
     _render_history_section()
     _render_media_history_section()
 
@@ -123,8 +167,41 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
                 content = idea.get("content", "")
                 st.code(content, language="", wrap_lines=True)
 
+                st.caption(" · ".join(_idea_caption_bits(idea, post_length)))
+                lint = idea.get("_lint") or {}
+                if lint.get("s1"):
+                    st.warning(t("ideas_lint_s1", items=", ".join(lint["s1"])))
+                elif lint.get("s2"):
+                    st.caption(f"💬 {t('ideas_lint_s2', items=', '.join(lint['s2']))}")
+
                 intent_url = generate_tweet_intent_url(content)
-                st.link_button(t("post_to_x"), intent_url, use_container_width=True)
+                col_x, col_q = st.columns(2)
+                with col_x:
+                    st.link_button(t("post_to_x"), intent_url, use_container_width=True)
+                with col_q:
+                    queued_key = f"queued_{i}"
+                    if st.button(
+                        t("ideas_to_queue_btn"),
+                        key=f"to_queue_{i}",
+                        use_container_width=True,
+                        disabled=st.session_state.get(queued_key, False),
+                    ):
+                        try:
+                            data = load_queue()
+                            add_draft(
+                                data,
+                                text=content,
+                                pillar=writing_modes.pillar_for_mode(
+                                    writing_modes.label_to_key(idea.get("mode", ""))
+                                ),
+                                image_prompt=idea.get("image_prompt", ""),
+                            )
+                            save_queue(QUEUE_PATH, data)
+                            st.session_state[queued_key] = True
+                            st.toast(t("ideas_queued_toast"))
+                            st.rerun()
+                        except Exception as exc:
+                            st.error(t("ideas_queue_error", err=str(exc)))
 
                 detail_col1, detail_col2, detail_col3 = st.columns(3)
                 with detail_col1:
@@ -138,21 +215,12 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
                 with st.expander(t("ideas_strategy")):
                     st.markdown(idea.get("strategy", ""))
 
-                # ─── 이미지 프롬프트 ───
+                # ─── 이미지 장면 브리프 + 생성 ───
                 image_prompt = idea.get("image_prompt", "")
                 if image_prompt:
                     st.markdown(f"**{t('ideas_image_prompt_title')}**")
                     st.caption(t("ideas_image_prompt_caption"))
-                    st.code(image_prompt, language="", wrap_lines=True)
-
-                    copy_prompt = build_copy_prompt(content, image_prompt)
-                    st.markdown(f"**{t('ideas_copy_image_prompt_title')}**")
-                    st.caption(t("ideas_copy_image_prompt_caption"))
-                    st.code(copy_prompt, language="", wrap_lines=True)
-
-                    _render_image_generation(
-                        image_client, video_client, content, image_prompt, i
-                    )
+                    _render_image_generation(image_client, video_client, idea, i)
 
 
 def _render_history_section():
@@ -180,6 +248,7 @@ def _render_history_section():
                     st.session_state._ideas_restore = {
                         "keywords": entry.get("keywords", ""),
                         "length": length,
+                        "mode": entry.get("mode", ""),
                         "result": None,
                     }
                     st.rerun()
@@ -254,29 +323,34 @@ def _render_media_history_section():
             )
 
 
-def _render_image_generation(image_client, video_client, content, image_prompt, idea_index):
-    """아이디어 카드 하단의 즉시 이미지 생성 UI."""
+def _render_image_generation(image_client, video_client, idea, idea_index):
+    """아이디어 카드 하단의 스타일 모드 선택 + 즉시 이미지 생성 UI."""
+    selected = st.pills(
+        t("img_style_label"),
+        options=image_modes.style_options(),
+        format_func=image_modes.style_label,
+        default=image_modes.AUTO,
+        key=f"img_style_{idea_index}",
+    )
+    style = _resolved_image_style(selected, idea, idea_index)
+    prompt = image_modes.build_image_prompt(idea.get("image_prompt", ""), style)
+
+    st.caption(f"🎨 {image_modes.style_label(style)}")
+    st.code(prompt, language="", wrap_lines=True)
+
     if image_client is None:
         st.caption(t("img_engine_none"))
         return
 
     st.caption(t("img_engine_note", engine=image_client.name))
 
-    use_mascot = st.checkbox(
-        t("img_mascot_toggle"),
-        value=True,
-        key=f"mascot_{idea_index}",
-        help=t("img_mascot_help"),
-    )
-
     image_key = f"generated_image_{idea_index}"
     if st.button(t("img_generate_btn"), key=f"gen_img_btn_{idea_index}"):
-        prompt = build_copy_prompt(content, image_prompt, mascot=use_mascot)
-        reference = MASCOT_PATH if use_mascot else None
+        reference = MASCOT_PATH if style == "mascot" else None
         with st.spinner(t("img_generating", engine=image_client.name)):
             try:
                 st.session_state[image_key] = image_client.generate(
-                    prompt, reference=reference
+                    prompt, reference=reference, style=style
                 )
             except ProviderError as exc:
                 st.error(t("img_error", err=str(exc)))
@@ -291,7 +365,7 @@ def _render_image_generation(image_client, video_client, content, image_prompt, 
             mime="image/jpeg",
             key=f"dl_img_{idea_index}",
         )
-        video_prompt = build_copy_prompt(content, image_prompt, mascot=use_mascot)
+        video_prompt = (idea.get("video_motion") or "").strip() or prompt
         _render_video_generation(video_client, video_prompt, image_bytes, idea_index)
 
 
@@ -347,3 +421,29 @@ def _render_video_generation(video_client, copy_prompt, image_bytes, idea_index)
             mime="video/mp4",
             key=f"dl_vid_{idea_index}",
         )
+
+
+def _render_voice_card_section(grok):
+    """본인 글 예시 등록 UI — few-shot 보이스 매칭의 시드."""
+    with st.expander(t("voice_expander")):
+        card = voice_card.load_voice_card()
+        if card["examples"]:
+            st.caption(t("voice_count", n=len(card["examples"])))
+            if card["analysis"]:
+                st.caption(card["analysis"])
+        raw = st.text_area(
+            t("voice_input_label"), key="voice_raw", help=t("voice_help")
+        )
+        if st.button(t("voice_analyze_btn"), key="voice_save_btn"):
+            examples = voice_card.split_examples(raw)
+            if not examples:
+                st.warning(t("voice_need_input"))
+            else:
+                analysis = ""
+                if grok is not None:
+                    res = grok.analyze_voice(examples)
+                    if isinstance(res, dict):
+                        analysis = str(res.get("analysis", ""))
+                voice_card.save_voice_card(examples, analysis)
+                st.success(t("voice_saved"))
+                st.rerun()
