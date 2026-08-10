@@ -6,7 +6,7 @@ import streamlit as st
 import image_modes
 import voice_card
 import writing_modes
-from content_queue import QUEUE_PATH, add_draft, load_queue, save_queue
+from content_queue import QUEUE_PATH, add_draft, queue_transaction
 from ideas_history import append_history, load_history
 from image_client import GENERATED_DIR, MASCOT_PATH
 from providers.base import ProviderError
@@ -199,16 +199,15 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
                         disabled=st.session_state.get(queued_key, False) or grok is None,
                     ):
                         try:
-                            data = load_queue()
-                            add_draft(
-                                data,
-                                text=content,
-                                pillar=writing_modes.pillar_for_mode(
-                                    writing_modes.label_to_key(idea.get("mode", ""))
-                                ),
-                                image_prompt=idea.get("image_prompt", ""),
-                            )
-                            save_queue(QUEUE_PATH, data)
+                            with queue_transaction(QUEUE_PATH) as data:
+                                add_draft(
+                                    data,
+                                    text=content,
+                                    pillar=writing_modes.pillar_for_mode(
+                                        writing_modes.label_to_key(idea.get("mode", ""))
+                                    ),
+                                    image_prompt=idea.get("image_prompt", ""),
+                                )
                             st.session_state[queued_key] = True
                             st.toast(t("ideas_queued_toast"))
                             st.rerun()

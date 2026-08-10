@@ -21,10 +21,13 @@ settings/reminders 는 선택적이다. reminders 는 scripts/generate_drafts.py
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import tempfile
+import time
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -87,6 +90,47 @@ def save_queue(path: Path, data: dict) -> None:
         except OSError:
             pass
         raise
+
+
+@contextmanager
+def queue_lock(path: Path = QUEUE_PATH, timeout: float = 10.0):
+    """큐 파일 락 — load-mutate-save 트랜잭션 전체를 감싼다.
+
+    앱(Streamlit)과 launchd 배치(generate_drafts, publish_worker)가 같은
+    queue.json 을 읽고-수정-쓰기 때문에, 락 없이는 나중에 저장하는 쪽이
+    상대의 변경을 조용히 되돌린다. flock 은 프로세스가 죽으면 자동
+    해제되므로 스테일 락 걱정이 없다. 타임아웃 시 TimeoutError.
+    """
+    lock_path = Path(path).with_suffix(".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "w") as lf:
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                fcntl.flock(lf, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(
+                        f"queue lock timeout ({timeout}s): {lock_path}"
+                    )
+                time.sleep(0.05)
+        try:
+            yield
+        finally:
+            fcntl.flock(lf, fcntl.LOCK_UN)
+
+
+@contextmanager
+def queue_transaction(path: Path = QUEUE_PATH, timeout: float = 10.0):
+    """락 아래에서 큐를 읽고, 블록이 정상 종료하면 저장한다.
+
+    예외가 나면 저장하지 않는다 — 부분 변경이 파일에 남지 않는다.
+    """
+    with queue_lock(path, timeout=timeout):
+        data = load_queue(path)
+        yield data
+        save_queue(path, data)
 
 
 def next_slots(after: datetime, count: int) -> list[datetime]:

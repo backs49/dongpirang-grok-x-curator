@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
+import pytest
+
 from content_queue import (
     add_draft,
     add_material,
@@ -162,6 +164,47 @@ def test_draft_from_material_sends_material():
     assert "AI 냄새 제거 규칙" in system_prompt
     assert "17년차" in system_prompt
     assert "이모지는 기본적으로 쓰지 않는다" in system_prompt
+
+
+class TestQueueLock:
+    def test_transaction_saves_on_success(self, tmp_path):
+        from content_queue import add_draft, load_queue, queue_transaction
+
+        qp = tmp_path / "queue.json"
+        with queue_transaction(qp) as data:
+            add_draft(data, text="본문", pillar="tip")
+        assert len(load_queue(qp)["drafts"]) == 1
+
+    def test_transaction_skips_save_on_exception(self, tmp_path):
+        from content_queue import add_draft, load_queue, queue_transaction
+
+        qp = tmp_path / "queue.json"
+        with pytest.raises(RuntimeError):
+            with queue_transaction(qp) as data:
+                add_draft(data, text="본문", pillar="tip")
+                raise RuntimeError("boom")
+        assert load_queue(qp)["drafts"] == []
+
+    def test_lock_blocks_second_holder(self, tmp_path):
+        import fcntl
+
+        from content_queue import queue_lock
+
+        qp = tmp_path / "queue.json"
+        with queue_lock(qp):
+            lock_file = qp.with_suffix(".lock")
+            with open(lock_file, "w") as second:
+                with pytest.raises(BlockingIOError):
+                    fcntl.flock(second, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    def test_lock_timeout_raises(self, tmp_path, monkeypatch):
+        from content_queue import queue_lock
+
+        qp = tmp_path / "queue.json"
+        with queue_lock(qp):
+            with pytest.raises(TimeoutError):
+                with queue_lock(qp, timeout=0.3):
+                    pass
 
 
 def test_pq_i18n_keys_cover_all_languages():

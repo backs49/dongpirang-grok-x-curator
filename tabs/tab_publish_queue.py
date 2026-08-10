@@ -6,10 +6,10 @@ from content_queue import (
     add_material,
     approve_draft,
     load_queue,
+    queue_transaction,
     reject_draft,
     remove_draft,
     remove_material,
-    save_queue,
     unused_materials,
     update_draft_text,
 )
@@ -38,16 +38,15 @@ _STATUS_BADGE = {
 
 
 def _cb_add_material():
-    data = load_queue(QUEUE_PATH)
-    if add_material(data, st.session_state.get("pq_material_input", "")):
-        save_queue(QUEUE_PATH, data)
+    with queue_transaction(QUEUE_PATH) as data:
+        added = add_material(data, st.session_state.get("pq_material_input", ""))
+    if added:
         st.session_state.pq_material_input = ""
 
 
 def _cb_remove_material(material_id: str):
-    data = load_queue(QUEUE_PATH)
-    remove_material(data, material_id)
-    save_queue(QUEUE_PATH, data)
+    with queue_transaction(QUEUE_PATH) as data:
+        remove_material(data, material_id)
 
 
 def _cb_request_draft(material_id: str):
@@ -57,21 +56,18 @@ def _cb_request_draft(material_id: str):
 
 
 def _cb_approve(draft_id: str):
-    data = load_queue(QUEUE_PATH)
-    approve_draft(data, draft_id)
-    save_queue(QUEUE_PATH, data)
+    with queue_transaction(QUEUE_PATH) as data:
+        approve_draft(data, draft_id)
 
 
 def _cb_reject(draft_id: str):
-    data = load_queue(QUEUE_PATH)
-    reject_draft(data, draft_id)
-    save_queue(QUEUE_PATH, data)
+    with queue_transaction(QUEUE_PATH) as data:
+        reject_draft(data, draft_id)
 
 
 def _cb_remove_draft(draft_id: str):
-    data = load_queue(QUEUE_PATH)
-    remove_draft(data, draft_id)
-    save_queue(QUEUE_PATH, data)
+    with queue_transaction(QUEUE_PATH) as data:
+        remove_draft(data, draft_id)
 
 
 def _process_pending_draft(grok):
@@ -97,14 +93,14 @@ def _process_pending_draft(grok):
         st.error(result["error"])
         return
 
-    add_draft(
-        data,
-        text=result.get("post", ""),
-        pillar=result.get("pillar", "build_in_public"),
-        image_prompt=result.get("image_prompt", ""),
-        material_id=material["id"],
-    )
-    save_queue(QUEUE_PATH, data)
+    with queue_transaction(QUEUE_PATH) as tx_data:
+        add_draft(
+            tx_data,
+            text=result.get("post", ""),
+            pillar=result.get("pillar", "build_in_public"),
+            image_prompt=result.get("image_prompt", ""),
+            material_id=material["id"],
+        )
 
 
 def render_publish_queue_tab(grok):
@@ -181,8 +177,8 @@ def render_publish_queue_tab(grok):
                 label_visibility="collapsed",
             )
             if edited != d["text"]:
-                update_draft_text(data, d["id"], edited)
-                save_queue(QUEUE_PATH, data)
+                with queue_transaction(QUEUE_PATH) as tx_data:
+                    update_draft_text(tx_data, d["id"], edited)
 
             col_a, col_b, col_c, col_d = st.columns(4)
             with col_a:

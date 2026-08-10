@@ -40,7 +40,7 @@ from content_queue import (  # noqa: E402
     QUEUE_PATH,
     add_draft,
     load_queue,
-    save_queue,
+    queue_transaction,
     unused_materials,
 )
 
@@ -112,11 +112,15 @@ def _reminder_message(waiting: int, days: int) -> str:
     return "\n".join(lines)
 
 
-def _remind_stale_drafts(data: dict, *, now: datetime, notify) -> bool:
+def _remind_stale_drafts(
+    data: dict, *, now: datetime, notify, queue_path: Path = QUEUE_PATH
+) -> bool:
     """승인 대기 초안이 방치돼 있으면 관리자에게 리마인드한다.
 
-    반환값은 큐에 발송 시각을 새로 찍었는지 여부 — 호출자가 저장이 필요한지
-    판단하는 데 쓴다. 발송이 실패하면 찍지 않아서 다음 밤에 다시 시도한다.
+    반환값은 큐에 발송 시각을 새로 찍었는지 여부. `data` 는 판단(정체
+    여부·중복 발송 스로틀)에만 쓰는 읽기 전용 스냅샷이고, 실제 발송 시각
+    기록은 별도의 짧은 트랜잭션으로 재로드-수정-저장한다 — 판단과 쓰기
+    사이에 다른 프로세스가 큐를 바꿔도 그 변경을 덮어쓰지 않는다.
 
     approved 는 세지 않는다. 슬롯이 오면 워커가 알아서 발행하니 사람이
     막고 있는 게 아니다. 오직 draft 상태만 사람의 승인을 기다린다.
@@ -147,37 +151,44 @@ def _remind_stale_drafts(data: dict, *, now: datetime, notify) -> bool:
         })
         return False
 
-    data.setdefault("reminders", {})["stale_drafts_at"] = now.isoformat(timespec="seconds")
+    with queue_transaction(queue_path) as tx_data:
+        tx_data.setdefault("reminders", {})["stale_drafts_at"] = now.isoformat(
+            timespec="seconds"
+        )
     log_event({"event": "stale_reminder_sent", "waiting": len(waiting), "days": days})
     return True
 
 
 def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None) -> dict:
+    # 읽기 전용 스냅샷 — 리마인더 판단과 재고 계산에만 쓴다. 실제 저장은
+    # 아래에서 각각 짧은 트랜잭션으로 재로드-수정한다 (LLM 호출 중 락을
+    # 쥐고 있지 않기 위해서다).
     data = load_queue(queue_path)
     now = now or datetime.now()
     notify = notify if notify is not None else _default_notify
 
     # 생성 여부와 무관하게 매일 확인한다. 재고가 꽉 차서 스킵하는 밤이야말로
-    # 승인이 멈춰 있을 확률이 가장 높은 밤이다.
-    reminded = _remind_stale_drafts(data, now=now, notify=notify)
+    # 승인이 멈춰 있을 확률이 가장 높은 밤이다. 발송 시각 기록은
+    # _remind_stale_drafts 안에서 자체 트랜잭션으로 처리된다.
+    _remind_stale_drafts(data, now=now, notify=notify, queue_path=queue_path)
 
     stock = sum(1 for d in data["drafts"] if d["status"] in ("draft", "approved"))
     if stock >= STOCK_TARGET:
         log_event({"event": "skipped_stock_sufficient", "stock": stock})
-        if reminded:
-            save_queue(queue_path, data)
         return {"from_materials": 0, "tip_drafts": 0, "skipped": True}
 
     if grok is None:
         grok = _build_cli_grok()
     if grok is None:
         log_event({"event": "no_engine_available"})
-        if reminded:
-            save_queue(queue_path, data)
         return {"from_materials": 0, "tip_drafts": 0, "skipped": True}
 
+    # LLM 호출 구간 — 락을 쥐지 않는다. 결과만 모아뒀다가 호출이 모두
+    # 끝난 뒤 한 트랜잭션 안에서 add_draft 를 실행한다.
     from_materials = 0
-    materials = unused_materials(data)[:MAX_MATERIALS_PER_NIGHT]
+    materials_snapshot = unused_materials(data)
+    materials = materials_snapshot[:MAX_MATERIALS_PER_NIGHT]
+    material_drafts = []
     for material in materials:
         result = grok.draft_from_material(material["text"])
         if "error" in result or not result.get("post"):
@@ -187,23 +198,17 @@ def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None) -> dict:
                 "error": result.get("error", "empty post"),
             })
             continue
-        draft = add_draft(
-            data,
-            text=result["post"],
-            pillar=result.get("pillar", "build_in_public"),
-            image_prompt=result.get("image_prompt", ""),
-            material_id=material["id"],
-        )
-        from_materials += 1
-        log_event({
-            "event": "draft_created",
-            "draft_id": draft["id"],
-            "pillar": draft["pillar"],
-            "source": "material",
+        material_drafts.append({
+            "text": result["post"],
+            "pillar": result.get("pillar", "build_in_public"),
+            "image_prompt": result.get("image_prompt", ""),
+            "material_id": material["id"],
         })
+        from_materials += 1
 
+    tip_draft_kwargs = None
     tip_drafts = 0
-    if from_materials == 0 and not unused_materials(data):
+    if from_materials == 0 and not materials_snapshot:
         keywords = (data.get("settings") or {}).get("tip_keywords") or DEFAULT_TIP_KEYWORDS
         result = grok.generate_ideas(keywords, length=0)
         ideas = result.get("ideas") or []
@@ -211,16 +216,28 @@ def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None) -> dict:
             log_event({"event": "tip_draft_failed", "error": result.get("error", "no ideas")})
         else:
             idea = ideas[0]
-            draft = add_draft(
-                data,
-                text=idea.get("content", ""),
-                pillar="tip",
-                image_prompt=idea.get("image_prompt", ""),
-            )
+            tip_draft_kwargs = {
+                "text": idea.get("content", ""),
+                "pillar": "tip",
+                "image_prompt": idea.get("image_prompt", ""),
+            }
             tip_drafts = 1
-            log_event({"event": "draft_created", "draft_id": draft["id"], "source": "tip"})
 
-    save_queue(queue_path, data)
+    # LLM 호출이 모두 끝난 뒤에만 락을 쥔다 — 짧은 트랜잭션 하나로 확정한다.
+    if material_drafts or tip_draft_kwargs is not None:
+        with queue_transaction(queue_path) as tx_data:
+            for kwargs in material_drafts:
+                draft = add_draft(tx_data, **kwargs)
+                log_event({
+                    "event": "draft_created",
+                    "draft_id": draft["id"],
+                    "pillar": draft["pillar"],
+                    "source": "material",
+                })
+            if tip_draft_kwargs is not None:
+                draft = add_draft(tx_data, **tip_draft_kwargs)
+                log_event({"event": "draft_created", "draft_id": draft["id"], "source": "tip"})
+
     summary = {"from_materials": from_materials, "tip_drafts": tip_drafts, "skipped": False}
     log_event({"event": "run_summary", **summary})
     return summary
