@@ -14,7 +14,15 @@ from pathlib import Path
 HISTORY_PATH = Path("content_queue/ideas_history.jsonl")
 
 
-def append_history(keywords: str, length: int, result: dict) -> None:
+def append_history(
+    keywords: str,
+    length: int,
+    result: dict,
+    *,
+    mode: str = "",
+    engine: str = "",
+    prompt_version: str = "",
+) -> None:
     """생성 결과를 이력 파일에 추가한다. 실패해도 생성 흐름을 막지 않는다."""
     try:
         HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -22,6 +30,9 @@ def append_history(keywords: str, length: int, result: dict) -> None:
             "at": datetime.now().isoformat(timespec="seconds"),
             "keywords": keywords,
             "length": length,
+            "mode": mode,
+            "engine": engine,
+            "prompt_version": prompt_version,
             "result": result,
         }
         with HISTORY_PATH.open("a", encoding="utf-8") as f:

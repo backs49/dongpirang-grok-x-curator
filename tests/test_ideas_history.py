@@ -51,6 +51,35 @@ def test_load_empty_when_no_file(monkeypatch, tmp_path):
     assert ideas_history.load_history() == []
 
 
+def test_append_stores_mode_engine_version(monkeypatch, tmp_path):
+    _patch_path(monkeypatch, tmp_path)
+    ideas_history.append_history(
+        "키워드", 0, {"ideas": []},
+        mode="serious", engine="Grok CLI", prompt_version="2.0",
+    )
+    entry = ideas_history.load_history()[0]
+    assert entry["mode"] == "serious"
+    assert entry["engine"] == "Grok CLI"
+    assert entry["prompt_version"] == "2.0"
+
+
+def test_append_defaults_keep_backward_compat(monkeypatch, tmp_path):
+    _patch_path(monkeypatch, tmp_path)
+    ideas_history.append_history("키워드", 0, {"ideas": []})
+    entry = ideas_history.load_history()[0]
+    assert entry["mode"] == ""
+    assert entry["engine"] == ""
+
+
+def test_load_old_entries_without_new_fields(monkeypatch, tmp_path):
+    path = _patch_path(monkeypatch, tmp_path)
+    old = {"at": "2026-07-19", "keywords": "k", "length": 0, "result": {"ideas": []}}
+    path.write_text(json.dumps(old, ensure_ascii=False) + "\n", encoding="utf-8")
+    entries = ideas_history.load_history()
+    assert len(entries) == 1
+    assert entries[0].get("mode", "") == ""
+
+
 def test_history_i18n_keys_cover_all_languages():
     from i18n import _T, LANGUAGES
 
