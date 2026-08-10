@@ -62,32 +62,34 @@ Two conventions coexist. Match whichever the layer you are editing already uses 
 
 ## Local Setup
 
-Use an isolated virtual environment. The global Python on this machine may not have project dependencies installed.
+The virtual environment lives at **`venv/` inside the repository** (already present on this machine; gitignored by its own auto-generated `venv/.gitignore`). The global Python does not have project dependencies installed. Run every command in this file from the repository root.
 
 ```bash
-python3 -m venv /private/tmp/dongpirang-grok-x-curator-venv
-/private/tmp/dongpirang-grok-x-curator-venv/bin/python -m pip install -U pip
-/private/tmp/dongpirang-grok-x-curator-venv/bin/python -m pip install -r requirements.txt pytest
+python3 -m venv venv
+venv/bin/python -m pip install -U pip
+venv/bin/python -m pip install -r requirements.txt pytest
 ```
+
+Do **not** relocate the venv to `/tmp` or `/private/tmp` — macOS clears those on reboot, and all three launchd jobs hard-code the repo-local interpreter (`scripts/tunnel_watch.sh` sets `PYTHON="$REPO/venv/bin/python"`; the drafts and publish plists name it outright). A venv anywhere else leaves the batch jobs pointing at a missing binary.
 
 ## Test Commands
 
 Run the full suite:
 
 ```bash
-/private/tmp/dongpirang-grok-x-curator-venv/bin/python -m pytest -q
+venv/bin/python -m pytest -q
 ```
 
 Compile smoke check for app/provider edits:
 
 ```bash
-/private/tmp/dongpirang-grok-x-curator-venv/bin/python -m py_compile app.py provider_selection.py grok_client.py image_client.py providers/*.py tabs/*.py i18n.py
+venv/bin/python -m py_compile app.py provider_selection.py grok_client.py image_client.py providers/*.py tabs/*.py i18n.py
 ```
 
 Run the app locally:
 
 ```bash
-/private/tmp/dongpirang-grok-x-curator-venv/bin/python -m streamlit run app.py --server.headless true --server.port 8503
+venv/bin/python -m streamlit run app.py --server.headless true --server.port 8503
 ```
 
 Port map on this machine: **8501 is this app** (held by the launchd-managed instance that `scripts/tunnel_watch.sh` keeps alive), 8502 is the ai-trader dashboard. Use a free port such as 8503 for ad-hoc runs so you do not fight the managed instance.
