@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -122,6 +123,17 @@ def _queue_with_approved(tmp_path, *, slot_iso: str):
     return path, draft["id"]
 
 
+def _read_events(tmp_path):
+    log_path = tmp_path / "log.jsonl"
+    if not log_path.exists():
+        return []
+    return [
+        json.loads(line)
+        for line in log_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+
 class TestPublishWorker:
     def _silence_log(self, monkeypatch, tmp_path):
         monkeypatch.setattr(publish_worker, "LOG_PATH", tmp_path / "log.jsonl")
@@ -184,3 +196,97 @@ class TestPublishWorker:
         assert summary["posted"] == 0
         data = load_queue(path)
         assert data["drafts"][0]["status"] == "approved"  # 다음 실행에서 재시도 가능
+
+    # -- 클레임(트랜잭션1) / 락 밖 발행 / 기록(트랜잭션2) 재구성 ---------------
+
+    def test_live_success_marks_published(self, tmp_path, monkeypatch):
+        self._silence_log(monkeypatch, tmp_path)
+        fake = _FakePublisher()
+        path, draft_id = _queue_with_approved(tmp_path, slot_iso="2026-07-08T19:00:00")
+
+        summary = publish_worker.run(
+            now=WED_EVENING, live=True, queue_path=path, publisher=fake
+        )
+
+        assert summary["posted"] == 1
+        assert fake.posted == ["발행할 글"]  # 정확히 1회 호출
+        data = load_queue(path)
+        draft = data["drafts"][0]
+        assert draft["status"] == "published"
+        assert draft["tweet_id"] == "tw1"
+        assert draft["published_at"]
+
+    def test_live_failure_reverts_to_approved(self, tmp_path, monkeypatch):
+        self._silence_log(monkeypatch, tmp_path)
+        fake = _FakePublisher(fail=True)
+        path, draft_id = _queue_with_approved(tmp_path, slot_iso="2026-07-08T19:00:00")
+
+        summary = publish_worker.run(
+            now=WED_EVENING, live=True, queue_path=path, publisher=fake
+        )
+
+        assert summary["posted"] == 0
+        data = load_queue(path)
+        draft = data["drafts"][0]
+        assert draft["status"] == "approved"  # 슬롯 유지, 다음 실행에서 재시도
+        assert draft["slot"] == "2026-07-08T19:00:00"
+        events = _read_events(tmp_path)
+        assert any(
+            e["event"] == "publish_failed" and e["draft_id"] == draft_id
+            for e in events
+        )
+
+    def test_stale_publishing_marked_error(self, tmp_path, monkeypatch):
+        self._silence_log(monkeypatch, tmp_path)
+        data = empty_queue()
+        draft = add_draft(data, text="크래시 잔재", pillar="tip")
+        draft["status"] = "publishing"  # 이전 실행이 크래시로 남긴 상태
+        draft["slot"] = "2026-07-08T19:00:00"
+        path = tmp_path / "queue.json"
+        save_queue(path, data)
+        fake = _FakePublisher()
+
+        publish_worker.run(now=WED_EVENING, live=True, queue_path=path, publisher=fake)
+
+        assert fake.posted == []  # 재발행하지 않음 — 이중 게시 방지가 우선
+        result = load_queue(path)
+        assert result["drafts"][0]["status"] == "error"
+        events = _read_events(tmp_path)
+        assert any(
+            e["event"] == "stale_publishing_needs_review"
+            and e["draft_id"] == draft["id"]
+            for e in events
+        )
+
+    def test_dry_run_unchanged(self, tmp_path, monkeypatch):
+        self._silence_log(monkeypatch, tmp_path)
+        path, draft_id = _queue_with_approved(tmp_path, slot_iso="2026-07-08T19:00:00")
+
+        summary = publish_worker.run(now=WED_EVENING, live=False, queue_path=path)
+
+        assert summary["posted"] == 1  # would-post 로 집계
+        data = load_queue(path)
+        draft = data["drafts"][0]
+        assert draft["status"] == "approved"  # 상태 변화 없음(재배정 제외)
+        assert "tweet_id" not in draft
+        events = _read_events(tmp_path)
+        assert any(
+            e["event"] == "dry_run_would_post" and e["draft_id"] == draft_id
+            for e in events
+        )
+
+    def test_concurrent_run_skips_publishing_draft(self, tmp_path, monkeypatch):
+        """트랜잭션1~2 사이(디스크에 status=publishing 이 이미 반영된 시점)에
+        다른 워커 실행이 큐를 열어도, 이미 클레임된 초안을 다시 발행하지 않는다."""
+        self._silence_log(monkeypatch, tmp_path)
+        data = empty_queue()
+        draft = add_draft(data, text="이미 클레임됨", pillar="tip")
+        draft["status"] = "publishing"  # 다른 실행이 트랜잭션1에서 이미 찜한 상태
+        draft["slot"] = "2026-07-08T19:00:00"
+        path = tmp_path / "queue.json"
+        save_queue(path, data)
+        fake = _FakePublisher()
+
+        publish_worker.run(now=WED_EVENING, live=True, queue_path=path, publisher=fake)
+
+        assert fake.posted == []  # 이중 발행 없음
