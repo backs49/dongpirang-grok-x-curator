@@ -102,3 +102,42 @@ class TestABComparePrompt:
 
     def test_contains_winner(self):
         assert "winner" in AB_COMPARE_SYSTEM_PROMPT
+
+
+class TestPromptV2:
+    def test_prompt_version_constant(self):
+        from xalgo_prompts import PROMPT_VERSION
+
+        assert PROMPT_VERSION == "2.0"
+
+    def test_ideas_schema_has_new_fields(self):
+        assert '"mode"' in IDEAS_SYSTEM_PROMPT
+        assert '"suggested_style"' in IDEAS_SYSTEM_PROMPT
+        assert '"video_motion"' in IDEAS_SYSTEM_PROMPT
+
+    def test_ideas_image_prompt_is_scene_brief(self):
+        # 스타일 결정은 생성 시점 모드 블록의 몫 — 프롬프트에서 그림체 지정 제거
+        assert "flat editorial illustration" not in IDEAS_SYSTEM_PROMPT
+        assert "장면" in IDEAS_SYSTEM_PROMPT
+        assert "4:5" not in IDEAS_SYSTEM_PROMPT
+
+    def test_style_guide_v2_structural_rules(self):
+        from xalgo_prompts import NATURAL_STYLE_GUIDE
+
+        assert "교훈" in NATURAL_STYLE_GUIDE          # 교훈 직접 말하기 금지
+        assert "문장 길이" in NATURAL_STYLE_GUIDE      # 길이 변주
+        # 앵무새 유발 예시 제거 확인
+        assert "FSD" not in NATURAL_STYLE_GUIDE
+        assert "출퇴근 왕복 1시간" not in NATURAL_STYLE_GUIDE
+
+    def test_draft_prompt_scene_brief(self):
+        from xalgo_prompts import DRAFT_FROM_MATERIAL_SYSTEM_PROMPT
+
+        assert "flat editorial illustration" not in DRAFT_FROM_MATERIAL_SYSTEM_PROMPT
+        assert "장면" in DRAFT_FROM_MATERIAL_SYSTEM_PROMPT
+
+    def test_voice_analysis_prompt_exists(self):
+        from xalgo_prompts import VOICE_ANALYSIS_SYSTEM_PROMPT
+
+        assert "analysis" in VOICE_ANALYSIS_SYSTEM_PROMPT
+        assert "JSON" in VOICE_ANALYSIS_SYSTEM_PROMPT
