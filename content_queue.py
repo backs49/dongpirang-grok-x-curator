@@ -6,11 +6,17 @@
 {
   "materials": [{"id", "text", "created_at", "used"}],
   "drafts": [{"id", "text", "pillar", "status", "slot",
-               "image_prompt", "material_id", "created_at"}]
+               "image_prompt", "material_id", "created_at"}],
+  "settings": {"tip_keywords"},              # 사용자가 손으로 고치는 값
+  "reminders": {"stale_drafts_at"}           # 배치가 쓰는 운영 상태
 }
 
 status: draft → approved → published (또는 rejected)
 slot: 승인 시 배정되는 발행 예정 시각 (ISO 문자열, 로컬 시간)
+
+settings/reminders 는 선택적이다. reminders 는 scripts/generate_drafts.py 가
+승인 대기 리마인드를 중복 발송하지 않으려고 기록하는 값이라 사람이 만질
+필요가 없다 — 사용자 설정(settings)과 섞지 않으려고 따로 뒀다.
 """
 
 from __future__ import annotations
