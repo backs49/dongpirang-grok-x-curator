@@ -14,8 +14,6 @@ from pathlib import Path
 
 VOICE_CARD_PATH = Path("content_queue/voice_card.json")
 
-_EMPTY = {"examples": [], "analysis": "", "updated_at": ""}
-
 
 def save_voice_card(examples: list[str], analysis: str = "") -> None:
     VOICE_CARD_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -32,13 +30,13 @@ def save_voice_card(examples: list[str], analysis: str = "") -> None:
 def load_voice_card() -> dict:
     """카드를 읽는다. 없거나 손상됐으면 빈 카드 — 흐름을 막지 않는다."""
     if not VOICE_CARD_PATH.is_file():
-        return dict(_EMPTY)
+        return {"examples": [], "analysis": "", "updated_at": ""}
     try:
         data = json.loads(VOICE_CARD_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return dict(_EMPTY)
+        return {"examples": [], "analysis": "", "updated_at": ""}
     if not isinstance(data, dict) or not isinstance(data.get("examples"), list):
-        return dict(_EMPTY)
+        return {"examples": [], "analysis": "", "updated_at": ""}
     return {
         "examples": [str(e) for e in data["examples"]],
         "analysis": str(data.get("analysis", "")),

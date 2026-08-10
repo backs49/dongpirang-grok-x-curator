@@ -31,6 +31,14 @@ class TestRoundtrip:
         card = voice_card.load_voice_card()
         assert card["examples"] == []
 
+    def test_mutating_returned_list_does_not_pollute_state(self, monkeypatch, tmp_path):
+        """회귀 테스트: 반환된 리스트를 변경해도 다음 호출은 여전히 빈 카드를 반환해야 한다."""
+        _patch_path(monkeypatch, tmp_path)
+        card1 = voice_card.load_voice_card()
+        card1["examples"].append("leaked data")
+        card2 = voice_card.load_voice_card()
+        assert card2["examples"] == []
+
 
 class TestSplitExamples:
     def test_split_on_dashes_and_blank_lines(self):
