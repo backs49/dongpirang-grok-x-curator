@@ -85,6 +85,5 @@ def test_history_i18n_keys_cover_all_languages():
 
     for key in ("hist_expander", "hist_empty", "hist_count_caption",
                 "hist_restore_btn", "hist_edit_btn", "media_hist_expander",
-                "media_hist_empty", "media_hist_count",
-                "img_mascot_toggle", "img_mascot_help"):
+                "media_hist_empty", "media_hist_count"):
         assert set(_T[key]) >= set(LANGUAGES), f"missing translations for {key}"

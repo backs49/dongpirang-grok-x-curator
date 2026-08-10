@@ -842,16 +842,6 @@ _T = {
         "en": "Legacy prompt from old history — it already embeds a style, so style modes are bypassed",
         "ja": "旧バージョン履歴のプロンプト — スタイルが既に含まれているため、スタイルモードを適用せずそのまま使用します",
     },
-    "ideas_copy_image_prompt_title": {
-        "ko": "복사용 이미지 생성 프롬프트",
-        "en": "Copy-ready image prompt",
-        "ja": "コピー用画像生成プロンプト",
-    },
-    "ideas_copy_image_prompt_caption": {
-        "ko": "ChatGPT, Grok Imagine, Gemini 등에 붙여넣어 사용하세요.",
-        "en": "Paste this into ChatGPT, Grok Imagine, Gemini, or another image tool.",
-        "ja": "ChatGPT、Grok Imagine、Geminiなどに貼り付けて使用してください。",
-    },
     "img_generate_btn": {
         "ko": "🎨 이미지 바로 생성",
         "en": "🎨 Generate image now",
@@ -871,11 +861,6 @@ _T = {
         "ko": "이미지 엔진",
         "en": "Image Engine",
         "ja": "画像エンジン",
-    },
-    "img_mascot_toggle": {
-        "ko": "🐾 동피랑 고양이 마스코트로 생성",
-        "en": "🐾 Generate with the Dongpirang cat mascot",
-        "ja": "🐾 トンピランねこマスコットで生成",
     },
     "hist_expander": {
         "ko": "🗂 아이디어 생성 이력",
@@ -916,11 +901,6 @@ _T = {
         "ko": "표시 개수",
         "en": "Items to show",
         "ja": "表示件数",
-    },
-    "img_mascot_help": {
-        "ko": "프로필의 고양이를 3D 캐릭터화한 고정 마스코트가 게시글 상황을 연기하는 이미지를 만들어요. 끄면 일반 일러스트로 생성합니다.",
-        "en": "The fixed 3D mascot (your profile cat) acts out the post's situation. Turn off for a generic illustration instead.",
-        "ja": "プロフィールの猫を3Dキャラ化した固定マスコットが投稿の状況を演じる画像を作ります。オフにすると通常のイラストで生成します。",
     },
     "img_engine_none": {
         "ko": "로컬 Codex CLI 또는 xAI API 키가 있으면 여기서 바로 이미지를 만들 수 있어요. 지금은 위 프롬프트를 복사해 외부 도구에서 생성해 주세요.",

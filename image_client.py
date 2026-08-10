@@ -10,6 +10,7 @@ from providers.codex_cli_image import CodexCliImageProvider
 from providers.grok_cli_media import GrokCliImageProvider, GrokCliVideoProvider
 from providers.xai_image import XaiImageProvider
 from providers.xai_video import XaiVideoProvider
+from xalgo_prompts import PROMPT_VERSION
 
 GENERATED_DIR = Path("generated_images")
 
@@ -101,7 +102,6 @@ class ImageClient:
         else:
             out_path = self._provider.generate_image(prompt, self._output_dir / filename)
         data = postprocess_for_x(Path(out_path))
-        from xalgo_prompts import PROMPT_VERSION
 
         _log_generation(
             self._output_dir,

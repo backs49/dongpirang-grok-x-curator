@@ -38,3 +38,15 @@ def test_ideas_mode_ui_keys_exist():
         assert key in _T, key
         for lang in ("ko", "en", "ja"):
             assert _T[key][lang], f"{key}/{lang}"
+
+
+def test_dead_keys_removed():
+    from i18n import _T
+
+    for key in (
+        "ideas_copy_image_prompt_title",
+        "ideas_copy_image_prompt_caption",
+        "img_mascot_toggle",
+        "img_mascot_help",
+    ):
+        assert key not in _T, key
