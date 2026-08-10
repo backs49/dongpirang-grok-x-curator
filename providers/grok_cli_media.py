@@ -55,8 +55,8 @@ class GrokCliImageProvider:
 
     Grok 구독 사용량에 포함되어 별도 API 과금이 없다. 도구는 세션 폴더
     (~/.grok/sessions/...)에 저장하므로, 최종 답변으로 절대 경로만 출력하게
-    지시한 뒤 그 파일을 out_path 로 복사한다. 4:5는 미지원이라 3:4로 생성
-    — 이후 image_client.postprocess_for_x 가 4:5로 크롭한다.
+    지시한 뒤 그 파일을 out_path 로 복사한다. 3:4로 생성하며
+    image_client.postprocess_for_x 가 같은 3:4 규격(1080×1440)으로 정리한다.
     """
 
     name = "Grok CLI"

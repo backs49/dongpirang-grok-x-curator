@@ -13,9 +13,10 @@ from providers.xai_video import XaiVideoProvider
 
 GENERATED_DIR = Path("generated_images")
 
-# X 타임라인에서 크롭 없이 가장 크게 보이는 세로 규격 (4:5)
-X_IMAGE_MAX = (1080, 1350)
-X_IMAGE_MAX_RATIO = 1.25  # height/width — 이보다 길면 피드에서 잘린다
+# X 타임라인에서 크롭 없이 가장 크게 보이는 세로 규격 (3:4).
+# xAI Grok Imagine 이 지원하는 세로 비율 중 X 가 크롭 없이 보여주는 최대치.
+X_IMAGE_MAX = (1080, 1440)
+X_IMAGE_MAX_RATIO = 4 / 3  # height/width — 이보다 길면 피드에서 잘린다
 
 _IMAGE_RULES = (
     "Aspect ratio: portrait 4:5. "
@@ -101,7 +102,7 @@ def build_copy_prompt(post_content: str, image_prompt: str, mascot: bool = False
 def postprocess_for_x(src_path: Path) -> bytes:
     """생성 원본을 X 업로드 규격으로 정리한다.
 
-    4:5보다 길면 중앙 크롭, 1080×1350 안으로 다운스케일, JPEG 재인코딩.
+    3:4보다 길면 중앙 크롭, 1080×1440 안으로 다운스케일, JPEG 재인코딩.
     1.5MB PNG 가 수백 KB 로 줄고 타임라인 크롭도 사라진다.
     Pillow 를 못 쓰는 환경에서는 원본 bytes 를 그대로 돌려준다.
     """
@@ -138,11 +139,13 @@ class ImageClient:
     def name(self) -> str:
         return self._provider.name
 
-    def generate(self, prompt: str, reference: Path | None = None) -> bytes:
-        """프롬프트로 이미지를 생성해 X 규격으로 후처리하고 bytes 를 반환한다.
+    def generate(
+        self, prompt: str, reference: Path | None = None, style: str = ""
+    ) -> bytes:
+        """프롬프트로 이미지를 생성해 X 규격(3:4)으로 후처리하고 bytes 를 반환한다.
 
-        reference: 캐릭터 일관성용 참조 이미지. 지원 프로바이더(Grok CLI)만
-        실제로 사용하고, 미지원 프로바이더는 프롬프트 텍스트만으로 생성한다.
+        reference: 캐릭터 일관성용 참조 이미지 (지원 프로바이더만 사용).
+        style: gen_log 기록용 스타일 모드 키.
         """
         filename = f"idea_{time.strftime('%Y%m%d_%H%M%S')}_{int(time.time() * 1000) % 1000:03d}.png"
         use_ref = (
@@ -157,6 +160,8 @@ class ImageClient:
         else:
             out_path = self._provider.generate_image(prompt, self._output_dir / filename)
         data = postprocess_for_x(Path(out_path))
+        from xalgo_prompts import PROMPT_VERSION
+
         _log_generation(
             self._output_dir,
             {
@@ -164,6 +169,8 @@ class ImageClient:
                 "engine": self.name,
                 "file": Path(out_path).stem,
                 "mascot_ref": bool(use_ref),
+                "style": style,
+                "prompt_version": PROMPT_VERSION,
                 "prompt": prompt,
             },
         )

@@ -214,6 +214,13 @@ def test_img_i18n_keys_cover_all_languages():
 # ─── X 규격 후처리 (postprocess_for_x) ───
 
 
+def test_x_format_constants_34():
+    import image_client
+
+    assert image_client.X_IMAGE_MAX == (1080, 1440)
+    assert abs(image_client.X_IMAGE_MAX_RATIO - 4 / 3) < 0.001
+
+
 class TestPostprocessForX:
     def _make_png(self, tmp_path, width, height):
         from PIL import Image
@@ -229,7 +236,7 @@ class TestPostprocessForX:
 
         return Image.open(io.BytesIO(data))
 
-    def test_tall_image_center_cropped_to_4x5_and_jpeg(self, tmp_path):
+    def test_tall_image_center_cropped_to_3x4_and_jpeg(self, tmp_path):
         from image_client import postprocess_for_x
 
         src = self._make_png(tmp_path, 941, 1672)  # 9:16급 세로
@@ -237,8 +244,8 @@ class TestPostprocessForX:
 
         assert data[:2] == b"\xff\xd8"  # JPEG magic
         im = self._open(data)
-        assert abs(im.height / im.width - 1.25) < 0.01  # 4:5
-        assert im.width <= 1080 and im.height <= 1350
+        assert abs(im.height / im.width - 4 / 3) < 0.01  # 3:4
+        assert im.width <= 1080 and im.height <= 1440
         assert not src.exists()  # 원본 PNG 는 제거
         assert (tmp_path / "src.jpg").exists()
 
@@ -247,7 +254,7 @@ class TestPostprocessForX:
 
         src = self._make_png(tmp_path, 2048, 2048)
         im = self._open(postprocess_for_x(src))
-        assert im.width <= 1080 and im.height <= 1350
+        assert im.width <= 1080 and im.height <= 1440
 
     def test_landscape_image_kept_and_converted(self, tmp_path):
         from image_client import postprocess_for_x

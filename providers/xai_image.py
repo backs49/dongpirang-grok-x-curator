@@ -44,6 +44,7 @@ class XaiImageProvider:
                 model=self.model,
                 prompt=prompt.strip(),
                 response_format="b64_json",
+                extra_body={"aspect_ratio": "3:4"},
             )
             b64 = response.data[0].b64_json
         except ProviderError:
