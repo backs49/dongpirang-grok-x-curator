@@ -20,7 +20,11 @@ class TestProviderFacade:
 
     def test_generate_ideas_delegates_to_provider(self):
         provider = MagicMock()
-        provider.generate_json.return_value = {"ideas": [{"title": "A"}]}
+        # content 없는 아이디어는 응답 형식 검증에서 걸러지므로 실제 응답
+        # 형태(제목 + 본문)를 갖춘 픽스처를 쓴다.
+        provider.generate_json.return_value = {
+            "ideas": [{"title": "A", "content": "본문 내용이다."}]
+        }
         client = GrokClient(provider=provider)
 
         result = client.generate_ideas("AI", length=300)

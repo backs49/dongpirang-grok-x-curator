@@ -64,6 +64,25 @@ class TestQueueStorage:
         path.write_text("{broken json", encoding="utf-8")
         assert load_queue(path) == empty_queue()
 
+    def test_save_uses_unique_tmp_and_leaves_no_stray_files(self, tmp_path):
+        """동시 저장자가 고정된 tmp 이름을 공유하지 않고, 저장 후에는
+        임시 파일이 디렉터리에 남지 않아야 한다."""
+        path = tmp_path / "queue.json"
+
+        data1 = empty_queue()
+        add_material(data1, "첫 번째 저장")
+        save_queue(path, data1)
+
+        data2 = load_queue(path)
+        add_material(data2, "두 번째 저장")
+        save_queue(path, data2)
+
+        loaded = load_queue(path)
+        assert len(loaded["materials"]) == 2
+
+        stray_tmp_files = [p for p in tmp_path.glob("*") if p != path]
+        assert stray_tmp_files == []
+
 
 class TestMaterials:
     def test_add_and_remove(self):

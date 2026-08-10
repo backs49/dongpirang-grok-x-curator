@@ -26,8 +26,20 @@ def _sync_from_input():
 
 
 def _clear_stale_media_state():
-    """이전 아이디어 세트의 생성 이미지/영상이 새 세트에 매칭되지 않게 정리."""
-    stale_prefixes = ("generated_image_", "generated_video_", "queued_")
+    """이전 아이디어 세트의 생성 이미지/영상·위젯 선택 초기화.
+
+    인덱스 기반 키(f"..._{i}")를 새 아이디어 세트에서도 그대로 재사용하기
+    때문에, 초기화하지 않으면 이전 세트에서 고른 이미지 스타일/영상
+    길이·해상도가 새 세트의 다른 아이디어에 그대로 새어 들어간다.
+    """
+    stale_prefixes = (
+        "generated_image_",
+        "generated_video_",
+        "queued_",
+        "img_style_",
+        "vid_dur_",
+        "vid_res_",
+    )
     for key in [k for k in st.session_state if str(k).startswith(stale_prefixes)]:
         del st.session_state[key]
 

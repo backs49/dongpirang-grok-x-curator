@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from tabs.tab_ideas import _idea_caption_bits, _resolved_image_style
+import streamlit as st
+
+from tabs.tab_ideas import (
+    _clear_stale_media_state,
+    _idea_caption_bits,
+    _resolved_image_style,
+)
 
 
 class TestCaptionBits:
@@ -40,3 +46,23 @@ class TestResolvedImageStyle:
         import image_modes
 
         assert _resolved_image_style(None, {}, 0) == image_modes.SUGGESTABLE[0]
+
+
+class TestClearStaleMediaState:
+    def test_clears_widget_selection_keys_too(self, monkeypatch):
+        # 이전 아이디어 세트에서 고른 이미지 스타일/영상 길이·해상도가
+        # 다음 세트로 새어 들어가면 안 된다.
+        fake_state = {
+            "generated_image_0": b"jpg-bytes",
+            "generated_video_0": b"mp4-bytes",
+            "queued_0": True,
+            "img_style_0": "comic",
+            "vid_dur_0": 10,
+            "vid_res_0": "1080p",
+            "keywords_input": "should survive",
+        }
+        monkeypatch.setattr(st, "session_state", fake_state)
+
+        _clear_stale_media_state()
+
+        assert fake_state == {"keywords_input": "should survive"}

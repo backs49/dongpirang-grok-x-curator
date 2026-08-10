@@ -22,6 +22,8 @@ settings/reminders 는 선택적이다. reminders 는 scripts/generate_drafts.py
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -63,11 +65,28 @@ def load_queue(path: Path = QUEUE_PATH) -> dict:
 
 
 def save_queue(path: Path, data: dict) -> None:
+    """큐를 원자적으로 저장한다.
+
+    같은 디렉터리에 매번 고유한 이름의 임시 파일을 만들어 쓴 뒤
+    os.replace 로 교체한다. 고정된 이름(.tmp)을 쓰면 앱과 배치 스크립트가
+    동시에 저장할 때 서로의 임시 파일을 덮어써 둘 중 하나가 깨진 채로
+    끝날 수 있다 — 각 쓰기가 자기만의 tmp 를 갖게 해서 이를 막는다.
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(path)
+    fd, tmp_name = tempfile.mkstemp(
+        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(json.dumps(data, ensure_ascii=False, indent=2))
+        os.replace(tmp_name, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
 
 
 def next_slots(after: datetime, count: int) -> list[datetime]:

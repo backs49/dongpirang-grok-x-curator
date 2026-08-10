@@ -30,6 +30,10 @@ class TestS1Patterns:
         result = lint("둘째가 태어났다. 기뻤다.")
         assert result.s1_hits == []
 
+    def test_first_and_second_ordinal_together_is_s1(self):
+        result = lint("둘째, 오늘 유치원에 갔다. 첫째, 아침을 먹었다.")
+        assert any("나열" in h for h in result.s1_hits)
+
     def test_detects_em_dash_and_ai_emoji(self):
         result = lint("오늘 배포했다 — 성공적이었다 🚀")
         labels = " ".join(result.s1_hits)
@@ -44,10 +48,14 @@ class TestS1Patterns:
 
     def test_conclusion_and_hedging_words(self):
         result = lint("결론적으로 혁신적인 도구다. 게임체인저라 할 만하다.")
-        labels = " ".join(result.s1_hits)
-        assert "결론적으로" in labels
-        assert "혁신적" in labels
-        assert "게임체인저" in labels
+        s1_labels = " ".join(result.s1_hits)
+        s2_labels = " ".join(result.s2_hits)
+        assert "결론적으로" in s1_labels
+        assert "게임체인저" in s1_labels
+        # '혁신적'은 부정형("혁신적이지 않았다")도 정당한 용례라 S1 이 아니라
+        # S2(1회는 허용, 반복 시에만 지적)로 낮췄다.
+        assert "혁신적" not in s1_labels
+        assert "혁신적" in s2_labels
 
 
 class TestS2Patterns:
@@ -76,3 +84,13 @@ class TestS2Patterns:
     def test_hedging_repeat_flagged(self):
         result = lint("효과가 있는 것으로 보인다. 시장도 반응할 것으로 보인다.")
         assert any("헤징" in h for h in result.s2_hits)
+
+    def test_second_ordinal_alone_is_s2_not_s1(self):
+        result = lint("둘째, 오늘 유치원에 갔다.")
+        assert not any("나열" in h for h in result.s1_hits)
+        assert any("단독" in h for h in result.s2_hits)
+
+    def test_negated_innovative_is_s2_not_s1(self):
+        result = lint("혁신적이지 않았다.")
+        assert not any("혁신적" in h for h in result.s1_hits)
+        assert any("혁신적" in h for h in result.s2_hits)
