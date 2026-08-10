@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import ideas_history
+import style_lint
+import voice_card
+import writing_modes
 from i18n import (
     get_content_language_pair,
     get_lang_instruction,
@@ -20,7 +24,27 @@ from xalgo_prompts import (
     RISK_CHECK_SYSTEM_PROMPT,
     SCHEDULER_SYSTEM_PROMPT,
     THREAD_SYSTEM_PROMPT,
+    VOICE_ANALYSIS_SYSTEM_PROMPT,
 )
+
+
+def _avoid_block(max_sets: int = 3, max_lines: int = 15) -> str:
+    """최근 생성 아이디어의 각도·훅을 '겹치지 말 것' 블록으로 만든다."""
+    lines: list[str] = []
+    for entry in ideas_history.load_history()[:max_sets]:
+        for idea in entry.get("result", {}).get("ideas", []):
+            title = (idea.get("title") or "").strip()
+            first = (idea.get("content") or "").strip().split("\n")[0][:60]
+            if title or first:
+                lines.append(f"- {title} / {first}")
+    if not lines:
+        return ""
+    return (
+        "\n\n# 최근에 이미 생성한 아이디어 (겹치지 말 것)\n"
+        "아래 각도·훅·소재와 겹치지 않는 새로운 각도로 쓰세요:\n"
+        + "\n".join(lines[:max_lines])
+        + "\n"
+    )
 
 
 class GrokClient:
@@ -46,29 +70,104 @@ class GrokClient:
             user_content,
         )
 
-    def generate_ideas(self, keywords: str, length: int = 0) -> dict:
+    def generate_ideas(
+        self,
+        keywords: str,
+        length: int = 0,
+        mode: str = writing_modes.AUTO_MIX,
+    ) -> dict:
         current_date_kr = datetime.now().strftime("%Y년 %m월 %d일")
 
         if length and length > 0:
             length_instruction = (
                 f"**분량: 반드시 정확히 약 {length}자(±10% 이내)**. "
                 f"사용자가 직접 지정한 분량이므로 엄격하게 지키세요. "
-                f"한두 줄로 끝내지 마세요. 구체적인 예시, 수치, 경험을 포함하여 충실하게 작성하세요."
+                f"한두 줄로 끝내지 마세요."
             )
         else:
-            length_instruction = (
-                "**분량: 반드시 200~500자**. "
-                "한두 줄로 끝내지 마세요. 구체적인 예시, 수치, 경험을 포함하여 충실하게 작성하세요."
-            )
+            length_instruction = "**분량: 반드시 200~500자**. 한두 줄로 끝내지 마세요."
 
-        system_prompt = IDEAS_SYSTEM_PROMPT.format(
-            current_date_kr=current_date_kr,
-            length_instruction=length_instruction,
+        system_prompt = (
+            IDEAS_SYSTEM_PROMPT.format(
+                current_date_kr=current_date_kr,
+                length_instruction=length_instruction,
+            )
+            + writing_modes.build_mode_block(mode)
+            + NATURAL_STYLE_GUIDE
+            + voice_card.build_voice_block()
+            + _avoid_block()
+            + get_lang_instruction()
         )
 
+        result = self.provider.generate_json(
+            system_prompt, f"관심사/키워드: {keywords}"
+        )
+        if "error" in result or not isinstance(result.get("ideas"), list):
+            return result
+
+        self._fill_mode_labels(result, mode)
+        self._lint_and_rewrite(result, mode)
+        return result
+
+    def _fill_mode_labels(self, result: dict, mode: str) -> None:
+        """LLM 이 mode 필드를 빠뜨렸을 때 배정 규칙으로 보정한다."""
+        if mode == writing_modes.AUTO_MIX:
+            rotation = writing_modes.TONE_ROTATION
+            for i, idea in enumerate(result["ideas"]):
+                fallback = writing_modes.WRITING_MODES[rotation[i % len(rotation)]]["label"]
+                idea["mode"] = (idea.get("mode") or "").strip() or fallback
+        else:
+            label = writing_modes.WRITING_MODES[mode]["label"]
+            for idea in result["ideas"]:
+                idea["mode"] = label
+
+    def _lint_and_rewrite(self, result: dict, mode: str) -> None:
+        """S1 검출 아이디어를 1회 한정 재작성. 실패해도 흐름을 막지 않는다."""
+        def _polite_ok(idea: dict) -> bool:
+            key = writing_modes.label_to_key(idea.get("mode", ""))
+            return writing_modes.allow_polite(key)
+
+        flagged: list[int] = []
+        for i, idea in enumerate(result["ideas"]):
+            lr = style_lint.lint(idea.get("content", ""), allow_polite=_polite_ok(idea))
+            idea["_lint"] = {"s1": lr.s1_hits, "s2": lr.s2_hits}
+            if lr.s1_hits:
+                flagged.append(i)
+        if not flagged:
+            return
+
+        listing = "\n\n".join(
+            f"[아이디어 {i + 1} | 모드: {result['ideas'][i].get('mode', '')}]\n"
+            f"검출된 AI 상투 표현: {', '.join(result['ideas'][i]['_lint']['s1'])}\n"
+            f"원문:\n{result['ideas'][i].get('content', '')}"
+            for i in flagged
+        )
+        rewrite_system = (
+            "당신은 X(Twitter) 포스트 윤문 전문가입니다. 아래 포스트들에서 검출된 "
+            "AI 상투 표현을 제거하고, 같은 모드·같은 소재·같은 의미를 유지한 채 "
+            "다시 씁니다. 분량은 원문과 비슷하게 유지하세요.\n"
+            + writing_modes.build_mode_block(mode)
+            + NATURAL_STYLE_GUIDE
+            + '\n반드시 JSON만 출력: {"rewrites": [{"index": 아이디어_번호_정수, "content": "고친 본문"}]}'
+        )
+        try:
+            retry = self.provider.generate_json(rewrite_system, listing)
+            for rw in retry.get("rewrites", []):
+                idx = int(rw.get("index", 0)) - 1
+                new_content = (rw.get("content") or "").strip()
+                if idx in flagged and new_content:
+                    idea = result["ideas"][idx]
+                    lr = style_lint.lint(new_content, allow_polite=_polite_ok(idea))
+                    idea["content"] = new_content
+                    idea["_lint"] = {"s1": lr.s1_hits, "s2": lr.s2_hits}
+        except Exception:
+            pass  # 재작성 실패는 원본 유지 — 배지로만 알린다
+
+    def analyze_voice(self, examples: list[str]) -> dict:
+        """보이스 카드용 1회성 문체 분석."""
         return self.provider.generate_json(
-            system_prompt + NATURAL_STYLE_GUIDE + get_lang_instruction(),
-            f"관심사/키워드: {keywords}",
+            VOICE_ANALYSIS_SYSTEM_PROMPT,
+            "\n\n---\n\n".join(examples),
         )
 
     def curate_feed(self, interests: str) -> dict:

@@ -217,3 +217,118 @@ class TestErrorHandling:
         result = grok.optimize_post("test")
 
         assert "error" in result
+
+
+class _CaptureProvider:
+    """system/user 프롬프트를 캡처하고 준비된 응답을 차례로 돌려주는 페이크."""
+
+    name = "Fake"
+
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls = []  # (system, user) 튜플
+
+    def generate_json(self, system, user):
+        self.calls.append((system, user))
+        return self.responses.pop(0) if self.responses else {"error": "exhausted"}
+
+
+def _five_ideas(content="담백한 본문이다. 숫자 3이 있다."):
+    return {
+        "ideas": [
+            {"title": f"t{i}", "content": content, "image_prompt": "scene"}
+            for i in range(5)
+        ]
+    }
+
+
+class TestGenerateIdeasV2:
+    def test_mode_block_and_default_mode_injected(self):
+        import writing_modes
+
+        provider = _CaptureProvider([_five_ideas()])
+        grok = GrokClient(provider=provider)
+        result = grok.generate_ideas("AI")
+
+        system = provider.calls[0][0]
+        assert "글쓰기 모드 배정" in system  # 자동 믹스 블록
+        # 자동 믹스: 라벨이 비어 있으면 톤 순환으로 보정된다
+        labels = [idea["mode"] for idea in result["ideas"]]
+        assert labels == [
+            writing_modes.WRITING_MODES[k]["label"] for k in writing_modes.TONE_ROTATION
+        ]
+
+    def test_single_mode_injected(self):
+        provider = _CaptureProvider([_five_ideas()])
+        grok = GrokClient(provider=provider)
+        result = grok.generate_ideas("AI", mode="kimhoon")
+
+        system = provider.calls[0][0]
+        assert "김훈체" in system
+        assert all(idea["mode"] == "김훈체" for idea in result["ideas"])
+
+    def test_avoid_block_from_history(self, monkeypatch, tmp_path):
+        import ideas_history
+
+        hist = tmp_path / "h.jsonl"
+        monkeypatch.setattr(ideas_history, "HISTORY_PATH", hist)
+        ideas_history.append_history(
+            "AI", 0,
+            {"ideas": [{"title": "이전 아이디어 제목", "content": "이전 훅 문장.\n나머지"}]},
+        )
+        provider = _CaptureProvider([_five_ideas()])
+        grok = GrokClient(provider=provider)
+        grok.generate_ideas("AI")
+
+        system = provider.calls[0][0]
+        assert "이전 아이디어 제목" in system
+        assert "이전 훅 문장" in system
+
+    def test_lint_attached_and_clean_content_no_retry(self):
+        provider = _CaptureProvider([_five_ideas()])
+        grok = GrokClient(provider=provider)
+        result = grok.generate_ideas("AI")
+
+        assert len(provider.calls) == 1  # 재시도 없음
+        assert result["ideas"][0]["_lint"] == {"s1": [], "s2": []}
+
+    def test_s1_triggers_single_rewrite(self):
+        bad = _five_ideas("이것이 중요합니다. 결론적으로 좋습니다.")
+        rewrites = {
+            "rewrites": [
+                {"index": i + 1, "content": "고쳐 쓴 담백한 문장이다."} for i in range(5)
+            ]
+        }
+        provider = _CaptureProvider([bad, rewrites])
+        grok = GrokClient(provider=provider)
+        result = grok.generate_ideas("AI")
+
+        assert len(provider.calls) == 2  # 1회 한정 재시도
+        assert result["ideas"][0]["content"] == "고쳐 쓴 담백한 문장이다."
+        assert result["ideas"][0]["_lint"]["s1"] == []
+
+    def test_rewrite_failure_keeps_original(self):
+        bad = _five_ideas("이것이 중요합니다.")
+        provider = _CaptureProvider([bad, {"error": "boom"}])
+        grok = GrokClient(provider=provider)
+        result = grok.generate_ideas("AI")
+
+        assert result["ideas"][0]["content"] == "이것이 중요합니다."
+        assert result["ideas"][0]["_lint"]["s1"]  # 배지용 정보 유지
+
+    def test_error_result_passthrough(self):
+        provider = _CaptureProvider([{"error": "provider down"}])
+        grok = GrokClient(provider=provider)
+        assert grok.generate_ideas("AI") == {"error": "provider down"}
+
+
+class TestAnalyzeVoice:
+    def test_delegates_with_joined_examples(self):
+        provider = _CaptureProvider([{"analysis": "담백한 평어체"}])
+        grok = GrokClient(provider=provider)
+        result = grok.analyze_voice(["예시 하나", "예시 둘"])
+
+        assert result == {"analysis": "담백한 평어체"}
+        system, user = provider.calls[0]
+        assert "문체 분석가" in system
+        assert "예시 하나" in user and "예시 둘" in user
