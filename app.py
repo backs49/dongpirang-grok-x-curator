@@ -269,8 +269,10 @@ if grok is None:
             OPTIMIZER_DEMO, IDEAS_DEMO, CURATOR_DEMO, THREAD_DEMO,
             AB_DEMO, SCHEDULER_DEMO, RISK_DEMO,
         )
+        from xalgo_prompts import PROMPT_VERSION
         st.session_state.optimize_result = OPTIMIZER_DEMO
         st.session_state.ideas_result = IDEAS_DEMO
+        st.session_state.ideas_prompt_version = PROMPT_VERSION
         st.session_state.curator_result = CURATOR_DEMO
         st.session_state.thread_result = THREAD_DEMO
         st.session_state.ab_result = AB_DEMO

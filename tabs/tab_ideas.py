@@ -57,6 +57,7 @@ def _apply_pending_restore():
     st.session_state.length_input = length
     if restore.get("result") is not None:
         st.session_state.ideas_result = restore["result"]
+        st.session_state.ideas_prompt_version = restore.get("prompt_version", "")
         _clear_stale_media_state()
 
 
@@ -78,6 +79,11 @@ def _resolved_image_style(selected: str | None, idea: dict, idea_index: int) -> 
     if selected and selected != image_modes.AUTO:
         return selected
     return image_modes.resolve_auto_style(idea.get("suggested_style"), idea_index)
+
+
+def _use_v2_image_flow() -> bool:
+    """현재 아이디어 세트가 v2(장면 브리프) 스키마인지 — 레거시면 스타일 조립을 우회."""
+    return st.session_state.get("ideas_prompt_version") == PROMPT_VERSION
 
 
 def render_ideas_tab(grok, image_client=None, video_client=None):
@@ -148,6 +154,7 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
                 st.error(result["error"])
             else:
                 st.session_state.ideas_result = result
+                st.session_state.ideas_prompt_version = PROMPT_VERSION
                 append_history(
                     keywords,
                     post_length,
@@ -336,6 +343,40 @@ def _render_media_history_section():
 
 def _render_image_generation(image_client, video_client, idea, idea_index):
     """아이디어 카드 하단의 스타일 모드 선택 + 즉시 이미지 생성 UI."""
+    if not _use_v2_image_flow():
+        # 레거시(v1) 이력의 image_prompt 는 스타일이 이미 문자열에 박혀 있으므로
+        # 스타일 pills·모드 조립·마스코트 참조 없이 원문 그대로 사용한다.
+        raw_prompt = idea.get("image_prompt", "")
+        st.code(raw_prompt, language="", wrap_lines=True)
+        st.caption(t("ideas_legacy_prompt_note"))
+
+        if image_client is None:
+            st.caption(t("img_engine_none"))
+            return
+
+        st.caption(t("img_engine_note", engine=image_client.name))
+
+        image_key = f"generated_image_{idea_index}"
+        if st.button(t("img_generate_btn"), key=f"gen_img_btn_{idea_index}"):
+            with st.spinner(t("img_generating", engine=image_client.name)):
+                try:
+                    st.session_state[image_key] = image_client.generate(raw_prompt)
+                except ProviderError as exc:
+                    st.error(t("img_error", err=str(exc)))
+
+        image_bytes = st.session_state.get(image_key)
+        if image_bytes:
+            st.image(image_bytes)
+            st.download_button(
+                t("img_download"),
+                data=image_bytes,
+                file_name=f"idea_{idea_index + 1}.jpg",
+                mime="image/jpeg",
+                key=f"dl_img_{idea_index}",
+            )
+            _render_video_generation(video_client, raw_prompt, image_bytes, idea_index)
+        return
+
     selected = st.pills(
         t("img_style_label"),
         options=image_modes.style_options(),

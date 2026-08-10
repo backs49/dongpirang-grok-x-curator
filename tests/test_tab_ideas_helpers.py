@@ -48,6 +48,25 @@ class TestResolvedImageStyle:
         assert _resolved_image_style(None, {}, 0) == image_modes.SUGGESTABLE[0]
 
 
+class TestV2Flow:
+    def test_v2_when_version_matches(self):
+        import streamlit as st
+
+        from tabs.tab_ideas import _use_v2_image_flow
+        from xalgo_prompts import PROMPT_VERSION
+
+        st.session_state["ideas_prompt_version"] = PROMPT_VERSION
+        assert _use_v2_image_flow() is True
+
+    def test_legacy_when_version_missing_or_old(self):
+        import streamlit as st
+
+        from tabs.tab_ideas import _use_v2_image_flow
+
+        st.session_state["ideas_prompt_version"] = ""
+        assert _use_v2_image_flow() is False
+
+
 class TestClearStaleMediaState:
     def test_clears_widget_selection_keys_too(self, monkeypatch):
         # 이전 아이디어 세트에서 고른 이미지 스타일/영상 길이·해상도가

@@ -46,70 +46,74 @@ OPTIMIZER_DEMO = {
 IDEAS_DEMO = {
     "ideas": [
         {
-            "title": "주말 2시간, 팔로워 +487명 비결",
+            "title": "주말 2시간이 만든 팔로워 487명",
+            "mode": "진지/분석",
             "content": (
-                "3주 전, 주말마다 2시간씩 글만 썼어요.\n\n"
-                "결과는요? 팔로워 +487명.\n\n"
-                "제가 쓴 방법은 딱 하나 — 매일 같은 시간에 올리고, 첫 문장은 숫자로 시작하기.\n\n"
-                "당신은 어떤 루틴으로 쓰시나요?"
+                "3주간 주말마다 2시간씩 글만 썼다.\n\n"
+                "팔로워 +487. 바꾼 건 하나다.\n"
+                "매일 같은 시간에 올리고, 첫 문장은 숫자로 시작했다.\n\n"
+                "알고리즘보다 루틴이 먼저였다."
             ),
             "engagement_level": "High",
             "best_time": "오전 9-10시, 저녁 9-11시",
             "target_actions": ["reply", "like", "follow"],
             "strategy": (
-                "개인 경험 + 구체적 숫자 + 질문 마무리의 3박자로 reply율을 최대화합니다. "
-                "오전 골든타임에 맞춰 올리면 알고리즘 푸시 확률이 올라가요."
+                "개인 경험 + 구체적 숫자 조합으로 신뢰를 만들고, 단정형 마무리가 "
+                "인용(반박·경험 얹기)을 부릅니다. 오전 골든타임 게시로 초기 노출을 확보하세요."
             ),
             "image_prompt": (
-                "A cozy weekend morning desk with a laptop, a coffee cup and an open notebook, "
-                "soft natural window light, minimalist aesthetic, portrait 9:16 composition, "
-                "cinematic warm tones, shallow depth of field, no text, no letters"
+                "A person closing a laptop on a weekend morning desk with a coffee cup "
+                "and an open notebook full of tally marks, quiet satisfaction on their face"
             ),
+            "suggested_style": "editorial",
+            "video_motion": "Slow push-in toward the notebook as a hand adds one more tally mark",
         },
         {
-            "title": "1달 만에 콘텐츠 엔진 만든 3단계",
+            "title": "콘텐츠 엔진 3단계",
+            "mode": "어그로/후킹",
             "content": (
-                "콘텐츠 막막하신 분들께.\n\n"
-                "1달 전만 해도 저도 똑같았어요.\n\n"
-                "지금은 주 5개 자동으로 올립니다. 비결은 3단계:\n\n"
-                "1. 관심사 10개 브레인스토밍\n"
-                "2. 키워드별 포맷 고정\n"
-                "3. 하루 15분만 드래프트\n\n"
-                "궁금한 거 있으시면 답글 주세요."
+                "콘텐츠 소재가 없다는 말은 대부분 거짓말이다.\n\n"
+                "1달 전의 나도 그랬다. 지금은 주 5개가 자동으로 나온다.\n"
+                "관심사 10개를 적고, 키워드마다 포맷을 고정하고, 하루 15분만 초안에 쓴다.\n\n"
+                "소재는 없는 게 아니라 안 적어둔 것이다."
             ),
             "engagement_level": "Very High",
             "best_time": "평일 오후 12-1시",
             "target_actions": ["bookmark", "reply", "follow"],
             "strategy": (
-                "리스트 포맷 + 구체적 숫자 + '궁금하면 답글' CTA 조합. "
-                "bookmark율이 특히 높게 나오는 공식이에요."
+                "첫 문장의 도발적 단정이 스크롤을 멈추고 반박 답글(인용각)을 만듭니다. "
+                "실행 가능한 3단계가 북마크를 부르는 구조입니다."
             ),
             "image_prompt": (
-                "Three hand-drawn sticky notes on a clean white desk showing numbers 1, 2, 3, "
-                "minimal flat illustration style, soft pastel colors, overhead shot, "
-                "portrait composition, no text, no letters"
+                "Three sticky notes numbered one two three on a clean desk, a hand "
+                "placing the third note, morning workspace scene"
             ),
+            "suggested_style": "doodle",
+            "video_motion": "Top-down view, a hand sticks the third note and taps it twice",
         },
         {
-            "title": "솔로 개발자의 밤 11시 30분 루틴",
+            "title": "밤 11시 30분의 30분",
+            "mode": "스토리텔링",
             "content": (
-                "밤 11시. 본업 끝난 뒤 가장 중요한 30분.\n\n"
-                "사이드 프로젝트 진도를 체크하고, 내일 할 일 딱 1개만 적어요.\n\n"
-                "이게 1년 쌓이니 솔로로도 앱 하나가 굴러갑니다.\n\n"
-                "오늘 밤 당신의 30분은 뭐에 쓰시나요?"
+                "밤 11시, 본업이 끝났다.\n\n"
+                "사이드 프로젝트 진도를 확인하고 내일 할 일을 딱 하나만 적는다. "
+                "30분이면 끝난다.\n\n"
+                "이 30분이 1년 쌓이니 앱 하나가 혼자 굴러가기 시작했다.\n"
+                "거창한 계획은 한 번도 없었다."
             ),
             "engagement_level": "High",
             "best_time": "저녁 10-11시",
             "target_actions": ["reply", "like", "dwell_time"],
             "strategy": (
-                "공감 가능한 시간대 구체화 + 개인사 + 오늘로 이어지는 CTA. "
-                "같은 처지의 개발자·창업자에게 강하게 꽂힙니다."
+                "같은 시간대에 읽는 직장인 개발자의 공감을 정조준합니다. 교훈을 직접 "
+                "말하지 않는 담담한 마무리가 체류 시간과 답글을 함께 올립니다."
             ),
             "image_prompt": (
-                "A late night home office scene with a single warm desk lamp illuminating "
-                "a laptop and a small notebook, dark background, cinematic amber mood, "
-                "portrait 9:16 composition, no text, no letters"
+                "A dim home office at night, single desk lamp on, a person writing one "
+                "line in a small notebook next to a sleeping laptop"
             ),
+            "suggested_style": "retro_anime",
+            "video_motion": "Static frame, only the lamp flickers softly and the pen moves",
         },
     ],
 }

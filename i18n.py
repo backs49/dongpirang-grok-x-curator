@@ -837,6 +837,11 @@ _T = {
         "en": "Final prompt with the selected image style applied — paste it into any image AI",
         "ja": "選択した画像スタイルが適用された最終プロンプト — 画像生成AIにそのまま貼り付けられます",
     },
+    "ideas_legacy_prompt_note": {
+        "ko": "구버전 이력의 프롬프트 — 스타일이 이미 포함돼 있어 새 스타일 모드 없이 그대로 사용합니다",
+        "en": "Legacy prompt from old history — it already embeds a style, so style modes are bypassed",
+        "ja": "旧バージョン履歴のプロンプト — スタイルが既に含まれているため、スタイルモードを適用せずそのまま使用します",
+    },
     "ideas_copy_image_prompt_title": {
         "ko": "복사용 이미지 생성 프롬프트",
         "en": "Copy-ready image prompt",

@@ -30,6 +30,20 @@ class TestExistingDemos:
                         "target_actions", "strategy", "image_prompt"):
                 assert key in idea
 
+    def test_ideas_demo_is_v2_schema(self):
+        from demo_data import IDEAS_DEMO
+        from image_modes import SUGGESTABLE
+        from writing_modes import label_to_key
+
+        for idea in IDEAS_DEMO["ideas"]:
+            assert label_to_key(idea["mode"]) != "", idea["mode"]
+            assert idea["suggested_style"] in SUGGESTABLE
+            assert idea["video_motion"].strip()
+            ip = idea["image_prompt"].lower()
+            # 장면 브리프에는 스타일·비율 단어가 없어야 한다 (스타일은 모드 블록 몫)
+            for banned in ("9:16", "3:4", "4:5", "cinematic", "illustration", "flat", "minimal"):
+                assert banned not in ip, f"{banned} in image_prompt"
+
     def test_curator_demo_keys(self):
         assert CURATOR_DEMO["recommendations"]
         for rec in CURATOR_DEMO["recommendations"]:
