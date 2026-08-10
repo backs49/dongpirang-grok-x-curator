@@ -28,7 +28,30 @@ _STATUS_BADGE = {
     "approved": "✅",
     "published": "📤",
     "rejected": "🚫",
+    "publishing": "🔄",
+    "error": "⚠️",
 }
+
+# 큐 탭에 노출할 상태 — "publishing"/"error" 도 반드시 포함한다. 감춰버리면
+# 크래시 잔재(stale_publishing_needs_review)나 발행 실패가 사람 눈에
+# 닿지 못하고 조용히 묻힌다 (9e663b8 리마인더 작업과 같은 실패 패턴).
+_VISIBLE_STATUSES = ("draft", "approved", "publishing", "error")
+
+
+def _visible_drafts(data: dict) -> list[dict]:
+    return [d for d in data["drafts"] if d["status"] in _VISIBLE_STATUSES]
+
+
+def _can_approve(status: str) -> bool:
+    """error 초안은 승인 버튼으로 재시도할 수 있게 한다(수동 재발행 경로)."""
+    return status in ("draft", "error")
+
+
+def _is_claim_locked(status: str) -> bool:
+    """publish_worker 가 트랜잭션1~2 사이에 클레임 중인 초안 — 읽기전용으로
+    보여준다(수정/반려/삭제가 워커의 트랜잭션2 기록과 경합하지 않도록)."""
+    return status == "publishing"
+
 
 # 주의: 이 탭에서는 st.rerun() 을 절대 쓰지 않는다. 명시적 rerun 은
 # st.tabs 의 활성 탭 상태를 초기화해 첫 탭으로 튕기는 회귀를 일으킨다
@@ -155,19 +178,38 @@ def render_publish_queue_tab(grok):
     # ─── 2. 초안 큐 ───
     st.markdown(f"### {t('pq_queue_title')}")
 
-    active = [d for d in data["drafts"] if d["status"] in ("draft", "approved")]
+    active = _visible_drafts(data)
     if not active:
         st.caption(t("pq_queue_empty"))
 
     for d in active:
         badge = _STATUS_BADGE.get(d["status"], "")
         pillar = t(_PILLAR_LABEL_KEYS.get(d["pillar"], "pq_pillar_bip"))
+        locked = _is_claim_locked(d["status"])
         with st.container(border=True):
             head = f"{badge} **{pillar}**"
             if d["status"] == "approved" and d.get("slot"):
                 slot_txt = d["slot"].replace("T", " ")[:16]
                 head += f" · 🕐 {t('pq_slot_label')}: {slot_txt}"
             st.markdown(head)
+
+            if d["status"] == "error":
+                st.caption(t("pq_error_note"))
+            elif locked:
+                st.caption(t("pq_publishing_note"))
+
+            if locked:
+                # 워커가 클레임한 상태 — 읽기전용으로만 보여주고 아래
+                # 수정/승인/반려/삭제 컨트롤은 렌더링하지 않는다.
+                st.text_area(
+                    t("pq_draft_text_label"),
+                    value=d["text"],
+                    key=f"pq_text_{d['id']}",
+                    height=140,
+                    label_visibility="collapsed",
+                    disabled=True,
+                )
+                continue
 
             edited = st.text_area(
                 t("pq_draft_text_label"),
@@ -182,7 +224,7 @@ def render_publish_queue_tab(grok):
 
             col_a, col_b, col_c, col_d = st.columns(4)
             with col_a:
-                if d["status"] == "draft":
+                if _can_approve(d["status"]):
                     st.button(
                         t("pq_approve"),
                         key=f"pq_ok_{d['id']}",

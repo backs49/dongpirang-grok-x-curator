@@ -290,3 +290,51 @@ class TestPublishWorker:
         publish_worker.run(now=WED_EVENING, live=True, queue_path=path, publisher=fake)
 
         assert fake.posted == []  # 이중 발행 없음
+
+    def test_non_provider_error_does_not_orphan_other_claims(self, tmp_path, monkeypatch):
+        """post_text 가 ProviderError 가 아닌 평범한 예외(예: JSON 파싱 실패)를
+        던져도 그 클레임 하나만 실패 처리되고, 나머지 클레임은 정상 발행돼야
+        한다 — 좁은 except 는 루프 전체를 끊어 이미 성공한 발행까지
+        "publishing" 에 방치할 수 있다(다음 실행에서 전부 error 로 처리됨)."""
+        self._silence_log(monkeypatch, tmp_path)
+        data = empty_queue()
+        draft_a = add_draft(data, text="글 A - 실패", pillar="tip")
+        draft_a["status"] = "approved"
+        draft_a["slot"] = "2026-07-08T19:00:00"
+        draft_b = add_draft(data, text="글 B - 성공", pillar="tip")
+        draft_b["status"] = "approved"
+        draft_b["slot"] = "2026-07-08T19:00:00"
+        path = tmp_path / "queue.json"
+        save_queue(path, data)
+
+        class _MixedFakePublisher:
+            def __init__(self):
+                self.posted = []
+
+            def post_text(self, text):
+                if text == draft_a["text"]:
+                    raise RuntimeError("boom — ProviderError 가 아닌 평범한 예외")
+                self.posted.append(text)
+                return {"id": f"tw{len(self.posted)}"}
+
+        fake = _MixedFakePublisher()
+
+        summary = publish_worker.run(
+            now=WED_EVENING, live=True, queue_path=path, publisher=fake
+        )  # 예외를 raise 하지 않고 끝까지 실행돼야 한다
+
+        assert summary["posted"] == 1
+        result = load_queue(path)
+        by_id = {d["id"]: d for d in result["drafts"]}
+        assert by_id[draft_a["id"]]["status"] == "approved"  # 되돌림 — 재시도 가능
+        assert by_id[draft_b["id"]]["status"] == "published"
+        assert by_id[draft_b["id"]]["tweet_id"] == "tw1"
+        events = _read_events(tmp_path)
+        assert any(
+            e["event"] == "publish_failed" and e["draft_id"] == draft_a["id"]
+            for e in events
+        )
+        assert any(
+            e["event"] == "published" and e["draft_id"] == draft_b["id"]
+            for e in events
+        )

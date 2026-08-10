@@ -25,7 +25,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from content_queue import QUEUE_PATH, approve_draft, queue_transaction  # noqa: E402
-from providers.base import ProviderError  # noqa: E402
 from publisher import XPublisher  # noqa: E402
 
 GRACE = timedelta(minutes=90)
@@ -115,7 +114,12 @@ def run(
     for claim in claims:
         try:
             result = publisher.post_text(claim["text"])
-        except ProviderError as exc:
+        except Exception as exc:
+            # ProviderError 뿐 아니라 어떤 예외든(예: publisher.py 의
+            # response.json() 파싱 실패) 여기서 잡아야 한다 — 좁게 잡으면
+            # 이 배치 하나가 루프 전체를(이미 성공한 발행 포함) 중단시키고
+            # 남은 클레임을 "publishing" 에 방치해 다음 실행에서 전부
+            # "error" 로 처리돼 버린다.
             results.append({"id": claim["id"], "ok": False, "error": str(exc)})
         else:
             results.append({"id": claim["id"], "ok": True, "tweet_id": result["id"]})

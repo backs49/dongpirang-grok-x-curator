@@ -325,6 +325,16 @@ _T = {
         "en": "{n} approved draft(s) assigned to slots. Once the auto-publish worker (4c) is connected they'll go out at those times. Until then, use 'Post now' to publish manually.",
         "ja": "承認済み下書き{n}件がスロットに割り当てられています。自動発行ワーカー(4c)が接続されると、その時刻に自動投稿されます。それまでは「今すぐ投稿」で手動投稿してください。",
     },
+    "pq_error_note": {
+        "ko": "⚠️ 발행에 실패했어요. 내용을 확인하고 다시 승인하면 재시도합니다.",
+        "en": "⚠️ Publishing failed. Review the text and approve again to retry.",
+        "ja": "⚠️ 発行に失敗しました。内容を確認して再度承認すると再試行します。",
+    },
+    "pq_publishing_note": {
+        "ko": "🔄 지금 발행 처리 중이에요. 잠시 후 새로고침해서 결과를 확인하세요.",
+        "en": "🔄 Publishing is in progress. Refresh in a moment to check the result.",
+        "ja": "🔄 現在発行処理中です。しばらくしてから更新して結果を確認してください。",
+    },
     "pq_pillar_bip": {
         "ko": "빌드 인 퍼블릭",
         "en": "Build in public",
