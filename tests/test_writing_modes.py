@@ -28,6 +28,12 @@ class TestModeCards:
             assert wm.label_to_key(wm.mode_label(key)) == key
         assert wm.label_to_key("없는 라벨") == ""
 
+    def test_label_to_key_tolerates_brackets_and_whitespace(self):
+        # 자동 믹스 배정표는 "[진지/분석]" 처럼 대괄호로 라벨을 렌더링하고
+        # LLM 이 mode 필드에 대괄호를 그대로 에코하는 경우가 있다.
+        assert wm.label_to_key("[진지/분석]") == "serious"
+        assert wm.label_to_key(" 유머 ") == "humor"
+
     def test_polite_modes(self):
         assert wm.allow_polite("chimchakman") is True
         assert wm.allow_polite("haoche") is True

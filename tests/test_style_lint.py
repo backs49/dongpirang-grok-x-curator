@@ -24,6 +24,12 @@ class TestS1Patterns:
         assert "첫째" in labels
         assert "이를 통해" in labels
 
+    def test_duljjae_without_comma_not_flagged(self):
+        # "둘째가 태어났다" 처럼 서수사가 아닌 경우 콤마 앵커가 없으면
+        # 오탐하지 않아야 한다.
+        result = lint("둘째가 태어났다. 기뻤다.")
+        assert result.s1_hits == []
+
     def test_detects_em_dash_and_ai_emoji(self):
         result = lint("오늘 배포했다 — 성공적이었다 🚀")
         labels = " ".join(result.s1_hits)

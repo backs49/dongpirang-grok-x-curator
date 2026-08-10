@@ -196,8 +196,12 @@ def mode_label(key: str) -> str:
 
 
 def label_to_key(label: str) -> str:
+    # 자동 믹스 배정표가 "[진지/분석]" 처럼 대괄호로 라벨을 렌더링하고
+    # LLM 이 대괄호를 그대로 에코하는 경우가 있어, 매칭 전에 앞뒤 공백과
+    # 대괄호를 벗겨낸다.
+    cleaned = label.strip().strip("[]").strip()
     for key, card in WRITING_MODES.items():
-        if card["label"] == label:
+        if card["label"] == cleaned:
             return key
     return ""
 

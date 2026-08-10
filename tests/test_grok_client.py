@@ -316,6 +316,21 @@ class TestGenerateIdeasV2:
         assert result["ideas"][0]["content"] == "이것이 중요합니다."
         assert result["ideas"][0]["_lint"]["s1"]  # 배지용 정보 유지
 
+    def test_rewrite_with_equal_s1_count_keeps_original(self):
+        bad = _five_ideas("이것이 중요합니다.")
+        rewrites = {
+            "rewrites": [
+                {"index": i + 1, "content": "또 다른 것이 중요합니다."} for i in range(5)
+            ]
+        }
+        provider = _CaptureProvider([bad, rewrites])
+        grok = GrokClient(provider=provider)
+        result = grok.generate_ideas("AI")
+
+        # 재작성본도 S1 을 그대로 갖고 있으면(동률) 채택하지 않고 원본을 유지한다
+        assert result["ideas"][0]["content"] == "이것이 중요합니다."
+        assert result["ideas"][0]["_lint"]["s1"]
+
     def test_error_result_passthrough(self):
         provider = _CaptureProvider([{"error": "provider down"}])
         grok = GrokClient(provider=provider)
@@ -332,3 +347,32 @@ class TestAnalyzeVoice:
         system, user = provider.calls[0]
         assert "문체 분석가" in system
         assert "예시 하나" in user and "예시 둘" in user
+
+
+class TestDraftFromMaterial:
+    def test_voice_block_injected_when_card_exists(self, monkeypatch, tmp_path):
+        import voice_card
+
+        path = tmp_path / "voice_card.json"
+        monkeypatch.setattr(voice_card, "VOICE_CARD_PATH", path)
+        voice_card.save_voice_card(["예시 포스트 하나."], analysis="담백한 평어체")
+
+        provider = _CaptureProvider([{"post": "완성된 포스트", "pillar": "tip"}])
+        grok = GrokClient(provider=provider)
+        grok.draft_from_material("오늘 배포하다 새벽 두 시에 장애가 났다")
+
+        system = provider.calls[0][0]
+        assert "계정 주인의 실제 목소리" in system
+
+    def test_voice_block_absent_when_no_card(self, monkeypatch, tmp_path):
+        import voice_card
+
+        path = tmp_path / "voice_card.json"
+        monkeypatch.setattr(voice_card, "VOICE_CARD_PATH", path)
+
+        provider = _CaptureProvider([{"post": "완성된 포스트", "pillar": "tip"}])
+        grok = GrokClient(provider=provider)
+        grok.draft_from_material("오늘 배포하다 새벽 두 시에 장애가 났다")
+
+        system = provider.calls[0][0]
+        assert "계정 주인의 실제 목소리" not in system

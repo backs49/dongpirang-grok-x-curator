@@ -184,7 +184,7 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
                         t("ideas_to_queue_btn"),
                         key=f"to_queue_{i}",
                         use_container_width=True,
-                        disabled=st.session_state.get(queued_key, False),
+                        disabled=st.session_state.get(queued_key, False) or grok is None,
                     ):
                         try:
                             data = load_queue()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
 import ideas_history
@@ -157,11 +158,16 @@ class GrokClient:
                 new_content = (rw.get("content") or "").strip()
                 if idx in flagged and new_content:
                     idea = result["ideas"][idx]
+                    old_s1_count = len(idea["_lint"]["s1"])
                     lr = style_lint.lint(new_content, allow_polite=_polite_ok(idea))
-                    idea["content"] = new_content
-                    idea["_lint"] = {"s1": lr.s1_hits, "s2": lr.s2_hits}
-        except Exception:
-            pass  # 재작성 실패는 원본 유지 — 배지로만 알린다
+                    # 재작성이 원본보다 S1 검출을 실제로 줄였을 때만 채택한다.
+                    # 그렇지 않으면(동률·악화) 원본 콘텐츠와 원본 _lint 를 유지한다.
+                    if len(lr.s1_hits) < old_s1_count:
+                        idea["content"] = new_content
+                        idea["_lint"] = {"s1": lr.s1_hits, "s2": lr.s2_hits}
+        except Exception as exc:
+            logging.getLogger(__name__).warning("lint rewrite pass failed: %s", exc)
+            # 재작성 실패는 원본 유지 — 배지로만 알린다
 
     def analyze_voice(self, examples: list[str]) -> dict:
         """보이스 카드용 1회성 문체 분석."""
@@ -234,7 +240,10 @@ class GrokClient:
 
     def draft_from_material(self, material_text: str) -> dict:
         return self.provider.generate_json(
-            DRAFT_FROM_MATERIAL_SYSTEM_PROMPT + NATURAL_STYLE_GUIDE + get_lang_instruction(),
+            DRAFT_FROM_MATERIAL_SYSTEM_PROMPT
+            + NATURAL_STYLE_GUIDE
+            + voice_card.build_voice_block()
+            + get_lang_instruction(),
             f"소재 메모:\n{material_text}",
         )
 
