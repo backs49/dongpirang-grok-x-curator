@@ -735,15 +735,97 @@ _T = {
         "en": "0 = auto (200–500 chars recommended). Set 100–1000 to specify.",
         "ja": "0 = 自動（200〜500文字推奨）。100〜1000文字で指定可能。",
     },
+    # ─── 아이디어 탭: 글쓰기/이미지 모드 ───
+    "ideas_mode_label": {
+        "ko": "글쓰기 모드",
+        "en": "Writing mode",
+        "ja": "文体モード",
+    },
+    "img_style_label": {
+        "ko": "이미지 스타일",
+        "en": "Image style",
+        "ja": "画像スタイル",
+    },
+    "ideas_char_count": {
+        "ko": "{n}자",
+        "en": "{n} chars",
+        "ja": "{n}文字",
+    },
+    "ideas_len_warn": {
+        "ko": "지정 길이 {target}자에서 ±10% 이상 벗어남",
+        "en": "More than ±10% off the requested {target} chars",
+        "ja": "指定文字数{target}から±10%以上ずれています",
+    },
+    "ideas_lint_s1": {
+        "ko": "AI 상투 표현 감지 (자동 재작성 실패): {items}",
+        "en": "AI-cliché detected (auto-rewrite failed): {items}",
+        "ja": "AI常套句を検出（自動リライト失敗）: {items}",
+    },
+    "ideas_lint_s2": {
+        "ko": "문체 주의: {items}",
+        "en": "Style caution: {items}",
+        "ja": "文体注意: {items}",
+    },
+    "ideas_to_queue_btn": {
+        "ko": "초안 큐로 보내기",
+        "en": "Send to draft queue",
+        "ja": "下書きキューへ送る",
+    },
+    "ideas_queued_toast": {
+        "ko": "발행 큐에 초안으로 추가됨",
+        "en": "Added to publish queue as a draft",
+        "ja": "公開キューに下書きとして追加されました",
+    },
+    "ideas_queue_error": {
+        "ko": "큐 추가 실패: {err}",
+        "en": "Failed to add to queue: {err}",
+        "ja": "キュー追加に失敗: {err}",
+    },
+    # ─── 보이스 카드 ───
+    "voice_expander": {
+        "ko": "🎙️ 내 목소리 (보이스 카드)",
+        "en": "🎙️ My voice (voice card)",
+        "ja": "🎙️ 私の声（ボイスカード）",
+    },
+    "voice_input_label": {
+        "ko": "본인이 직접 쓴 포스트를 붙여넣기",
+        "en": "Paste posts you actually wrote",
+        "ja": "自分で書いたポストを貼り付け",
+    },
+    "voice_help": {
+        "ko": "포스트 사이는 빈 줄 또는 --- 로 구분. 반응 좋았던 글일수록 좋음. 등록하면 모든 생성에 문체 예시로 주입됨.",
+        "en": "Separate posts with a blank line or ---. Injected into every generation as voice examples.",
+        "ja": "ポストの間は空行または --- で区切ります。すべての生成に文体例として注入されます。",
+    },
+    "voice_analyze_btn": {
+        "ko": "분석·저장",
+        "en": "Analyze & save",
+        "ja": "分析して保存",
+    },
+    "voice_saved": {
+        "ko": "보이스 카드 저장 완료",
+        "en": "Voice card saved",
+        "ja": "ボイスカードを保存しました",
+    },
+    "voice_need_input": {
+        "ko": "포스트를 1개 이상 붙여넣어 주세요",
+        "en": "Paste at least one post",
+        "ja": "ポストを1件以上貼り付けてください",
+    },
+    "voice_count": {
+        "ko": "등록된 예시 {n}개",
+        "en": "{n} examples registered",
+        "ja": "登録済みの例 {n}件",
+    },
     "ideas_image_prompt_title": {
         "ko": "🖼️ 이 포스트에 어울리는 이미지 프롬프트",
         "en": "🖼️ Image prompt matching this post",
         "ja": "🖼️ このポストに合う画像プロンプト",
     },
     "ideas_image_prompt_caption": {
-        "ko": "Grok Imagine 또는 Gemini 3 Flash Image에 복사해서 사용하세요",
-        "en": "Copy and paste into Grok Imagine or Gemini 3 Flash Image",
-        "ja": "Grok ImagineまたはGemini 3 Flash Imageにコピーして使用してください",
+        "ko": "선택한 이미지 스타일이 적용된 최종 프롬프트 — 이미지 생성 AI에 바로 붙여넣어 쓸 수 있습니다",
+        "en": "Final prompt with the selected image style applied — paste it into any image AI",
+        "ja": "選択した画像スタイルが適用された最終プロンプト — 画像生成AIにそのまま貼り付けられます",
     },
     "ideas_copy_image_prompt_title": {
         "ko": "복사용 이미지 생성 프롬프트",
