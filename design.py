@@ -701,7 +701,12 @@ _MEDIA_CSS = """
     object-fit: contain;
     display: block;
 }
+/* Streamlit 버전에 따라 data-testid 가 <video> 요소 자체에 붙기도 하고
+   (1.50 이 이 경우 — 자손 선택자만으로는 매칭 실패로 영상이 컬럼 전체
+   폭으로 커진다) 래퍼 div 에 붙기도 하므로 두 구조를 모두 잡는다. */
+video[data-testid="stVideo"],
 [data-testid="stVideo"] video,
+[data-testid="stVideoContainer"] video,
 div.stVideo video {
     max-height: 62vh;
     width: auto !important;
