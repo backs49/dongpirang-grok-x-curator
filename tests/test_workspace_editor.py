@@ -10,17 +10,21 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import threading
 import time
 
 from nicegui import app
 from nicegui.testing import user_simulation
 
+import content_queue
 import workspace_job_runner
 import workspace_jobs
 from content_queue import load_queue, queue_transaction, upsert_workspace_draft
 from utils import generate_tweet_intent_url
 from workspace_ui import editor
 from workspace_ui.app import build_workspace
+from workspace_ui.copy import copy
 from workspace_ui.editor import (
     editor_pillar,
     mark_editor_published,
@@ -239,6 +243,137 @@ async def test_saving_to_the_queue_leaves_the_draft_ready_for_approval(monkeypat
         assert stored["status"] == "draft"
         assert stored["slot"] is None
         assert "manual_published" not in stored
+
+
+async def test_queue_contention_never_freezes_the_event_loop(monkeypatch, tmp_path):
+    """배치가 큐 락을 잡고 있어도 서버는 계속 돈다.
+
+    큐 락은 flock 을 최대 10초까지 기다리며 time.sleep 으로 busy-wait 한다.
+    그 기다림이 이벤트 루프에서 일어나면 그 동안 이 사람뿐 아니라 접속한
+    모든 클라이언트와 모든 타이머가 함께 멈춘다.
+    """
+    path = tmp_path / "queue.json"
+    monkeypatch.setattr(editor, "QUEUE_PATH", path)
+    monkeypatch.setattr(editor, "AUTOSAVE_SECONDS", 0.05)
+    monkeypatch.setattr(workspace_jobs, "get_job", lambda job_id, **kw: POST_JOB if job_id == "post-1" else None)
+
+    async with user_simulation(_seeded_page(active_post_job_id="post-1")) as user:
+        await user.open("/")
+        await user.should_see(marker="editor-text")
+
+        holding = threading.Event()
+        released = threading.Event()
+
+        def hold_the_queue_lock() -> None:
+            # launchd 배치(generate_drafts, publish_worker)가 같은 flock 을 잡은 상황.
+            with content_queue.queue_lock(path, timeout=5.0):
+                holding.set()
+                released.wait(5.0)
+
+        holder = threading.Thread(target=hold_the_queue_lock, daemon=True)
+        holder.start()
+        assert holding.wait(2.0)
+
+        ticks = 0
+
+        async def heartbeat() -> None:
+            nonlocal ticks
+            while True:
+                ticks += 1
+                await asyncio.sleep(0.01)
+
+        beat = asyncio.create_task(heartbeat())
+        try:
+            user.find(marker="editor-text").type(" 둘째 문장")
+            user.find(marker="editor-save").click()
+            await asyncio.sleep(0.3)
+
+            # 저장은 아직 락을 기다리는 중이지만 루프는 살아 있다.
+            assert ticks > 5
+            assert load_queue(path)["drafts"][0]["text"] == "첫 문장"
+        finally:
+            released.set()
+            holder.join(5.0)
+            beat.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await beat
+
+        await _wait_until(lambda: load_queue(path)["drafts"][0]["text"] == "첫 문장 둘째 문장")
+
+
+async def test_queue_lock_timeout_is_visible_and_autosave_retries(monkeypatch, tmp_path):
+    path = tmp_path / "queue.json"
+    contended = {"now": False}
+    real_save = editor.save_editor_draft
+
+    def flaky_save(*args, **kwargs):
+        if contended["now"]:
+            raise TimeoutError(f"queue lock timeout (10.0s): {path}")
+        return real_save(*args, **kwargs)
+
+    monkeypatch.setattr(editor, "QUEUE_PATH", path)
+    monkeypatch.setattr(editor, "AUTOSAVE_SECONDS", 0.05)
+    monkeypatch.setattr(editor, "save_editor_draft", flaky_save)
+    monkeypatch.setattr(workspace_jobs, "get_job", lambda job_id, **kw: POST_JOB if job_id == "post-1" else None)
+
+    async with user_simulation(_seeded_page(active_post_job_id="post-1")) as user:
+        await user.open("/")
+        await user.should_see(marker="editor-text")
+        assert load_queue(path)["drafts"][0]["text"] == "첫 문장"
+
+        contended["now"] = True
+        user.find(marker="editor-text").type(" 둘째 문장")
+        user.find(marker="editor-save").click()
+
+        # 저장이 멈춘 걸 사람이 알아야 한다. 저장했다고 거짓말하지 않는다.
+        await user.should_see(copy("queue_busy"))
+        await user.should_not_see(copy("editor_saved"))
+        assert load_queue(path)["drafts"][0]["text"] == "첫 문장"
+
+        # 기준선이 올라가지 않았으므로 락이 풀리면 다음 틱이 다시 쓴다.
+        contended["now"] = False
+        await _wait_until(lambda: load_queue(path)["drafts"][0]["text"] == "첫 문장 둘째 문장")
+        assert len(load_queue(path)["drafts"]) == 1
+
+
+async def test_publish_timeout_keeps_the_editor_and_its_draft(monkeypatch, tmp_path):
+    path = tmp_path / "queue.json"
+    contended = {"now": False}
+    real_mark = editor.mark_editor_published
+
+    def flaky_mark(*args, **kwargs):
+        if contended["now"]:
+            raise TimeoutError(f"queue lock timeout (10.0s): {path}")
+        return real_mark(*args, **kwargs)
+
+    monkeypatch.setattr(editor, "QUEUE_PATH", path)
+    monkeypatch.setattr(editor, "AUTOSAVE_SECONDS", 0.05)
+    monkeypatch.setattr(editor, "mark_editor_published", flaky_mark)
+    monkeypatch.setattr(workspace_jobs, "get_job", lambda job_id, **kw: POST_JOB if job_id == "post-1" else None)
+
+    async with user_simulation(_seeded_page(active_post_job_id="post-1")) as user:
+        await user.open("/")
+        await user.should_see(marker="editor-published")
+
+        contended["now"] = True
+        user.find(marker="editor-published").click()
+
+        await user.should_see(copy("queue_busy"))
+        # 기록하지 못했으니 에디터를 닫지 않는다 — 초안 연결도 그대로다.
+        await user.should_see(marker="editor-text")
+        await user.should_not_see(copy("editor_published"))
+        assert load_queue(path)["drafts"][0]["status"] == "draft"
+
+        contended["now"] = False
+        user.find(marker="editor-published").click()
+
+        stored = await _wait_until(
+            lambda: load_queue(path)["drafts"][0]
+            if load_queue(path)["drafts"][0]["status"] == "published" else None
+        )
+        assert stored["manual_published"] is True
+        # 실패한 시도가 유령 초안을 남기지 않았다.
+        assert len(load_queue(path)["drafts"]) == 1
 
 
 async def test_marking_published_clears_the_editor_so_autosave_cannot_duplicate(monkeypatch, tmp_path):

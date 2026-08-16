@@ -226,6 +226,11 @@ _W = {
         "en": "The post body is empty.",
         "ja": "本文が空だ。",
     },
+    "queue_busy": {
+        "ko": "저장 잠금 대기 시간이 지났다. 잠시 뒤 다시 시도한다.",
+        "en": "Timed out waiting for the queue lock. It will retry shortly.",
+        "ja": "保存ロックの待ち時間を超えた。少し後に再試行する。",
+    },
 
     # ─── 설정 ───
     "settings_title": {
