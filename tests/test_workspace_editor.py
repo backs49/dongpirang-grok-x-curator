@@ -301,6 +301,88 @@ async def test_queue_contention_never_freezes_the_event_loop(monkeypatch, tmp_pa
         await _wait_until(lambda: load_queue(path)["drafts"][0]["text"] == "첫 문장 둘째 문장")
 
 
+async def test_concurrent_writes_cannot_leave_a_ghost_draft(monkeypatch, tmp_path):
+    """자동저장이 쓰는 중에 저장 버튼이 겹쳐도 초안은 하나다.
+
+    저장은 "초안 ID 를 읽고 → 파일에 쓰고 → 받은 ID 를 되쓰는" 세 걸음이고
+    그 사이에 await 가 있다. 자동저장 틱과 버튼 클릭은 서로 다른 태스크라,
+    직렬화하지 않으면 둘 다 비어 있는 ID(None)를 읽고 각자 새 초안을 만든다.
+    """
+    path = tmp_path / "queue.json"
+    real_save = editor.save_editor_draft
+    saves = {"started": 0, "finished": 0}
+    painting = {"now": True}
+
+    def slow_save(*args, **kwargs):
+        if painting["now"]:
+            # 그리는 도중의 첫 저장이 경합으로 실패한 상태 = 초안 ID 가 없다.
+            raise TimeoutError("paint lock timeout")
+        saves["started"] += 1
+        try:
+            time.sleep(0.25)  # 워커 스레드 안에서만 느리다
+            return real_save(*args, **kwargs)
+        finally:
+            saves["finished"] += 1
+
+    monkeypatch.setattr(editor, "QUEUE_PATH", path)
+    monkeypatch.setattr(editor, "AUTOSAVE_SECONDS", 0.05)
+    monkeypatch.setattr(editor, "save_editor_draft", slow_save)
+    monkeypatch.setattr(workspace_jobs, "get_job", lambda job_id, **kw: POST_JOB if job_id == "post-1" else None)
+
+    async with user_simulation(_seeded_page(active_post_job_id="post-1")) as user:
+        await user.open("/")
+        await user.should_see(marker="editor-text")
+        assert load_queue(path)["drafts"] == []
+
+        painting["now"] = False
+        user.find(marker="editor-text").type(" 가")
+        await _wait_until(lambda: saves["started"] >= 1)
+
+        # 자동저장이 아직 파일을 쓰는 중에 사람이 저장을 누른다.
+        user.find(marker="editor-text").type("나")
+        user.find(marker="editor-save").click()
+
+        await _wait_until(lambda: saves["finished"] >= 2, timeout=5.0)
+        await asyncio.sleep(0.4)
+
+        drafts = load_queue(path)["drafts"]
+        assert len(drafts) == 1
+        assert drafts[0]["text"] == "첫 문장 가나"
+
+
+async def test_page_rebuild_keeps_edits_when_the_first_save_never_landed(monkeypatch, tmp_path):
+    """초안 ID 가 없어도 복원은 복원이다.
+
+    첫 저장이 경합으로 실패하면 editor_draft_id 는 비어 있다. 그 상태에서
+    다시 그릴 때 "완성 결과를 처음 본다" 로 착각하면, 사람이 이미 고쳐 둔
+    본문을 원래 생성 결과가 덮어써 버린다.
+    """
+    path = tmp_path / "queue.json"
+    monkeypatch.setattr(editor, "QUEUE_PATH", path)
+    monkeypatch.setattr(editor, "AUTOSAVE_SECONDS", 0.05)
+    monkeypatch.setattr(workspace_jobs, "get_job", lambda job_id, **kw: POST_JOB if job_id == "post-1" else None)
+
+    page = _seeded_page(
+        active_post_job_id="post-1",
+        editor_job_id="post-1",
+        editor_draft_id=None,
+        editor_text="사람이 고친 문장",
+    )
+    async with user_simulation(page) as user:
+        await user.open("/")
+        await user.should_see("사람이 고친 문장")
+        # 생성 결과("첫 문장")가 사람의 편집을 밀어내지 않았다.
+        await user.should_not_see("첫 문장")
+
+        # 초안이 없던 상태에서도 자동저장이 그 본문으로 초안 하나를 만든다.
+        stored = await _wait_until(
+            lambda: load_queue(path)["drafts"][0] if load_queue(path)["drafts"] else None
+        )
+        assert stored["text"] == "사람이 고친 문장"
+        assert stored["source_job_id"] == "post-1"
+        assert len(load_queue(path)["drafts"]) == 1
+
+
 async def test_queue_lock_timeout_is_visible_and_autosave_retries(monkeypatch, tmp_path):
     path = tmp_path / "queue.json"
     contended = {"now": False}

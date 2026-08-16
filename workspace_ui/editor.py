@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import copy as copy_module
 from collections.abc import Awaitable, Callable
 from pathlib import Path
@@ -139,10 +140,17 @@ def render_editor(
     # 같은 알림을 쌓지 않기 위해서다.
     warned = {"busy": False}
 
-    async def flush() -> dict | None:
-        """바뀐 본문만 파일에 쓴다. 파일 작업은 워커 스레드에서 한다.
+    # 이 에디터의 큐 쓰기는 한 번에 하나만. 저장은 "초안 ID 를 읽고 → 워커
+    # 스레드에서 쓰고 → 받은 ID 를 되쓰는" 세 걸음인데, 그 사이에 await 가
+    # 있다. 자동저장 타이머는 자기끼리 겹치지 않지만 버튼 클릭은 독립된
+    # 태스크로 돌기 때문에, 락이 없으면 둘 다 아직 비어 있는 초안 ID(None)를
+    # 읽고 각자 새 초안을 만든다 — 하나는 발행되고 하나는 유령으로 남는다.
+    writing = asyncio.Lock()
 
-        락을 못 잡으면 TimeoutError 를 그대로 올린다. 기준선(flushed)은
+    async def _write_pending() -> dict | None:
+        """바뀐 본문만 파일에 쓴다. 반드시 writing 락을 잡고 부른다.
+
+        락(파일)을 못 잡으면 TimeoutError 를 그대로 올린다. 기준선(flushed)은
         저장이 실제로 끝난 뒤에만 올라가므로, 실패하면 다음 틱이 같은
         본문을 다시 쓴다.
         """
@@ -161,6 +169,25 @@ def render_editor(
             store["editor_draft_id"] = draft["id"]
         flushed["text"] = current
         return draft
+
+    async def flush() -> dict | None:
+        async with writing:
+            return await _write_pending()
+
+    async def publish() -> dict | None:
+        """저장과 발행 기록을 한 호흡에 한다.
+
+        둘 사이에 다른 저장이 끼어들면 방금 만든 초안이 아닌 것을 발행으로
+        표시할 수 있으므로 같은 락 안에서 끝낸다.
+        """
+        async with writing:
+            draft = await _write_pending()
+            draft_id = (draft or {}).get("id") or store.get("editor_draft_id")
+            if not draft_id:
+                return None
+            return await run.io_bound(
+                mark_editor_published, draft_id, queue_path=queue_path
+            )
 
     async def autosave() -> None:
         try:
@@ -206,7 +233,7 @@ def render_editor(
                 .props("outline dense").classes("grow").mark("editor-save")
             ui.button(
                 copy("editor_mark_published"),
-                on_click=lambda: _mark_published(flush, store, queue_path, on_published),
+                on_click=lambda: _mark_published(publish, store, on_published),
             ).props(f"unelevated dense text-color={text_color}").classes("grow") \
                 .mark("editor-published")
 
@@ -272,24 +299,21 @@ async def _save_now(flush: Callable[[], Awaitable[dict | None]], store) -> None:
 
 
 async def _mark_published(
-    flush: Callable[[], Awaitable[dict | None]],
+    publish: Callable[[], Awaitable[dict | None]],
     store,
-    queue_path: Path | None,
     on_published: Callable[[], None],
 ) -> None:
-    """게시했음 — 사람이 직접 X 에 올린 글을 발행 기록으로 남긴다."""
+    """게시했음 — 사람이 직접 X 에 올린 글을 발행 기록으로 남긴다.
+
+    publish 는 지금 본문을 저장하고 그 초안을 발행으로 표시하는 일을 한
+    락 안에서 끝낸다 — 화면의 본문과 기록이 어긋나지 않게 하기 위해서다.
+    """
     if not (store.get("editor_text") or "").strip():
         ui.notify(copy("editor_empty"))
         return
 
     try:
-        # 먼저 지금 본문을 저장한다. 저장이 새 초안을 만들었다면 그 새 초안을
-        # 발행으로 기록해야 화면의 본문과 기록이 어긋나지 않는다.
-        draft = await flush()
-        draft_id = (draft or {}).get("id") or store.get("editor_draft_id")
-        published = await run.io_bound(
-            mark_editor_published, draft_id, queue_path=queue_path
-        ) if draft_id else None
+        published = await publish()
     except TimeoutError:
         # 기록하지 못했으면 에디터를 그대로 둔다. 여기서 상태를 지우면
         # 발행되지도 않은 글의 초안 연결만 끊긴다.
