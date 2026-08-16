@@ -11,14 +11,19 @@ from content_queue import (
     add_draft,
     add_material,
     approve_draft,
+    drafts_for_statuses,
+    duplicate_draft,
     empty_queue,
+    get_draft,
     load_queue,
+    mark_manual_published,
     next_slots,
     remove_draft,
     remove_material,
     save_queue,
     unused_materials,
     update_draft_text,
+    upsert_workspace_draft,
 )
 
 # 2026-07-08 은 수요일
@@ -136,6 +141,164 @@ class TestDrafts:
 
         remove_draft(data, draft["id"])
         assert data["drafts"] == []
+
+
+class TestWorkspaceDraftsAndHistory:
+    def test_workspace_draft_can_be_updated_and_manually_marked_published(self):
+        data = empty_queue()
+        draft = upsert_workspace_draft(
+            data, draft_id=None, text="초안", pillar="build_in_public",
+            source_job_id="job-1", source_kind="post",
+        )
+        updated = upsert_workspace_draft(
+            data, draft_id=draft["id"], text="수정한 초안", pillar="build_in_public",
+            source_job_id="job-1", source_kind="post",
+        )
+        mark_manual_published(data, updated["id"])
+        assert data["drafts"][0]["text"] == "수정한 초안"
+        assert data["drafts"][0]["status"] == "published"
+        assert data["drafts"][0]["manual_published"] is True
+        assert "tweet_id" not in data["drafts"][0]
+
+    def test_duplicate_history_creates_a_new_editable_draft(self):
+        data = empty_queue()
+        old = add_draft(data, text="지난 글", pillar="tip")
+        mark_manual_published(data, old["id"])
+        copied = duplicate_draft(data, old["id"])
+        assert copied["id"] != old["id"]
+        assert copied["status"] == "draft"
+        assert copied["text"] == "지난 글"
+
+    def test_new_workspace_draft_has_workspace_metadata(self):
+        data = empty_queue()
+        draft = upsert_workspace_draft(
+            data, draft_id=None, text="새 초안", pillar="tip",
+            source_job_id="job-9", source_kind="idea",
+        )
+        assert draft["origin"] == "workspace"
+        assert draft["source_job_id"] == "job-9"
+        assert draft["source_kind"] == "idea"
+        assert draft["updated_at"]
+        assert draft["status"] == "draft"
+        assert draft["slot"] is None
+
+    def test_upsert_workspace_draft_blank_text_returns_none(self):
+        data = empty_queue()
+        assert upsert_workspace_draft(
+            data, draft_id=None, text="   ", pillar="tip",
+        ) is None
+        assert data["drafts"] == []
+
+    def test_upsert_workspace_draft_does_not_update_non_editable_draft(self):
+        data = empty_queue()
+        draft = add_draft(data, text="원본", pillar="tip")
+        approve_draft(data, draft["id"], now=WED_NOON)
+        result = upsert_workspace_draft(
+            data, draft_id=draft["id"], text="수정 시도", pillar="tip",
+        )
+        assert result is None
+        assert data["drafts"][0]["text"] == "원본"
+        assert data["drafts"][0]["status"] == "approved"
+
+    def test_upsert_workspace_draft_missing_id_returns_none(self):
+        data = empty_queue()
+        assert upsert_workspace_draft(
+            data, draft_id="nope-does-not-exist", text="글", pillar="tip",
+        ) is None
+        assert data["drafts"] == []
+
+    def test_get_draft_missing_id_returns_none(self):
+        data = empty_queue()
+        add_draft(data, text="글", pillar="tip")
+        assert get_draft(data, "nope-does-not-exist") is None
+
+    def test_mark_manual_published_missing_id_returns_none(self):
+        data = empty_queue()
+        assert mark_manual_published(data, "nope-does-not-exist") is None
+        assert data["drafts"] == []
+
+    def test_duplicate_draft_missing_id_returns_none(self):
+        data = empty_queue()
+        assert duplicate_draft(data, "nope-does-not-exist") is None
+        assert data["drafts"] == []
+
+    def test_duplicate_draft_never_mutates_source(self):
+        data = empty_queue()
+        old = add_draft(data, text="원본 글", pillar="tip", image_prompt="desk photo")
+        mark_manual_published(data, old["id"])
+        before = dict(old)
+        duplicate_draft(data, old["id"])
+        assert old == before
+
+    def test_duplicate_draft_does_not_carry_over_material_or_image_prompt(self):
+        data = empty_queue()
+        material = add_material(data, "소재")
+        old = add_draft(
+            data, text="원본 글", pillar="tip",
+            image_prompt="desk photo", material_id=material["id"],
+        )
+        copied = duplicate_draft(data, old["id"])
+        assert copied.get("image_prompt") in (None, "")
+        assert copied.get("material_id") is None
+        assert "tweet_id" not in copied
+
+    def test_legacy_draft_without_workspace_fields_still_works(self):
+        """구버전 큐 파일에는 origin/source_job_id/updated_at 등 새 필드가
+        전혀 없다 — load_queue 는 개별 초안 필드를 setdefault 하지 않으므로
+        새 헬퍼들이 .get() 으로 안전하게 다뤄야 한다."""
+        data = empty_queue()
+        data["drafts"].append({
+            "id": "legacy-1",
+            "text": "옛날 글",
+            "pillar": "tip",
+            "status": "draft",
+            "slot": None,
+            "image_prompt": "",
+            "material_id": None,
+            "created_at": "2025-01-01T00:00:00",
+        })
+
+        assert get_draft(data, "legacy-1")["text"] == "옛날 글"
+
+        updated = upsert_workspace_draft(
+            data, draft_id="legacy-1", text="고친 옛날 글", pillar="tip",
+        )
+        assert updated["text"] == "고친 옛날 글"
+
+        mark_manual_published(data, "legacy-1")
+        assert data["drafts"][0]["status"] == "published"
+        assert data["drafts"][0]["manual_published"] is True
+        assert "tweet_id" not in data["drafts"][0]
+
+        copied = duplicate_draft(data, "legacy-1")
+        assert copied["text"] == "고친 옛날 글"
+        assert copied["status"] == "draft"
+
+    def test_drafts_for_statuses_published_includes_api_and_manual(self):
+        data = empty_queue()
+        api_draft = add_draft(data, text="API로 발행", pillar="tip")
+        api_draft["status"] = "published"
+        api_draft["tweet_id"] = "12345"
+        api_draft["published_at"] = "2026-07-01T08:00:00"
+
+        manual_draft = add_draft(data, text="수동으로 발행", pillar="tip")
+        mark_manual_published(data, manual_draft["id"])
+
+        still_open = add_draft(data, text="아직 초안", pillar="tip")
+
+        published = drafts_for_statuses(data, {"published"})
+        ids = {d["id"] for d in published}
+        assert ids == {api_draft["id"], manual_draft["id"]}
+        assert still_open["id"] not in ids
+
+    def test_drafts_for_statuses_filters_by_given_set(self):
+        data = empty_queue()
+        d1 = add_draft(data, text="글1", pillar="tip")
+        d2 = add_draft(data, text="글2", pillar="tip")
+        approve_draft(data, d2["id"], now=WED_NOON)
+
+        drafts = drafts_for_statuses(data, {"draft"})
+        assert [d["id"] for d in drafts] == [d1["id"]]
 
 
 class _FakeProvider:

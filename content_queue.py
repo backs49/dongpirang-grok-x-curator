@@ -6,13 +6,42 @@
 {
   "materials": [{"id", "text", "created_at", "used"}],
   "drafts": [{"id", "text", "pillar", "status", "slot",
-               "image_prompt", "material_id", "created_at"}],
+               "image_prompt", "material_id", "created_at",
+               # 아래는 전부 선택 필드 — 과거 기록엔 없을 수 있으니
+               # 항상 .get() 으로 읽는다 (load_queue 는 이 필드들을
+               # setdefault 하지 않는다)
+               "origin", "source_job_id", "source_kind", "updated_at",
+               "manual_published", "published_at",
+               # publish_worker.py 가 API 발행 시에만 쓰는 필드
+               "tweet_id"}],
   "settings": {"tip_keywords"},              # 사용자가 손으로 고치는 값
   "reminders": {"stale_drafts_at"}           # 배치가 쓰는 운영 상태
 }
 
-status: draft → approved → published (또는 rejected)
-slot: 승인 시 배정되는 발행 예정 시각 (ISO 문자열, 로컬 시간)
+status 는 여섯 가지다.
+  - draft: 아직 승인 전. 자유롭게 고칠 수 있는(editable) 유일한 상태
+  - approved: 슬롯이 배정되어 발행을 기다림
+  - publishing: scripts/publish_worker.py 가 발행을 시도 중이라고 찜한
+    상태 — 워커가 중간에 죽으면 다음 실행이 이 상태를 발견해 error 로
+    돌린다(실제로 발행됐는지 알 수 없어서다)
+  - error: 발행 시도가 실패했거나 publishing 에서 회수됨. 사람 확인 필요
+  - published: 발행 완료. tweet_id 가 있으면 API로 발행된 것이고,
+    manual_published 가 True 면 사람이 수동으로 올리고 표시만 한 것 —
+    이 두 경우는 절대 동시에 만들어지지 않는다
+  - rejected: 반려됨
+(publishing/error/tweet_id/published_at 은 scripts/publish_worker.py 가
+쓰는 필드이며 publisher.py 는 건드리지 않는다.)
+
+slot: 승인 시 배정되는 발행 예정 시각 (ISO 문자열, 로컬 시간).
+mark_manual_published 로 수동 발행 표시를 하면 슬롯은 다시 None 이 된다.
+
+워크스페이스(NiceGUI) 전용 선택 필드:
+  - origin: "workspace" 면 upsert_workspace_draft 로 새로 만든 초안
+  - source_job_id / source_kind: 초안이 나온 워크스페이스·아이디어 작업의
+    id/kind (idea_jobs.py, workspace_jobs.py 의 job 레코드를 가리킨다)
+  - updated_at: 워크스페이스 자동저장이 마지막으로 고친 시각
+  - manual_published: True 면 API 없이 사람이 직접 올리고 표시만 한 것
+  - published_at: 발행 완료 시각 (API 발행·수동 발행 공통)
 
 settings/reminders 는 선택적이다. reminders 는 scripts/generate_drafts.py 가
 승인 대기 리마인드를 중복 발송하지 않으려고 기록하는 값이라 사람이 만질
@@ -242,3 +271,108 @@ def update_draft_text(data: dict, draft_id: str, text: str) -> None:
 
 def remove_draft(data: dict, draft_id: str) -> None:
     data["drafts"] = [d for d in data["drafts"] if d["id"] != draft_id]
+
+
+def get_draft(data: dict, draft_id: str) -> dict | None:
+    """draft_id 로 초안을 찾는다. 없으면 None."""
+    return _find_draft(data, draft_id)
+
+
+def upsert_workspace_draft(
+    data: dict,
+    draft_id: str | None,
+    text: str,
+    pillar: str,
+    source_job_id: str | None = None,
+    source_kind: str | None = None,
+) -> dict | None:
+    """워크스페이스 자동저장 — draft_id 가 없으면 새 초안을, 있으면 아직
+    편집 가능한("draft" 상태인) 초안만 갱신한다.
+
+    본문이 비었으면 아무것도 만들지 않고 None 을 돌려준다. draft_id 가
+    가리키는 초안이 없거나 이미 승인/발행/반려 등 편집 불가 상태라면
+    역시 아무것도 바꾸지 않고 None 을 돌려준다 — 자동저장이 이미 진행
+    중인 발행을 조용히 덮어쓰는 사고를 막기 위해서다.
+    """
+    text = (text or "").strip()
+    if not text:
+        return None
+
+    now_iso = datetime.now().isoformat(timespec="seconds")
+
+    if draft_id is None:
+        draft = {
+            "id": _new_id(),
+            "text": text,
+            "pillar": pillar,
+            "status": "draft",
+            "slot": None,
+            "image_prompt": "",
+            "material_id": None,
+            "created_at": now_iso,
+            "origin": "workspace",
+            "source_job_id": source_job_id,
+            "source_kind": source_kind,
+            "updated_at": now_iso,
+        }
+        data["drafts"].append(draft)
+        return draft
+
+    draft = _find_draft(data, draft_id)
+    if draft is None or draft.get("status") != "draft":
+        return None
+
+    draft["text"] = text
+    draft["pillar"] = pillar
+    draft["source_job_id"] = source_job_id
+    draft["source_kind"] = source_kind
+    draft["updated_at"] = now_iso
+    return draft
+
+
+def mark_manual_published(
+    data: dict, draft_id: str, now: datetime | None = None
+) -> dict | None:
+    """API 없이 사람이 직접 올린 글을 발행 완료로 표시한다.
+
+    tweet_id 는 절대 만들어내지 않는다 — tweet_id 유무가 API 발행과
+    수동 발행을 구분하는 유일한 표식이기 때문이다.
+    """
+    draft = _find_draft(data, draft_id)
+    if draft is None:
+        return None
+    now = now or datetime.now()
+    draft["status"] = "published"
+    draft["manual_published"] = True
+    draft["published_at"] = now.isoformat(timespec="seconds")
+    draft["slot"] = None
+    return draft
+
+
+def duplicate_draft(data: dict, draft_id: str) -> dict | None:
+    """히스토리(발행됐거나 반려된 글 포함)를 새 편집 가능한 초안으로
+    복제한다.
+
+    원본은 절대 건드리지 않는다. 새-초안 생성 경로(upsert_workspace_draft)를
+    그대로 타므로, text/pillar 만 옮겨지고 image_prompt·material_id·
+    tweet_id 같은 발행 당시 맥락은 새 초안에 들고 오지 않는다.
+    """
+    source = _find_draft(data, draft_id)
+    if source is None:
+        return None
+    return upsert_workspace_draft(
+        data,
+        draft_id=None,
+        text=source.get("text", ""),
+        pillar=source.get("pillar"),
+    )
+
+
+def drafts_for_statuses(data: dict, statuses: set[str]) -> list[dict]:
+    """주어진 상태 집합에 속하는 초안만 순서대로 돌려준다.
+
+    "published" 를 넣으면 API로 발행된 글(tweet_id 있음)과 사람이 수동으로
+    표시한 글(manual_published)이 구분 없이 함께 나온다 — 상태값 자체가
+    이미 둘을 하나로 묶어서 나타내기 때문에 따로 분기할 필요가 없다.
+    """
+    return [d for d in data["drafts"] if d.get("status") in statuses]
