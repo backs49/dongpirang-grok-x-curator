@@ -13,6 +13,9 @@ generated_images/
 content_queue/
 logs/
 
+# NiceGUI 사용자 스토리지 (브라우저 세션별 로컬 상태)
+.nicegui/
+
 # macOS / GSD 플래닝 로컬 산출물
 .DS_Store
 .planning/
