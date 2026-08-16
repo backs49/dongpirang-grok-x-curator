@@ -80,3 +80,51 @@ class TestGrokCliProvider:
         mock_run.return_value = MagicMock(returncode=0, stdout="hello\n", stderr="")
         result = GrokCliProvider().generate_text("SYSTEM", "USER", timeout=30)
         assert result == "hello"
+
+    @patch("providers.cli.subprocess.run")
+    def test_research_command_allows_only_web_tools(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="\n".join([
+            '{"type":"tool_call_update","toolName":"web_fetch","rawOutput":{"url":"https://who.int/a","title":"WHO","excerpt":"A"}}',
+            '{"type":"tool_call_update","toolName":"web_fetch","rawOutput":{"url":"https://cdc.gov/b","title":"CDC","excerpt":"B"}}',
+            '{"type":"text","data":"{\\"facts\\":[{\\"statement\\":\\"fact\\",\\"source_urls\\":[\\"https://who.int/a\\",\\"https://cdc.gov/b\\"]}]}"}',
+        ]))
+
+        result = GrokCliProvider().research_json("SYSTEM", "USER", timeout=30)
+
+        command = mock_run.call_args.args[0]
+        assert command[command.index("--tools") + 1] == "web_search,web_fetch"
+        assert command[command.index("--output-format") + 1] == "streaming-json"
+        assert "--no-memory" in command
+        assert {item["url"] for item in result["sources"]} == {
+            "https://who.int/a",
+            "https://cdc.gov/b",
+        }
+        assert result["facts"][0]["statement"] == "fact"
+
+    @patch("providers.cli.subprocess.run")
+    def test_research_ignores_malformed_stream_lines_and_deduplicates_sources(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="\n".join([
+            "not json",
+            '{"type":"tool_call_update","toolName":"web_fetch","rawOutput":{"url":"https://WHO.int/a/","title":"WHO","excerpt":"A"}}',
+            '{"type":"tool_call_update","toolName":"web_fetch","rawOutput":{"url":"https://who.int/a","title":"WHO second","excerpt":"B"}}',
+            '{"type":"text","data":"{\\"facts\\":[]}"}',
+        ]))
+
+        result = GrokCliProvider().research_json("SYSTEM", "USER")
+
+        assert result["facts"] == []
+        assert result["sources"] == [{
+            "url": "https://who.int/a",
+            "title": "WHO",
+            "excerpt": "A",
+            "publisher": "",
+            "published_at": "",
+        }]
+
+    @patch("providers.cli.subprocess.run")
+    def test_research_returns_provider_error_on_nonzero_exit(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=1, stderr="bad token", stdout="")
+
+        result = GrokCliProvider().research_json("SYSTEM", "USER")
+
+        assert result["error"] == "Grok CLI research error: bad token"
