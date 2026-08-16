@@ -96,16 +96,6 @@ _T = {
         "en": "Get yours at console.x.ai. Used for the xAI engine and for image/video generation.",
         "ja": "console.x.aiで取得してください。xAIエンジンだけでなく画像・動画生成にも使われます。",
     },
-    "api_key_remember": {
-        "ko": "🔑 API 키 기억하기",
-        "en": "🔑 Remember API Key",
-        "ja": "🔑 APIキーを保存",
-    },
-    "api_key_remember_help": {
-        "ko": "브라우저 쿠키에 저장. 새로고침해도 유지됩니다.",
-        "en": "Saved in browser cookies. Persists after refresh.",
-        "ja": "ブラウザCookieに保存。更新後も維持されます。",
-    },
     "api_key_warning": {
         "ko": "⚠️ Grok API Key는 한 번만 보여집니다.\n생성 즉시 저장하세요!",
         "en": "⚠️ Grok API Key is shown only once.\nSave it immediately!",

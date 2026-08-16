@@ -1,15 +1,5 @@
-import time
-from datetime import datetime, timedelta
-
 import streamlit as st
 import streamlit_analytics2 as streamlit_analytics
-import extra_streamlit_components as stx
-from access_auth import (
-    ACCESS_TOKEN_TTL_SECONDS,
-    issue_access_token,
-    load_or_create_signing_secret,
-    validate_access_token,
-)
 from utils import generate_tweet_intent_url, generate_follow_url
 from i18n import t, LANGUAGES, get_lang
 from image_client import IMAGE_ENGINE_OPTIONS, build_image_client, build_video_client
@@ -45,51 +35,12 @@ st.set_page_config(
 _untracked_text_input = st.text_input
 streamlit_analytics.start_tracking()
 
-# ─── 쿠키 매니저 ───
-# 접근 비밀번호 게이트보다 먼저 렌더해야, 모바일에서 새 Streamlit 세션이
-# 시작되어도 브라우저에 남아 있는 인증 토큰을 읽어 자동으로 복원할 수 있다.
-# CookieManager는 iframe postMessage로 값을 전달하므로 매 rerun 호출한다.
-cookie_manager = stx.CookieManager()
-cookies = cookie_manager.get_all()
-
-# ─── 접속 비밀번호 게이트 ───
-# Cloudflare 터널로 앱이 공개 URL에 노출되면, 게이트가 없을 경우 URL을 아는
-# 누구나 로컬 CLI 엔진(Claude/Codex 구독)을 소모할 수 있다. .env 에
-# APP_ACCESS_PASSWORD 가 설정되어 있으면 통과 전까지 앱을 렌더링하지 않는다.
-# 비밀번호 입력란은 analytics 추적에서 제외한다 (API 키와 동일한 이유).
-from publisher import load_env as _load_env
-
-_ACCESS_PW = _load_env().get("APP_ACCESS_PASSWORD", "")
-ACCESS_AUTH_COOKIE_KEY = "dongpirang_access_auth"
-if _ACCESS_PW and not st.session_state.get("_app_authed"):
-    _auth_secret = load_or_create_signing_secret()
-    _auth_token = cookies.get(ACCESS_AUTH_COOKIE_KEY, "")
-    if validate_access_token(_auth_token, _auth_secret, now=int(time.time())):
-        st.session_state._app_authed = True
-    else:
-        st.markdown("### 🐾 접속 비밀번호")
-        _pw_try = _untracked_text_input(
-            "접속 비밀번호", type="password", label_visibility="collapsed"
-        )
-        if _pw_try == _ACCESS_PW:
-            cookie_manager.set(
-                ACCESS_AUTH_COOKIE_KEY,
-                issue_access_token(_auth_secret, now=int(time.time())),
-                key="save_access_auth_cookie",
-                expires_at=datetime.now() + timedelta(seconds=ACCESS_TOKEN_TTL_SECONDS),
-                max_age=ACCESS_TOKEN_TTL_SECONDS,
-                secure=True,
-                same_site="strict",
-            )
-            st.session_state._app_authed = True
-            st.rerun()
-        if _pw_try:
-            st.error("비밀번호가 올바르지 않습니다")
-        st.stop()
+# ─── 접근 통제 ───
+# 앱은 Tailscale Serve 뒤 테일넷 안에서만 열린다(scripts/tunnel_watch.sh).
+# 공개 URL이 사라졌으므로 앱 자체 접속 게이트와 쿠키 인증 토큰은 없앴다.
 
 APP_URL = "https://dongpirang-grok-x-curator.streamlit.app"
 VIRAL_TAG = "동피랑고양이 Grok 𝕏 로 최적화됨 🐾 @mangodaon"
-COOKIE_KEY = "dongpirang_grok_api_key"
 
 # 연핑크 발자국 두 개 인라인 SVG — 🐾 이모지를 모사하되 플랫폼 렌더링
 # 차이(갈색/회색 등)를 제거하고 연핑크로 고정한다. em 기준 크기라
@@ -123,28 +74,13 @@ def render_app_title(level: int = 1) -> None:
         unsafe_allow_html=True,
     )
 
-# API 키 쿠키 로딩.
-# extra_streamlit_components의 CookieManager는 iframe postMessage로 쿠키를
-# 보고하므로, fresh page load 직후 첫 렌더에서는 get_all()이 빈 dict를 돌려줄 수
-# 있다. 받아올 때까지 _cookies_loaded 플래그를 잠그지 않는다.
-#
-# 중요: get_all()은 iframe 컴포넌트를 렌더하므로 반드시 매 rerun 무조건
-# 호출해야 한다. 과거처럼 _cookies_loaded 이후 호출을 생략하면 쿠키 도착
-# 직후의 rerun에서 컴포넌트가 언마운트되어 st.tabs 위의 요소 트리가 바뀌고,
-# 활성 탭이 첫 탭으로 리셋되는 버그가 생긴다 (첫 위젯 상호작용 시 탭 점프).
-if not st.session_state.get("_cookies_loaded"):
-    if cookies:
-        st.session_state._saved_api_key = cookies.get(COOKIE_KEY, "")
-        st.session_state._cookies_loaded = True
-    else:
-        st.session_state._saved_api_key = ""
-
 # 테마는 브라우저 세션 동안만 session_state에 유지한다.
-# (쿠키 영속화는 iframe 재마운트로 탭 상태가 리셋되는 부작용이 있어 보류.)
 if "theme" not in st.session_state:
     st.session_state.theme = "light"
 
-saved_key = st.session_state._saved_api_key
+# xAI 키는 세션 동안만 유지한다. 쿠키 영속화는 없앴다 — 쿠키 컴포넌트가
+# iframe 으로 렌더되는 탓에 재마운트될 때마다 활성 탭이 첫 탭으로 리셋됐다.
+saved_key = ""
 
 # 테마 selectbox 변경을 inject_css 호출 전에 반영해 즉시 새 테마로 페인트한다.
 if "theme_select" in st.session_state:
@@ -225,23 +161,6 @@ with st.sidebar:
             placeholder="xai-...",
             value=saved_key,
         )
-
-        remember_key = st.checkbox(
-            t("api_key_remember"),
-            value=bool(saved_key),
-            help=t("api_key_remember_help"),
-        )
-
-        # 쿠키 저장/삭제 (값이 변경될 때만)
-        # 캐시(_saved_api_key)도 함께 갱신해 다음 rerun에서 .set이 재호출되지 않게 한다.
-        if remember_key and api_key and api_key != saved_key:
-            cookie_manager.set(COOKIE_KEY, api_key, key="save_cookie")
-            st.session_state._saved_api_key = api_key
-            saved_key = api_key
-        elif not remember_key and saved_key:
-            cookie_manager.delete(COOKIE_KEY, key="delete_cookie")
-            st.session_state._saved_api_key = ""
-            saved_key = ""
 
         if engine == "xAI API":
             st.caption(t("api_key_warning"))
