@@ -53,11 +53,6 @@ _W = {
         "en": "See drafts, schedules, and publishing history in one place.",
         "ja": "下書き・予約・公開履歴を一画面で見る。",
     },
-    "area_pending": {
-        "ko": "이 영역은 곧 연결된다.",
-        "en": "This area is being wired up.",
-        "ja": "この領域はまもなく接続される。",
-    },
 
     # ─── 만들기: 주제 한 줄 ───
     "create_topic_label": {
@@ -348,6 +343,11 @@ _W = {
         "ko": "새 초안을 만들었다. 원본은 그대로 남아 있다.",
         "en": "Made a new draft. The original is untouched.",
         "ja": "新しい下書きを作った。元の投稿はそのまま残る。",
+    },
+    "publish_editor_back": {
+        "ko": "목록으로 돌아가기",
+        "en": "Back to the list",
+        "ja": "リストに戻る",
     },
     "publish_view_on_x": {
         "ko": "X에서 보기",

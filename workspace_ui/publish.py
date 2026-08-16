@@ -17,7 +17,7 @@
 재사용(reuse_history_item)이 만든 새 초안은 공유 에디터(workspace_ui.editor)
 로 연다. 에디터의 계약은 "완성된 작업 하나를 연다"(render_editor(job, ...))
 는 것뿐이라, job 이 없는 이 경로에서는 진짜 작업 대신 이 화면이 만든
-가짜 job id 하나(f"publish-reuse:{복제본 id}")를 쓴다. 에디터의 복원
+가짜 job id 하나(f"publish-reuse:{원본 초안 id}")를 쓴다. 에디터의 복원
 분기(_restore_or_create_draft)는 "store 에 이미 같은 job_id 가 있으면 그
 초안을 그대로 잇는다" 는 조건만 본다 — 그래서 이 화면이 세 스토리지 키
 (job_id/draft_id/text)를 미리 채워 두면 에디터는 새 초안을 만들지 않고
@@ -27,6 +27,10 @@
 와 함께 ui.tab_panels 안에서 세 렌더 함수가 동시에 도는 한, 접두어가
 겹치면 세 에디터가 같은 초안을 가리키게 된다(editor.editor_storage_keys
 문서 참고).
+
+재사용 에디터에는 명시적 탈출구(publish-editor-back)가 있다. 잘못 눌러
+들어와도, 발행을 기록하지 않고 목록으로 돌아갈 수 있다 — 복제본은 이미
+"draft" 상태로 큐에 들어가 있으므로 나가도 잃는 것이 없다.
 """
 
 from __future__ import annotations
@@ -159,7 +163,12 @@ def render_publish() -> None:
     ui.label(copy("publish_hint")).classes("workspace-hint")
 
     area = ui.column().classes("w-full gap-4")
-    state: dict = {"items": None}
+    # token 은 "이 reload() 호출이 아직 가장 최신인가" 를 검사한다 — 빠른
+    # 필터 전환으로 두 reload() 가 겹치면 완료 순서가 뒤집힐 수 있어서다
+    # (리뷰에서 지적된 경합: 느린 응답이 나중에 도착해 최신 필터 화면을
+    # 옛 필터의 항목으로 덮어쓰면, 그 항목이 지금 필터의 규칙으로 그려진다
+    # — 예를 들어 반려 초안이 "초안" 탭의 규칙을 입고 예약 버튼을 받는다).
+    state: dict = {"items": None, "token": 0}
 
     def repaint() -> None:
         area.clear()
@@ -167,18 +176,36 @@ def render_publish() -> None:
             _render_area(store, state, repaint, reload)
 
     async def reload() -> None:
-        # 다시 불러오는 동안은 로딩 상태를 보여준다 — 필터를 바꾸거나
-        # 예약·재사용 직후에도 옛 목록이 잠깐 남아 있지 않게 한다.
-        state["items"] = None
-        repaint()
-        items = await run.io_bound(
-            load_publish_items, store["publish_filter"], queue_path=QUEUE_PATH
-        )
+        state["token"] += 1
+        token = state["token"]
+        requested = _normalize_filter(store.get("publish_filter"))
+
+        if state["items"] is not None:
+            # 이미 뭔가 그려져 있었다면 로딩 상태로 되돌린다 — 필터를 바꾸거나
+            # 예약·재사용 직후에도 옛 목록이 잠깐 남아 있지 않게 한다. 맨 첫
+            # 로드는 render_publish() 가 이미 로딩 상태를 그려 뒀으므로 여기서
+            # 또 그리지 않는다(중복 페인트를 피한다).
+            state["items"] = None
+            repaint()
+
+        items = await run.io_bound(load_publish_items, requested, queue_path=QUEUE_PATH)
+
+        if token != state["token"] or requested != _normalize_filter(store.get("publish_filter")):
+            # 더 최신 reload() 가 이미 시작됐거나, 그 사이에 필터가 다시
+            # 바뀌었다 — 이 결과는 낡았으니 버린다. 지금 필터를 위한 요청은
+            # 이미 따로 돌고 있으므로(또는 곧 돌 것이므로) 화면은 결국 맞는
+            # 상태로 그려진다.
+            return
+
         state["items"] = items
         repaint()
 
     repaint()
-    background_tasks.create(reload(), name="publish-initial-load")
+    if not store.get(_EDITOR_KEYS.job_id):
+        # 재접속 시 이미 재사용 에디터가 열려 있으면 _render_area 가 곧장
+        # 그 화면으로 빠지고 목록(state["items"])은 전혀 쓰지 않는다 —
+        # 그런 경우에 목록을 미리 불러오는 것은 헛일이다.
+        background_tasks.create(reload(), name="publish-initial-load")
 
 
 def _render_area(
@@ -255,7 +282,11 @@ def _render_card(
                 ui.label(f'{copy("publish_created_at_label")} · {format_timestamp(timestamp)}') \
                     .classes("workspace-hint")
 
-        if filter_name == "draft":
+        # status 를 filter_name 과 함께 다시 확인한다(방어적 이중 검사) —
+        # 정상적으로는 load_publish_items 가 이미 필터에 맞는 상태만
+        # 돌려주지만, 예약 버튼은 반려 초안이 슬롯 큐로 돌아가면 안 되는
+        # 안전 불변식과 직결되므로 여기서도 한 번 더 못 박는다.
+        if filter_name == "draft" and draft.get("status") == "draft":
             ui.button(
                 copy("publish_schedule_cta"),
                 on_click=lambda: _schedule(draft_id, reload),
@@ -305,6 +336,14 @@ def _render_history_body(draft: dict, filter_name: str, store, repaint: Callable
 def _render_reuse_editor(
     store, repaint: Callable[[], None], reload: Callable[[], Awaitable[None]]
 ) -> None:
+    # 되돌아갈 길이 있어야 한다 — 잘못 눌러 재사용 에디터에 들어와도, 빈
+    # 본문으로는 발행이 막히고(editor_empty) on_published 는 실제로 발행을
+    # 기록해야만 불린다. 목록으로 돌아가는 명시적 탈출구를 둔다.
+    ui.button(
+        copy("publish_editor_back"),
+        on_click=lambda: _cancel_reuse_editor(store, repaint, reload),
+    ).props("flat dense").mark("publish-editor-back")
+
     job = {"id": store[_EDITOR_KEYS.job_id]}
     pillar = store.get("publish_reuse_pillar") or "curation"
     editor.render_editor(
@@ -342,7 +381,11 @@ async def _reuse(draft_id: str, store, repaint: Callable[[], None]) -> None:
         return
 
     keys = _EDITOR_KEYS
-    store[keys.job_id] = _reuse_job_id(copied["id"])
+    # source_job_id 자리에 원본(재사용 대상) 초안의 id 를 남긴다 — 진짜
+    # job 은 없지만, "이 초안이 어떤 과거 글에서 복제됐는가" 는 유용한
+    # 흔적이라 그냥 버리지 않는다(content_queue.py 의 필드 문서에 이
+    # 합성 값을 명시해 뒀다).
+    store[keys.job_id] = _reuse_job_id(draft_id)
     store[keys.draft_id] = copied["id"]
     store[keys.text] = copied.get("text") or ""
     store["publish_reuse_pillar"] = copied.get("pillar") or "curation"
@@ -360,6 +403,19 @@ def _close_reuse_editor(
     background_tasks.create(reload(), name="publish-reload-after-publish")
 
 
+def _cancel_reuse_editor(
+    store, repaint: Callable[[], None], reload: Callable[[], Awaitable[None]]
+) -> None:
+    """재사용 에디터에서 그냥 나간다 — 발행을 기록하지 않는다.
+
+    복제본은 이미 큐에 초안 상태로 들어가 있으니 잃는 것이 없다: 목록으로
+    돌아가면 초안 필터에서 그대로 보이고, 나중에 다시 열어 이어 고칠 수
+    있다."""
+    editor.clear_editor_state(store, key_prefix=EDITOR_KEY_PREFIX)
+    repaint()
+    background_tasks.create(reload(), name="publish-reload-after-cancel")
+
+
 def _toggle_open(draft_id: str, store, repaint: Callable[[], None]) -> None:
     open_ids = dict(store.get("publish_open_ids") or {})
     open_ids[draft_id] = not open_ids.get(draft_id, False)
@@ -367,10 +423,12 @@ def _toggle_open(draft_id: str, store, repaint: Callable[[], None]) -> None:
     repaint()
 
 
-def _reuse_job_id(draft_id: str) -> str:
-    """복제본을 위한 가짜 job id. 진짜 작업이 아니므로 workspace_jobs 가
-    만드는 id 와 절대 겹치지 않을 접두어를 쓴다."""
-    return f"publish-reuse:{draft_id}"
+def _reuse_job_id(source_draft_id: str) -> str:
+    """복제 대상(원본) 초안 id 로 만드는 가짜 job id. 진짜 작업이 아니므로
+    workspace_jobs 가 만드는 id 와 절대 겹치지 않을 접두어를 쓴다 — 그리고
+    복제본이 아니라 원본을 가리켜, 자동저장이 source_job_id 로 이 값을
+    남길 때 "어디서 복제됐는지" 를 알 수 있게 한다."""
+    return f"publish-reuse:{source_draft_id}"
 
 
 def _status_note(draft: dict, filter_name: str) -> str | None:

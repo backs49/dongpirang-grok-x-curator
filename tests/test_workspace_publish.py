@@ -413,7 +413,7 @@ async def test_reconnect_restores_the_open_editor_without_resubmitting(monkeypat
     copied = publish.reuse_history_item(old["id"], queue_path=path)
 
     page = _seeded_page(
-        publish_editor_job_id=f"publish-reuse:{copied['id']}",
+        publish_editor_job_id=publish._reuse_job_id(old["id"]),
         publish_editor_draft_id=copied["id"],
         publish_editor_text=copied["text"],
         publish_reuse_pillar=copied["pillar"],
@@ -426,3 +426,114 @@ async def test_reconnect_restores_the_open_editor_without_resubmitting(monkeypat
         await user.should_see("원본")
 
         assert len(load_queue(path)["drafts"]) == 2
+
+
+async def test_reuse_editor_back_button_returns_to_the_list_without_publishing(monkeypatch, tmp_path):
+    """재사용 에디터에 잘못 들어와도 "목록으로 돌아가기" 로 그냥 나갈 수
+    있다 — 발행을 기록하지 않고, 복제본은 초안으로 큐에 그대로 남는다.
+    (리뷰 Finding 2: 이전에는 발행을 기록하거나 빈 본문으로 만드는 것
+    말고는 재사용 에디터를 빠져나갈 길이 없었다.)"""
+    path = tmp_path / "queue.json"
+    monkeypatch.setattr(publish, "QUEUE_PATH", path)
+    with queue_transaction(path) as data:
+        old = upsert_workspace_draft(data, draft_id=None, text="원본 글", pillar="tip")
+        mark_manual_published(data, old["id"])
+
+    async with user_simulation(build_workspace) as user:
+        await user.open("/")
+        user.find(marker="nav-publish").click()
+        user.find(marker="publish-filter-published").click()
+        await user.should_see(marker=f"publish-card-{old['id']}")
+
+        user.find(marker=f"publish-open-{old['id']}").click()
+        await user.should_see(marker=f"publish-reuse-{old['id']}")
+        user.find(marker=f"publish-reuse-{old['id']}").click()
+        await user.should_see(marker="editor-text")
+        await user.should_see(marker="publish-editor-back")
+
+        user.find(marker="publish-editor-back").click()
+
+        # 목록으로 돌아갔다 — 필터 탭이 다시 보이고 에디터는 사라졌다.
+        await user.should_see(marker="publish-filters")
+        await user.should_not_see(marker="editor-text")
+
+        with user.client:
+            assert app.storage.user[publish._EDITOR_KEYS.job_id] is None
+            assert app.storage.user[publish._EDITOR_KEYS.draft_id] is None
+
+        # 복제본은 잃지 않았다 — 초안 상태로 큐에 남아 있고, 원본은 여전히
+        # (수동) 발행 상태 그대로다.
+        drafts = load_queue(path)["drafts"]
+        assert len(drafts) == 2
+        source_after = next(d for d in drafts if d["id"] == old["id"])
+        assert source_after["status"] == "published"
+        assert source_after["manual_published"] is True
+        copy_draft = next(d for d in drafts if d["id"] != old["id"])
+        assert copy_draft["status"] == "draft"
+        assert copy_draft["text"] == "원본 글"
+
+        # 목록으로 돌아온 뒤 그 초안을 다시 열 수도 있다(잃지 않았다는
+        # 증거) — 초안 필터로 가면 보인다.
+        user.find(marker="publish-filter-draft").click()
+        await user.should_see(marker=f"publish-card-{copy_draft['id']}")
+
+
+async def test_stale_reload_never_lets_a_rejected_draft_render_under_the_draft_filters_rules(
+    monkeypatch, tmp_path
+):
+    """빠른 필터 전환 중 먼저 시작한 느린 읽기가 나중에 끝나도, 화면은
+    항상 지금 store["publish_filter"] 에 맞는 항목만 그 필터의 규칙으로
+    그린다. 특히 반려(rejected) 초안은 어떤 뒤섞임에도 예약 버튼을 받지
+    않는다 — content_queue.approve_draft 에는 상태 가드가 없으므로, 이
+    불변식이 깨지면 반려 초안이 그대로 슬롯 큐에 들어갈 수 있다.
+    (리뷰 Finding 1)"""
+    path = tmp_path / "queue.json"
+    monkeypatch.setattr(publish, "QUEUE_PATH", path)
+    seeded = _seed_all_statuses(path)
+    rejected_id = seeded["rejected"]["id"]
+    draft_id = seeded["draft"]["id"]
+
+    real_load = publish.load_publish_items
+    reached_failed = asyncio.Event()
+    release_failed = asyncio.Event()
+
+    async def slow_io_bound(func, *args, **kwargs):
+        # run.io_bound 를 흉내 내되, "실패" 필터 읽기만 release_failed 가
+        # 풀릴 때까지 붙잡아 둔다 — 나머지(초안 필터 읽기 등)는 그대로
+        # 즉시 실행한다.
+        if func is real_load and args and args[0] == "failed":
+            reached_failed.set()
+            await release_failed.wait()
+        return func(*args, **kwargs)
+
+    monkeypatch.setattr(publish.run, "io_bound", slow_io_bound)
+
+    async with user_simulation(build_workspace) as user:
+        await user.open("/")
+        user.find(marker="nav-publish").click()
+        await user.should_see(marker=f"publish-card-{draft_id}")
+        await user.should_see(marker=f"publish-schedule-{draft_id}")
+
+        # 실패 탭으로 전환한다 — 이 읽기는 release_failed 가 풀릴 때까지
+        # 멈춘 채로 대기한다.
+        user.find(marker="publish-filter-failed").click()
+        await asyncio.wait_for(reached_failed.wait(), timeout=2.0)
+
+        # 느린 읽기가 아직 끝나지 않았는데, 초안 탭으로 되돌아간다 — 두
+        # 번째(빠른) reload() 가 먼저 끝나 초안 필터를 올바르게 그린다.
+        user.find(marker="publish-filter-draft").click()
+        await user.should_see(marker=f"publish-card-{draft_id}")
+        await user.should_see(marker=f"publish-schedule-{draft_id}")
+
+        # 이제서야 느린 "실패" 읽기를 풀어준다. 화면은 이미 "초안" 필터를
+        # 보고 있으므로 이 결과는 낡은 것으로 버려져야 한다.
+        release_failed.set()
+        await asyncio.sleep(0.3)
+
+        # 반려 초안이 초안 탭에 새어 들어오지 않았고, 무엇보다 예약 버튼을
+        # 받지 않았다 — approve_draft 는 상태를 가리지 않으므로, 버튼이
+        # 있었다면 눌렀을 때 반려 초안이 그대로 슬롯 큐에 들어갔을 것이다.
+        await user.should_not_see(marker=f"publish-card-{rejected_id}")
+        await user.should_not_see(marker=f"publish-schedule-{rejected_id}")
+        await user.should_see(marker=f"publish-card-{draft_id}")
+        await user.should_see(marker=f"publish-schedule-{draft_id}")

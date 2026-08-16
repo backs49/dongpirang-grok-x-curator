@@ -38,7 +38,11 @@ mark_manual_published 로 수동 발행 표시를 하면 슬롯은 다시 None �
 워크스페이스(NiceGUI) 전용 선택 필드:
   - origin: "workspace" 면 upsert_workspace_draft 로 새로 만든 초안
   - source_job_id / source_kind: 초안이 나온 워크스페이스·아이디어 작업의
-    id/kind (idea_jobs.py, workspace_jobs.py 의 job 레코드를 가리킨다)
+    id/kind (idea_jobs.py, workspace_jobs.py 의 job 레코드를 가리킨다).
+    예외 하나: source_kind="reuse"(workspace_ui.publish 의 히스토리 재사용)
+    일 때는 진짜 작업이 없으므로 source_job_id 가 "publish-reuse:{원본 초안
+    id}" 형태의 합성 값이다 — job 레코드를 가리키지 않고, 이 초안이 어떤
+    과거 초안에서 복제됐는지만 남긴다.
   - updated_at: 워크스페이스 자동저장이 마지막으로 고친 시각
   - manual_published: True 면 API 없이 사람이 직접 올리고 표시만 한 것
   - published_at: 발행 완료 시각 (API 발행·수동 발행 공통)
