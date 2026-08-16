@@ -189,23 +189,64 @@ class TestWorkspaceDraftsAndHistory:
         ) is None
         assert data["drafts"] == []
 
-    def test_upsert_workspace_draft_does_not_update_non_editable_draft(self):
+    def test_upsert_workspace_draft_blank_text_with_draft_id_writes_nothing(self):
+        """None 은 오직 '본문이 비었다' 는 경우에만 나온다 — draft_id 가
+        주어졌어도 본문이 공백이면 새 초안조차 만들지 않는다."""
+        data = empty_queue()
+        draft = add_draft(data, text="원본", pillar="tip")
+        result = upsert_workspace_draft(
+            data, draft_id=draft["id"], text="   ", pillar="tip",
+        )
+        assert result is None
+        assert len(data["drafts"]) == 1
+        assert data["drafts"][0]["text"] == "원본"
+
+    def test_upsert_workspace_draft_on_non_editable_draft_creates_new_draft(self):
+        """편집 불가 상태(승인/발행 등)를 가리키는 자동저장은 옛 레코드를
+        건드리지 않고, 대신 사람이 입력한 본문을 담은 새 초안을 만든다 —
+        에디터 자동저장이 무손실이어야 하기 때문이다."""
         data = empty_queue()
         draft = add_draft(data, text="원본", pillar="tip")
         approve_draft(data, draft["id"], now=WED_NOON)
         result = upsert_workspace_draft(
-            data, draft_id=draft["id"], text="수정 시도", pillar="tip",
+            data, draft_id=draft["id"], text="승인 후 수정", pillar="tip",
         )
-        assert result is None
+        assert result is not None
+        assert result["id"] != draft["id"]
+        assert result["status"] == "draft"
+        assert result["text"] == "승인 후 수정"
+        # 원본은 그대로
         assert data["drafts"][0]["text"] == "원본"
         assert data["drafts"][0]["status"] == "approved"
+        assert len(data["drafts"]) == 2
 
-    def test_upsert_workspace_draft_missing_id_returns_none(self):
+    def test_upsert_workspace_draft_missing_id_creates_new_draft(self):
+        """존재하지 않는 draft_id 를 가리켜도(오탈자·삭제됨) 본문을 잃지
+        않고 새 초안으로 살아남는다."""
         data = empty_queue()
-        assert upsert_workspace_draft(
+        result = upsert_workspace_draft(
             data, draft_id="nope-does-not-exist", text="글", pillar="tip",
-        ) is None
-        assert data["drafts"] == []
+        )
+        assert result is not None
+        assert result["id"] != "nope-does-not-exist"
+        assert result["text"] == "글"
+        assert result["status"] == "draft"
+        assert data["drafts"] == [result]
+
+    def test_upsert_workspace_draft_update_omits_provenance_keeps_existing(self):
+        """자동저장이 source_job_id/source_kind 를 생략(None)해도 이미
+        저장된 provenance 를 조용히 지우면 안 된다."""
+        data = empty_queue()
+        draft = upsert_workspace_draft(
+            data, draft_id=None, text="초안", pillar="tip",
+            source_job_id="job-1", source_kind="post",
+        )
+        updated = upsert_workspace_draft(
+            data, draft_id=draft["id"], text="고친 초안", pillar="tip",
+        )
+        assert updated["source_job_id"] == "job-1"
+        assert updated["source_kind"] == "post"
+        assert updated["text"] == "고친 초안"
 
     def test_get_draft_missing_id_returns_none(self):
         data = empty_queue()
@@ -217,10 +258,35 @@ class TestWorkspaceDraftsAndHistory:
         assert mark_manual_published(data, "nope-does-not-exist") is None
         assert data["drafts"] == []
 
+    def test_mark_manual_published_refuses_already_api_published_draft(self):
+        """tweet_id 가 이미 있는(=API로 발행된) 초안을 수동 발행으로 또
+        표시하면 안 된다 — 한 초안이 두 가지로 동시에 발행될 수 없다."""
+        data = empty_queue()
+        draft = add_draft(data, text="API로 발행된 글", pillar="tip")
+        draft["status"] = "published"
+        draft["tweet_id"] = "12345"
+        draft["published_at"] = "2026-07-01T08:00:00"
+
+        result = mark_manual_published(data, draft["id"])
+        assert result is None
+        assert data["drafts"][0]["tweet_id"] == "12345"
+        assert "manual_published" not in data["drafts"][0]
+
     def test_duplicate_draft_missing_id_returns_none(self):
         data = empty_queue()
         assert duplicate_draft(data, "nope-does-not-exist") is None
         assert data["drafts"] == []
+
+    def test_duplicate_draft_blank_text_source_returns_none_and_leaves_source(self):
+        """원본의 본문이 공백뿐이면(있을 법하지 않지만) 복제도 새 초안을
+        만들지 않는다 — None 이 '못 찾음'과 구분되지 않는 건 의도된
+        동작이다: 어느 쪽이든 아무것도 만들어지지 않았다는 뜻이다."""
+        data = empty_queue()
+        old = add_draft(data, text="   ", pillar="tip")
+        result = duplicate_draft(data, old["id"])
+        assert result is None
+        assert len(data["drafts"]) == 1
+        assert data["drafts"][0]["text"] == "   "
 
     def test_duplicate_draft_never_mutates_source(self):
         data = empty_queue()

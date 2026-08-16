@@ -286,13 +286,28 @@ def upsert_workspace_draft(
     source_job_id: str | None = None,
     source_kind: str | None = None,
 ) -> dict | None:
-    """워크스페이스 자동저장 — draft_id 가 없으면 새 초안을, 있으면 아직
-    편집 가능한("draft" 상태인) 초안만 갱신한다.
+    """워크스페이스 자동저장.
 
-    본문이 비었으면 아무것도 만들지 않고 None 을 돌려준다. draft_id 가
-    가리키는 초안이 없거나 이미 승인/발행/반려 등 편집 불가 상태라면
-    역시 아무것도 바꾸지 않고 None 을 돌려준다 — 자동저장이 이미 진행
-    중인 발행을 조용히 덮어쓰는 사고를 막기 위해서다.
+    반환 계약 — None 은 "본문이 비어 있다" 는 경우에만 나온다:
+      - 본문이 공백뿐이면 아무것도 만들거나 바꾸지 않고 None.
+      - draft_id 가 None 이면 새 초안을 만들어 돌려준다.
+      - draft_id 가 있고 그 초안이 아직 "draft" 상태면 그 초안을 제자리에서
+        갱신해 돌려준다.
+      - draft_id 가 있지만 그 초안이 없거나(오탈자·삭제됨) 이미 승인/발행/
+        반려 등 편집 불가 상태라면, 그 옛 레코드는 절대 건드리지 않고
+        대신 새 초안을 만들어 돌려준다. 사람이 입력한 본문을 조용히
+        버리지 않기 위해서다 — 에디터 자동저장은 무손실이어야 한다.
+        원본 초안이 승인/발행된 뒤에 들어온 편집은 사라지는 대신 새
+        초안이 된다.
+
+    갱신 경로에서 source_job_id/source_kind 를 생략(None)하면 기존 값이
+    그대로 유지된다 — 자동저장 호출마다 provenance 를 다시 보내지 않아도
+    널로 덮어써지지 않는다. 값을 실제로 지우고 싶다면 이 함수가 아니라
+    직접 초안을 고쳐야 한다.
+
+    이 함수는 data 를 직접 바꿀 뿐 저장하지 않는다 — 호출자의
+    queue_transaction 블록 안에서 get_draft 와 조합해 원자적으로 쓰도록
+    설계됐다.
     """
     text = (text or "").strip()
     if not text:
@@ -300,34 +315,35 @@ def upsert_workspace_draft(
 
     now_iso = datetime.now().isoformat(timespec="seconds")
 
-    if draft_id is None:
-        draft = {
-            "id": _new_id(),
-            "text": text,
-            "pillar": pillar,
-            "status": "draft",
-            "slot": None,
-            "image_prompt": "",
-            "material_id": None,
-            "created_at": now_iso,
-            "origin": "workspace",
-            "source_job_id": source_job_id,
-            "source_kind": source_kind,
-            "updated_at": now_iso,
-        }
-        data["drafts"].append(draft)
+    draft = _find_draft(data, draft_id) if draft_id is not None else None
+    if draft is not None and draft.get("status") == "draft":
+        draft["text"] = text
+        draft["pillar"] = pillar
+        if source_job_id is not None:
+            draft["source_job_id"] = source_job_id
+        if source_kind is not None:
+            draft["source_kind"] = source_kind
+        draft["updated_at"] = now_iso
         return draft
 
-    draft = _find_draft(data, draft_id)
-    if draft is None or draft.get("status") != "draft":
-        return None
-
-    draft["text"] = text
-    draft["pillar"] = pillar
-    draft["source_job_id"] = source_job_id
-    draft["source_kind"] = source_kind
-    draft["updated_at"] = now_iso
-    return draft
+    # draft_id 가 None 이거나, 가리키는 초안이 없거나, 더는 편집 가능한
+    # 상태가 아니다 — 옛 레코드는 그대로 두고 새 초안을 만든다.
+    new_draft = {
+        "id": _new_id(),
+        "text": text,
+        "pillar": pillar,
+        "status": "draft",
+        "slot": None,
+        "image_prompt": "",
+        "material_id": None,
+        "created_at": now_iso,
+        "origin": "workspace",
+        "source_job_id": source_job_id,
+        "source_kind": source_kind,
+        "updated_at": now_iso,
+    }
+    data["drafts"].append(new_draft)
+    return new_draft
 
 
 def mark_manual_published(
@@ -336,10 +352,15 @@ def mark_manual_published(
     """API 없이 사람이 직접 올린 글을 발행 완료로 표시한다.
 
     tweet_id 는 절대 만들어내지 않는다 — tweet_id 유무가 API 발행과
-    수동 발행을 구분하는 유일한 표식이기 때문이다.
+    수동 발행을 구분하는 유일한 표식이기 때문이다. 이미 tweet_id 가
+    있는 초안(=API로 발행됨)은 건드리지 않고 None 을 돌려준다 — 한
+    초안이 API 발행과 수동 발행 두 가지로 동시에 표시되는 일은 없어야
+    한다.
     """
     draft = _find_draft(data, draft_id)
     if draft is None:
+        return None
+    if draft.get("tweet_id"):
         return None
     now = now or datetime.now()
     draft["status"] = "published"
