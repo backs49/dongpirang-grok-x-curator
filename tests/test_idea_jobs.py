@@ -56,3 +56,30 @@ def test_unknown_job_is_not_returned_or_mutated(tmp_path):
     assert idea_jobs.get_job("unknown", path=path) is None
     assert idea_jobs.claim_job("unknown", path=path) is None
     assert idea_jobs.complete_job("unknown", {"ideas": []}, path=path) is None
+
+
+def test_job_persists_grounded_fields(tmp_path):
+    job = idea_jobs.create_job(
+        "수면",
+        280,
+        "hankang",
+        "Claude CLI",
+        content_type="grounded_tip",
+        tip_category="health",
+        references="WHO link",
+        path=tmp_path / "jobs.json",
+    )
+
+    assert (job["content_type"], job["tip_category"], job["references"]) == (
+        "grounded_tip",
+        "health",
+        "WHO link",
+    )
+
+
+def test_normal_job_defaults_to_ideas_fields(tmp_path):
+    job = idea_jobs.create_job("AI", 0, "auto", "Grok CLI", path=tmp_path / "jobs.json")
+
+    assert job["content_type"] == "ideas"
+    assert job["tip_category"] == ""
+    assert job["references"] == ""

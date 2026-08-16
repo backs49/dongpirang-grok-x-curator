@@ -11,6 +11,8 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from grounded_tips import CONTENT_TYPE_GROUNDED_TIP, CONTENT_TYPE_IDEAS, TIP_CATEGORIES
+
 HISTORY_PATH = Path("content_queue/ideas_history.jsonl")
 
 
@@ -22,10 +24,26 @@ def append_history(
     mode: str = "",
     engine: str = "",
     prompt_version: str = "",
+    content_type: str = CONTENT_TYPE_IDEAS,
+    tip_category: str = "",
+    references: str = "",
 ) -> None:
     """생성 결과를 이력 파일에 추가한다. 실패해도 생성 흐름을 막지 않는다."""
     try:
         HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        safe_content_type = (
+            content_type
+            if isinstance(content_type, str)
+            and content_type in {CONTENT_TYPE_IDEAS, CONTENT_TYPE_GROUNDED_TIP}
+            else CONTENT_TYPE_IDEAS
+        )
+        safe_tip_category = (
+            tip_category.strip()
+            if safe_content_type == CONTENT_TYPE_GROUNDED_TIP
+            and isinstance(tip_category, str)
+            and tip_category.strip() in TIP_CATEGORIES
+            else ""
+        )
         entry = {
             "at": datetime.now().isoformat(timespec="seconds"),
             "keywords": keywords,
@@ -33,6 +51,9 @@ def append_history(
             "mode": mode,
             "engine": engine,
             "prompt_version": prompt_version,
+            "content_type": safe_content_type,
+            "tip_category": safe_tip_category,
+            "references": references.strip() if isinstance(references, str) else "",
             "result": result,
         }
         with HISTORY_PATH.open("a", encoding="utf-8") as f:
@@ -59,6 +80,9 @@ def load_history() -> list[dict]:
         except json.JSONDecodeError:
             continue
         if isinstance(entry, dict) and isinstance(entry.get("result"), dict):
+            entry.setdefault("content_type", CONTENT_TYPE_IDEAS)
+            entry.setdefault("tip_category", "")
+            entry.setdefault("references", "")
             entries.append(entry)
     entries.reverse()
     return entries

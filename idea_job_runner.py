@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import idea_jobs
+from grounded_tips import CONTENT_TYPE_IDEAS
 
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -19,11 +20,23 @@ def submit_job(
     mode: str,
     engine: str,
     *,
+    content_type: str = CONTENT_TYPE_IDEAS,
+    tip_category: str = "",
+    references: str = "",
     jobs_path: Path = idea_jobs.JOBS_PATH,
     popen=subprocess.Popen,
 ) -> dict:
     """저장 성공 후 독립 워커를 시작한다. 시작 실패도 작업 상태로 돌려준다."""
-    job = idea_jobs.create_job(keywords, length, mode, engine, path=jobs_path)
+    job = idea_jobs.create_job(
+        keywords,
+        length,
+        mode,
+        engine,
+        content_type=content_type,
+        tip_category=tip_category,
+        references=references,
+        path=jobs_path,
+    )
     try:
         popen(
             [sys.executable, str(WORKER_PATH), "--job-id", job["id"]],

@@ -80,6 +80,39 @@ def test_load_old_entries_without_new_fields(monkeypatch, tmp_path):
     assert entries[0].get("mode", "") == ""
 
 
+def test_grounded_history_roundtrip_preserves_request_and_sources(monkeypatch, tmp_path):
+    _patch_path(monkeypatch, tmp_path)
+    result = {"ideas": [{"content": "본문", "sources": [{"url": "https://who.int/a"}]}]}
+
+    ideas_history.append_history(
+        "수면",
+        280,
+        result,
+        content_type="grounded_tip",
+        tip_category="health",
+        references="WHO link",
+    )
+
+    entry = ideas_history.load_history()[0]
+    assert (entry["content_type"], entry["tip_category"], entry["references"]) == (
+        "grounded_tip",
+        "health",
+        "WHO link",
+    )
+    assert entry["result"] == result
+
+
+def test_old_history_defaults_to_normal_ideas(monkeypatch, tmp_path):
+    path = _patch_path(monkeypatch, tmp_path)
+    old = {"at": "2026-07-19", "keywords": "k", "length": 0, "result": {"ideas": []}}
+    path.write_text(json.dumps(old, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    entry = ideas_history.load_history()[0]
+    assert entry["content_type"] == "ideas"
+    assert entry["tip_category"] == ""
+    assert entry["references"] == ""
+
+
 def test_history_i18n_keys_cover_all_languages():
     from i18n import _T, LANGUAGES
 

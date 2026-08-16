@@ -35,3 +35,23 @@ def test_submit_records_spawn_failure_in_the_job(tmp_path):
     assert job["status"] == "failed"
     assert job["error"] == "worker could not start"
     assert idea_jobs.get_job(job["id"], path=path)["status"] == "failed"
+
+
+def test_submit_persists_grounded_request_before_starting_worker(tmp_path):
+    job = idea_job_runner.submit_job(
+        "수면",
+        280,
+        "hankang",
+        "Claude CLI",
+        content_type="grounded_tip",
+        tip_category="health",
+        references="WHO link",
+        jobs_path=tmp_path / "idea_jobs.json",
+        popen=lambda *args, **kwargs: None,
+    )
+
+    assert (job["content_type"], job["tip_category"], job["references"]) == (
+        "grounded_tip",
+        "health",
+        "WHO link",
+    )

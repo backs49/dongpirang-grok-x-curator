@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 import idea_jobs  # noqa: E402
+from grounded_tips import CONTENT_TYPE_GROUNDED_TIP  # noqa: E402
 from ideas_history import append_history  # noqa: E402
 from provider_selection import build_provider  # noqa: E402
 from xalgo_prompts import PROMPT_VERSION  # noqa: E402
@@ -23,16 +24,28 @@ def run(job_id: str, *, jobs_path: Path = idea_jobs.JOBS_PATH) -> str:
         return "not_claimed"
 
     try:
-        grok, status = build_provider(job["engine"])
+        if job.get("content_type") == CONTENT_TYPE_GROUNDED_TIP:
+            grok, status = build_provider("Grok CLI")
+        else:
+            grok, status = build_provider(job["engine"])
         if grok is None:
             idea_jobs.fail_job(job_id, status.message, path=jobs_path)
             return "failed"
 
-        result = grok.generate_ideas(
-            job["keywords"],
-            length=job["length"],
-            mode=job["mode"],
-        )
+        if job.get("content_type") == CONTENT_TYPE_GROUNDED_TIP:
+            result = grok.generate_grounded_tips(
+                job["keywords"],
+                category=job.get("tip_category", ""),
+                references=job.get("references", ""),
+                length=job["length"],
+                mode=job["mode"],
+            )
+        else:
+            result = grok.generate_ideas(
+                job["keywords"],
+                length=job["length"],
+                mode=job["mode"],
+            )
         if "error" in result:
             idea_jobs.fail_job(job_id, result["error"], path=jobs_path)
             return "failed"
@@ -46,6 +59,9 @@ def run(job_id: str, *, jobs_path: Path = idea_jobs.JOBS_PATH) -> str:
                 mode=job["mode"],
                 engine=getattr(getattr(grok, "provider", None), "name", job["engine"]),
                 prompt_version=PROMPT_VERSION,
+                content_type=job.get("content_type", "ideas"),
+                tip_category=job.get("tip_category", ""),
+                references=job.get("references", ""),
             )
         except Exception:
             # 이력 파일 실패는 성공한 생성 결과를 실패로 바꾸지 않는다.

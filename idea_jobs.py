@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 from content_queue import queue_lock, save_queue
+from grounded_tips import CONTENT_TYPE_GROUNDED_TIP, CONTENT_TYPE_IDEAS, TIP_CATEGORIES
 
 
 JOBS_PATH = Path("content_queue/idea_jobs.json")
@@ -29,6 +30,12 @@ def _load(path: Path) -> dict:
         return _empty_store()
     if not isinstance(data, dict) or not isinstance(data.get("jobs"), list):
         return _empty_store()
+    # 이전 버전의 작업도 재접속 UI와 워커가 정상 아이디어 요청으로 읽는다.
+    for job in data["jobs"]:
+        if isinstance(job, dict):
+            job.setdefault("content_type", CONTENT_TYPE_IDEAS)
+            job.setdefault("tip_category", "")
+            job.setdefault("references", "")
     return data
 
 
@@ -55,9 +62,26 @@ def create_job(
     mode: str,
     engine: str,
     *,
+    content_type: str = CONTENT_TYPE_IDEAS,
+    tip_category: str = "",
+    references: str = "",
     path: Path = JOBS_PATH,
 ) -> dict:
     """새 작업을 먼저 저장한다. 워커는 이 저장이 성공한 뒤에만 시작한다."""
+    safe_content_type = (
+        content_type
+        if isinstance(content_type, str)
+        and content_type in {CONTENT_TYPE_IDEAS, CONTENT_TYPE_GROUNDED_TIP}
+        else CONTENT_TYPE_IDEAS
+    )
+    safe_tip_category = (
+        tip_category.strip()
+        if safe_content_type == CONTENT_TYPE_GROUNDED_TIP
+        and isinstance(tip_category, str)
+        and tip_category.strip() in TIP_CATEGORIES
+        else ""
+    )
+    safe_references = references.strip() if isinstance(references, str) else ""
     now = _now()
     job = {
         "id": uuid.uuid4().hex,
@@ -68,6 +92,9 @@ def create_job(
         "length": int(length),
         "mode": mode or "",
         "engine": engine or "",
+        "content_type": safe_content_type,
+        "tip_category": safe_tip_category,
+        "references": safe_references,
     }
     with _transaction(path) as data:
         data["jobs"].append(job)

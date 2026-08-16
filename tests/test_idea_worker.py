@@ -17,6 +17,17 @@ class FakeGrok:
         return self.result
 
 
+class GroundedFake:
+    def __init__(self, result):
+        self.result = result
+        self.calls = []
+        self.provider = SimpleNamespace(name="Fake CLI")
+
+    def generate_grounded_tips(self, keywords, *, category, references, length, mode):
+        self.calls.append((keywords, category, references, length, mode))
+        return self.result
+
+
 def test_worker_claims_job_saves_success_and_appends_history(monkeypatch, tmp_path):
     path = tmp_path / "idea_jobs.json"
     job = idea_jobs.create_job("AI", 280, "auto", "Grok CLI", path=path)
@@ -84,3 +95,37 @@ def test_worker_does_not_run_job_claimed_by_another_worker(monkeypatch, tmp_path
 
     assert idea_worker.run(job["id"], jobs_path=path) == "not_claimed"
     assert build_calls == []
+
+
+def test_grounded_worker_uses_grok_cli_and_persists_sources(monkeypatch, tmp_path):
+    path = tmp_path / "jobs.json"
+    job = idea_jobs.create_job(
+        "수면",
+        280,
+        "hankang",
+        "Claude CLI",
+        content_type="grounded_tip",
+        tip_category="health",
+        references="WHO link",
+        path=path,
+    )
+    calls, history = [], []
+    fake = GroundedFake({"ideas": [{
+        "content": "본문",
+        "sources": [{"url": "https://who.int/a"}, {"url": "https://cdc.gov/b"}],
+    }]})
+    monkeypatch.setattr(
+        idea_worker,
+        "build_provider",
+        lambda engine: (calls.append(engine) or fake, SimpleNamespace(message="ready")),
+    )
+    monkeypatch.setattr(idea_worker, "append_history", lambda *args, **kwargs: history.append((args, kwargs)))
+
+    assert idea_worker.run(job["id"], jobs_path=path) == "completed"
+
+    assert calls == ["Grok CLI"]
+    assert fake.calls == [("수면", "health", "WHO link", 280, "hankang")]
+    assert idea_jobs.get_job(job["id"], path=path)["result"] == fake.result
+    assert history[0][1]["content_type"] == "grounded_tip"
+    assert history[0][1]["tip_category"] == "health"
+    assert history[0][1]["references"] == "WHO link"
