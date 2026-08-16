@@ -1777,16 +1777,26 @@ def get_lang() -> str:
     return st.session_state.get("lang", "ko")
 
 
-def t(key: str, **kwargs) -> str:
-    """Translate a key to the current language."""
-    lang = get_lang()
+def normalize_language(language: str | None) -> str:
+    """Normalize a language code, falling back to Korean for unknown values."""
+    return language if language in LANGUAGES else "ko"
+
+
+def translate(key: str, language: str | None = None, **kwargs) -> str:
+    """Translate a key to an explicit language, or the current Streamlit language."""
     entry = _T.get(key)
     if not entry:
         return key
+    lang = get_lang() if language is None else normalize_language(language)
     text = entry.get(lang, entry.get("ko", key))
     if kwargs:
         text = text.format(**kwargs)
     return text
+
+
+def t(key: str, **kwargs) -> str:
+    """Translate a key to the current language."""
+    return translate(key, **kwargs)
 
 
 def get_action_labels() -> dict:
@@ -1805,16 +1815,19 @@ def get_action_labels() -> dict:
     }
 
 
-def get_lang_instruction() -> str:
+def get_lang_instruction(language: str | None = None) -> str:
     """Get the language instruction suffix for Grok prompts."""
-    return LANG_INSTRUCTION.get(get_lang(), "")
+    lang = get_lang() if language is None else normalize_language(language)
+    return LANG_INSTRUCTION.get(lang, "")
 
 
-def get_content_language_pair() -> str:
+def get_content_language_pair(language: str | None = None) -> str:
     """Get the content-language pair the curator should explore, based on UI language."""
-    return LANG_CONTENT_PAIR.get(get_lang(), LANG_CONTENT_PAIR["ko"])
+    lang = get_lang() if language is None else normalize_language(language)
+    return LANG_CONTENT_PAIR.get(lang, LANG_CONTENT_PAIR["ko"])
 
 
-def get_output_language_name() -> str:
+def get_output_language_name(language: str | None = None) -> str:
     """Get the English name of the target output language for embedding in prompts."""
-    return LANG_OUTPUT_NAME.get(get_lang(), LANG_OUTPUT_NAME["ko"])
+    lang = get_lang() if language is None else normalize_language(language)
+    return LANG_OUTPUT_NAME.get(lang, LANG_OUTPUT_NAME["ko"])
