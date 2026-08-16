@@ -1,9 +1,8 @@
 """모바일 워크스페이스 셸 — 헤더 한 줄, 본문 하나, 하단 탭 셋.
 
 이 모듈은 껍데기만 책임진다. 만들기/다듬기/발행 세 영역의 실제 내용은
-Task 6~8 이 workspace_ui.create / polish / publish 로 채워 넣고, 여기서는
-AREA_RENDERERS 의 자리 표시 렌더러를 실제 구현으로 교체하면 되도록
-이음매를 열어 둔다(발행은 아직 자리 표시자다).
+workspace_ui.create / polish / publish 가 채워 넣고, 여기서는 그 세
+렌더러를 AREA_RENDERERS 에 그대로 꽂는다.
 
 사용자 스토리지에는 자격 증명을 절대 넣지 않는다. 언어/테마/엔진 선택과
 아직 보내지 않은 입력 텍스트처럼, 새어 나가도 무해한 값만 둔다.
@@ -20,6 +19,7 @@ from workspace_ui import theme
 from workspace_ui.copy import LANGUAGE_OPTIONS, copy
 from workspace_ui.create import render_create
 from workspace_ui.polish import render_polish
+from workspace_ui.publish import render_publish
 
 
 # 하단 내비 순서 = 글 한 편이 지나가는 순서.
@@ -47,26 +47,14 @@ STORAGE_DEFAULTS = {
 
 
 # ─────────────────────────────────────────────────────────────
-# 영역 렌더러 — Task 8 이 발행을 실제 구현으로 교체한다.
+# 영역 렌더러
 # ─────────────────────────────────────────────────────────────
-
-def render_publish() -> None:
-    """발행 영역. Task 8 에서 workspace_ui.publish 로 대체된다."""
-    _render_pending_area("publish")
-
 
 AREA_RENDERERS: dict[str, Callable[[], None]] = {
     "create": render_create,
     "polish": render_polish,
     "publish": render_publish,
 }
-
-
-def _render_pending_area(area: str) -> None:
-    ui.label(copy(f"nav_{area}")).classes("workspace-area-title")
-    ui.label(copy(f"{area}_hint")).classes("workspace-hint")
-    with ui.column().classes("workspace-card w-full"):
-        ui.label(copy("area_pending")).classes("workspace-hint")
 
 
 # ─────────────────────────────────────────────────────────────

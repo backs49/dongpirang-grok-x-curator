@@ -266,6 +266,164 @@ _W = {
         "ja": "保存ロックの待ち時間を超えた。少し後に再試行する。",
     },
 
+    # ─── 발행: 필터 ───
+    "publish_filter_draft": {
+        "ko": "초안",
+        "en": "Draft",
+        "ja": "下書き",
+    },
+    "publish_filter_scheduled": {
+        "ko": "예약",
+        "en": "Scheduled",
+        "ja": "予約",
+    },
+    "publish_filter_failed": {
+        "ko": "실패",
+        "en": "Failed",
+        "ja": "失敗",
+    },
+    "publish_filter_published": {
+        "ko": "발행됨",
+        "en": "Published",
+        "ja": "公開済み",
+    },
+    "publish_loading": {
+        "ko": "불러오는 중이다.",
+        "en": "Loading.",
+        "ja": "読み込み中。",
+    },
+    "publish_empty_draft": {
+        "ko": "아직 초안이 없다.",
+        "en": "No drafts yet.",
+        "ja": "まだ下書きがない。",
+    },
+    "publish_empty_scheduled": {
+        "ko": "예약된 글이 없다.",
+        "en": "Nothing scheduled.",
+        "ja": "予約された投稿がない。",
+    },
+    "publish_empty_failed": {
+        "ko": "검토할 실패·반려 글이 없다.",
+        "en": "No failed or rejected posts to review.",
+        "ja": "確認が必要な失敗・却下はない。",
+    },
+    "publish_empty_published": {
+        "ko": "아직 발행한 글이 없다.",
+        "en": "Nothing published yet.",
+        "ja": "まだ公開した投稿がない。",
+    },
+
+    # ─── 발행: 카드 행동 ───
+    "publish_schedule_cta": {
+        "ko": "다음 슬롯에 예약",
+        "en": "Schedule into the next slot",
+        "ja": "次のスロットに予約",
+    },
+    "publish_retry_cta": {
+        "ko": "다시 예약",
+        "en": "Reschedule",
+        "ja": "再予約",
+    },
+    "publish_scheduled_notice": {
+        "ko": "다음 슬롯에 예약했다.",
+        "en": "Scheduled into the next slot.",
+        "ja": "次のスロットに予約した。",
+    },
+    "publish_view_details": {
+        "ko": "자세히 보기",
+        "en": "View details",
+        "ja": "詳しく見る",
+    },
+    "publish_hide_details": {
+        "ko": "접기",
+        "en": "Hide",
+        "ja": "閉じる",
+    },
+    "publish_reuse_cta": {
+        "ko": "복제해서 새 초안 만들기",
+        "en": "Duplicate into a new draft",
+        "ja": "複製して新しい下書きを作る",
+    },
+    "publish_reuse_done": {
+        "ko": "새 초안을 만들었다. 원본은 그대로 남아 있다.",
+        "en": "Made a new draft. The original is untouched.",
+        "ja": "新しい下書きを作った。元の投稿はそのまま残る。",
+    },
+    "publish_view_on_x": {
+        "ko": "X에서 보기",
+        "en": "View on X",
+        "ja": "Xで見る",
+    },
+
+    # ─── 발행: 카드 상태·타임스탬프 ───
+    "publish_slot_label": {
+        "ko": "발행 예정",
+        "en": "Scheduled for",
+        "ja": "発行予定",
+    },
+    "publish_published_at_label": {
+        "ko": "발행 시각",
+        "en": "Published at",
+        "ja": "公開時刻",
+    },
+    "publish_created_at_label": {
+        "ko": "작성",
+        "en": "Created",
+        "ja": "作成",
+    },
+    "publish_status_approved": {
+        "ko": "승인됨 · 슬롯 대기 중",
+        "en": "Approved · waiting for its slot",
+        "ja": "承認済み・スロット待ち",
+    },
+    "publish_status_publishing": {
+        "ko": "발행 시도 중 · 지금은 읽기 전용이다",
+        "en": "Publishing now · read-only for the moment",
+        "ja": "発行処理中・今は読み取り専用",
+    },
+    "publish_status_error": {
+        "ko": "발행 결과를 확인할 수 없다. 다시 예약하기 전에 X에 이미 올라갔는지 본다.",
+        "en": "The publish outcome is unknown. Check X before rescheduling.",
+        "ja": "発行結果が確認できない。再予約前にXを確認する。",
+    },
+    "publish_status_rejected": {
+        "ko": "반려됨 · 다시 슬롯 큐로 돌아가지 않는다.",
+        "en": "Rejected · it will not re-enter the slot queue.",
+        "ja": "却下済み・スロットキューには戻らない。",
+    },
+    "publish_status_manual": {
+        "ko": "수동 발행",
+        "en": "Manually published",
+        "ja": "手動公開",
+    },
+    "publish_status_api": {
+        "ko": "API 발행",
+        "en": "Published via API",
+        "ja": "API経由で公開",
+    },
+
+    # ─── 발행: 콘텐츠 기둥 ───
+    "publish_pillar_build_in_public": {
+        "ko": "빌드 인 퍼블릭",
+        "en": "Build in public",
+        "ja": "ビルド・イン・パブリック",
+    },
+    "publish_pillar_retrospective": {
+        "ko": "회고",
+        "en": "Retrospective",
+        "ja": "振り返り",
+    },
+    "publish_pillar_tip": {
+        "ko": "팁",
+        "en": "Tip",
+        "ja": "ヒント",
+    },
+    "publish_pillar_curation": {
+        "ko": "큐레이션",
+        "en": "Curation",
+        "ja": "キュレーション",
+    },
+
     # ─── 설정 ───
     "settings_title": {
         "ko": "설정",
