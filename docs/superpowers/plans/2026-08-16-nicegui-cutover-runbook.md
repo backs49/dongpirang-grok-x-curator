@@ -21,8 +21,8 @@ launchd가 매시간 새 tunnel_watch.sh를 실행하고, Streamlit은 app.py �
    사라졌고, **:443과 :8443(ai-trader)은 그대로**인지 확인.
    절대 `serve reset` / `funnel reset` 금지 — 포트 단위 명령만.
 5. 새 watchdog 실행(3에서 수동 실행 안 했다면):
-   `bash scripts/tunnel_watch.sh` — NiceGUI(8080)·Streamlit(8501) 기동,
-   serve :10000→8080, :10001→8501 구성, logs/workspace.url·legacy.url 기록.
+   `bash scripts/tunnel_watch.sh` — NiceGUI(8081)·Streamlit(8501) 기동,
+   serve :10000→8081, :10001→8501 구성, logs/workspace.url·legacy.url 기록.
    참고: :10001이 처음 잡히기 전 첫 실행은 exit 1로 끝날 수 있다(다음 실행에서
    자가 회복) — 첫 실행의 종료 코드는 헬스 신호가 아니다.
 6. `launchctl kickstart -k "gui/$(id -u)/com.dongpirang.tunnel"`로 정식 기동.

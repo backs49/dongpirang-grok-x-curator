@@ -3,10 +3,10 @@
 #
 # 동작:
 # 1. 로컬 앱 두 개가 죽어 있으면 살린다.
-#      NiceGUI 워크스페이스 :8080  (주 진입점)
+#      NiceGUI 워크스페이스 :8081  (주 진입점)
 #      레거시 Streamlit    :8501  (기존 도구 모음)
 # 2. Tailscale Serve 로 테일넷 안에서만 열어둔다.
-#      https :10000 -> 127.0.0.1:8080
+#      https :10000 -> 127.0.0.1:8081
 #      https :10001 -> 127.0.0.1:8501
 # 3. URL이 바뀌었을 때만(사실상 최초 1회) 관리자에게 텔레그램 발송.
 #
@@ -26,7 +26,7 @@ LOG_DIR="$REPO/logs"
 WORKSPACE_URL_FILE="$LOG_DIR/workspace.url"
 LEGACY_URL_FILE="$LOG_DIR/legacy.url"
 WATCH_LOG="$LOG_DIR/tunnel-watch.log"
-NICEGUI_PORT=8080
+NICEGUI_PORT=8081
 LEGACY_APP_PORT=8501   # 주의: 8502는 ai-trader 대시보드가 사용 중
 WORKSPACE_PORT=10000
 LEGACY_PORT=10001

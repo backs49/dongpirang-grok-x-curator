@@ -37,7 +37,7 @@ def _app_source() -> str:
 class TestServePorts:
     def test_watchdog_declares_local_and_serve_ports(self):
         script = _script()
-        assert "NICEGUI_PORT=8080" in script
+        assert "NICEGUI_PORT=8081" in script
         assert "LEGACY_APP_PORT=8501" in script
         assert "WORKSPACE_PORT=10000" in script
         assert "LEGACY_PORT=10001" in script
