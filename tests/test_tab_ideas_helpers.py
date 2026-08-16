@@ -6,8 +6,10 @@ import streamlit as st
 
 from tabs.tab_ideas import (
     _clear_stale_media_state,
+    _grounded_source_bits,
     _idea_caption_bits,
     _resolved_image_style,
+    _restore_fields,
 )
 
 
@@ -85,3 +87,20 @@ class TestClearStaleMediaState:
         _clear_stale_media_state()
 
         assert fake_state == {"keywords_input": "should survive"}
+
+
+def test_source_bits_deduplicate_links():
+    bits = _grounded_source_bits([
+        {"title": "WHO", "url": "https://who.int/a", "published_at": "2026-08-16"},
+        {"title": "WHO", "url": "https://who.int/a", "published_at": "2026-08-16"},
+    ])
+
+    assert bits == [("WHO", "https://who.int/a", "2026-08-16")]
+
+
+def test_old_history_restores_as_normal_ideas():
+    fields = _restore_fields({"keywords": "AI"})
+
+    assert fields["content_type"] == "ideas"
+    assert fields["tip_category"] == ""
+    assert fields["references"] == ""

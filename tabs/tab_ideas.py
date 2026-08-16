@@ -8,6 +8,12 @@ import image_modes
 import voice_card
 import writing_modes
 from content_queue import QUEUE_PATH, add_draft, queue_transaction
+from grounded_tips import (
+    CONTENT_TYPE_GROUNDED_TIP,
+    CONTENT_TYPE_IDEAS,
+    TIP_CATEGORIES,
+    normalize_url,
+)
 from idea_job_runner import submit_job
 from idea_jobs import get_job
 from ideas_history import load_history
@@ -26,6 +32,76 @@ def _sync_from_slider():
 def _sync_from_input():
     st.session_state.post_length = st.session_state.length_input
     st.session_state.length_slider = st.session_state.length_input
+
+
+def _restore_fields(restore: dict) -> dict[str, str]:
+    """이전 이력/작업 레코드에 없는 근거 기반 필드를 안전한 기본값으로 채운다."""
+    content_type = restore.get("content_type") if isinstance(restore, dict) else ""
+    if not isinstance(content_type, str) or content_type not in {
+        CONTENT_TYPE_IDEAS,
+        CONTENT_TYPE_GROUNDED_TIP,
+    }:
+        content_type = CONTENT_TYPE_IDEAS
+    tip_category = restore.get("tip_category") if isinstance(restore, dict) else ""
+    if (
+        content_type != CONTENT_TYPE_GROUNDED_TIP
+        or not isinstance(tip_category, str)
+        or tip_category not in TIP_CATEGORIES
+    ):
+        tip_category = ""
+    references = restore.get("references") if isinstance(restore, dict) else ""
+    return {
+        "content_type": content_type,
+        "tip_category": tip_category,
+        "references": references.strip() if isinstance(references, str) else "",
+    }
+
+
+def _grounded_source_bits(sources: object) -> list[tuple[str, str, str]]:
+    """카드에 표시할 출처를 URL 기준으로 중복 없이 정리한다."""
+    if not isinstance(sources, list):
+        return []
+    bits: list[tuple[str, str, str]] = []
+    seen_urls: set[str] = set()
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        url = normalize_url(str(source.get("url") or ""))
+        if not url or url in seen_urls:
+            continue
+        seen_urls.add(url)
+        title = str(source.get("title") or "").strip() or url
+        published_at = str(source.get("published_at") or "").strip()
+        bits.append((title, url, published_at))
+    return bits
+
+
+_GROUNDED_ERROR_KEYS = {
+    "insufficient_sources": "ideas_error_insufficient_sources",
+    "unsafe_personalized_request": "ideas_error_unsafe_personalized_request",
+    "unverified_evidence": "ideas_error_unverified_evidence",
+    "grounded_tips_require_grok_cli": "ideas_error_grounded_tips_require_grok_cli",
+}
+
+
+def _ideas_error_message(error: object) -> str:
+    """내부 검증 오류 키를 사용자 언어의 안내 문구로 바꾼다."""
+    error_text = str(error or "")
+    return t(_GROUNDED_ERROR_KEYS[error_text]) if error_text in _GROUNDED_ERROR_KEYS else error_text
+
+
+def _select_base_mode() -> None:
+    selected = st.session_state.get("ideas_base_mode")
+    st.session_state["ideas_mode"] = selected or writing_modes.AUTO_MIX
+    if selected:
+        st.session_state["ideas_lab_mode"] = None
+
+
+def _select_lab_mode() -> None:
+    selected = st.session_state.get("ideas_lab_mode")
+    if selected:
+        st.session_state["ideas_mode"] = selected
+        st.session_state["ideas_base_mode"] = None
 
 
 def _clear_stale_media_state():
@@ -93,7 +169,8 @@ def _watch_active_job(job_id: str):
 
     status = job.get("status")
     if status in ("queued", "running"):
-        st.info(t("ideas_job_running", engine=job.get("engine") or "AI"))
+        engine = "Grok CLI" if job.get("content_type") == CONTENT_TYPE_GROUNDED_TIP else job.get("engine") or "AI"
+        st.info(t("ideas_job_running", engine=engine))
         return
 
     applied = _apply_terminal_job_state(job, st.session_state)
@@ -112,6 +189,12 @@ def _apply_pending_restore():
         return
     st.session_state.keywords_input = restore.get("keywords", "")
     st.session_state.ideas_mode = restore.get("mode") or writing_modes.AUTO_MIX
+    st.session_state.pop("ideas_base_mode", None)
+    st.session_state.pop("ideas_lab_mode", None)
+    restored = _restore_fields(restore)
+    st.session_state.ideas_content_type = restored["content_type"]
+    st.session_state.ideas_tip_category = restored["tip_category"]
+    st.session_state.ideas_references = restored["references"]
     length = min(max(int(restore.get("length") or 0), 0), 1000)
     st.session_state.post_length = length
     st.session_state.length_slider = length
@@ -166,6 +249,41 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
         key="keywords_input",
     )
 
+    if st.session_state.get("ideas_content_type") not in {
+        CONTENT_TYPE_IDEAS,
+        CONTENT_TYPE_GROUNDED_TIP,
+    }:
+        st.session_state["ideas_content_type"] = CONTENT_TYPE_IDEAS
+    selected_content_type = st.pills(
+        t("ideas_content_type_label"),
+        options=(CONTENT_TYPE_IDEAS, CONTENT_TYPE_GROUNDED_TIP),
+        format_func=lambda value: t(f"ideas_content_type_{value}"),
+        key="ideas_content_type",
+    )
+    content_type = selected_content_type or CONTENT_TYPE_IDEAS
+    tip_category = ""
+    references = ""
+    if content_type == CONTENT_TYPE_GROUNDED_TIP:
+        if st.session_state.get("ideas_tip_category") not in TIP_CATEGORIES:
+            st.session_state["ideas_tip_category"] = "daily"
+        selected_category = st.pills(
+            t("ideas_tip_category_label"),
+            options=TIP_CATEGORIES,
+            format_func=lambda value: t(f"ideas_tip_category_{value}"),
+            key="ideas_tip_category",
+        )
+        tip_category = selected_category or "daily"
+        if "ideas_references" not in st.session_state:
+            st.session_state["ideas_references"] = ""
+        references = st.text_area(
+            t("ideas_references_label"),
+            help=t("ideas_references_help"),
+            key="ideas_references",
+        )
+        st.caption(t("ideas_grok_research_note"))
+        if tip_category in {"health", "finance"}:
+            st.info(t("ideas_health_finance_notice"))
+
     # ─── 포스트 길이 선택 (슬라이더 + 숫자 입력 연동) ───
     if "post_length" not in st.session_state:
         st.session_state.post_length = 0
@@ -199,13 +317,33 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
 
     if "ideas_mode" not in st.session_state:
         st.session_state.ideas_mode = writing_modes.AUTO_MIX
-    selected_mode = st.pills(
+    base_modes = (writing_modes.AUTO_MIX, *writing_modes.base_mode_options())
+    if "ideas_base_mode" not in st.session_state:
+        st.session_state["ideas_base_mode"] = (
+            st.session_state.ideas_mode if st.session_state.ideas_mode in base_modes else None
+        )
+    if "ideas_lab_mode" not in st.session_state:
+        st.session_state["ideas_lab_mode"] = (
+            st.session_state.ideas_mode
+            if st.session_state.ideas_mode in writing_modes.experimental_mode_options()
+            else None
+        )
+    st.pills(
         t("ideas_mode_label"),
-        options=writing_modes.mode_options(),
+        options=base_modes,
         format_func=writing_modes.mode_label,
-        key="ideas_mode",
+        key="ideas_base_mode",
+        on_change=_select_base_mode,
     )
-    mode = selected_mode or writing_modes.AUTO_MIX
+    with st.expander(t("ideas_experimental_modes")):
+        st.pills(
+            t("ideas_experimental_modes"),
+            options=writing_modes.experimental_mode_options(),
+            format_func=writing_modes.mode_label,
+            key="ideas_lab_mode",
+            on_change=_select_lab_mode,
+        )
+    mode = st.session_state.get("ideas_mode") or writing_modes.AUTO_MIX
 
     if st.button(t("ideas_generate_btn"), use_container_width=True, type="primary"):
         if grok is None:
@@ -214,7 +352,15 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
             st.warning(t("ideas_enter_keyword"))
         else:
             engine = getattr(getattr(grok, "provider", None), "name", "")
-            active_job = submit_job(keywords, post_length, mode, engine)
+            active_job = submit_job(
+                keywords,
+                post_length,
+                mode,
+                engine,
+                content_type=content_type,
+                tip_category=tip_category,
+                references=references,
+            )
             st.query_params["idea_job"] = active_job["id"]
             st.toast(t("ideas_job_submitted"))
             restored_status = _apply_terminal_job_state(active_job, st.session_state)
@@ -222,7 +368,7 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
                 _clear_stale_media_state()
 
     if "ideas_error" in st.session_state:
-        st.error(st.session_state.pop("ideas_error"))
+        st.error(_ideas_error_message(st.session_state.pop("ideas_error")))
 
     if active_job and active_job.get("status") in ("queued", "running"):
         _watch_active_job(active_job["id"])
@@ -234,7 +380,10 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
     if "ideas_result" not in st.session_state:
         return
 
-    ideas = st.session_state.ideas_result.get("ideas", [])
+    ideas_result = st.session_state.ideas_result
+    if ideas_result.get("verified_at"):
+        st.caption(t("ideas_verified_at", at=ideas_result["verified_at"]))
+    ideas = ideas_result.get("ideas", [])
     for i, idea in enumerate(ideas):
         with st.container(border=True):
             col_num, col_content = st.columns([1, 10])
@@ -292,6 +441,19 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
                 with st.expander(t("ideas_strategy")):
                     st.markdown(idea.get("strategy", ""))
 
+                source_bits = _grounded_source_bits(idea.get("sources"))
+                if source_bits:
+                    with st.expander(t("ideas_sources")):
+                        for source_index, (title, url, published_at) in enumerate(source_bits):
+                            st.link_button(
+                                title,
+                                url,
+                                key=f"idea_source_{i}_{source_index}",
+                                use_container_width=True,
+                            )
+                            if published_at:
+                                st.caption(published_at)
+
                 # ─── 이미지 장면 브리프 + 생성 ───
                 image_prompt = idea.get("image_prompt", "")
                 if image_prompt:
@@ -326,6 +488,7 @@ def _render_history_section():
                         "keywords": entry.get("keywords", ""),
                         "length": length,
                         "mode": entry.get("mode", ""),
+                        **_restore_fields(entry),
                         "result": None,
                     }
                     st.rerun()

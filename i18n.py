@@ -766,6 +766,101 @@ _T = {
         "en": "Writing mode",
         "ja": "文体モード",
     },
+    "ideas_content_type_label": {
+        "ko": "생성 유형",
+        "en": "Generation type",
+        "ja": "生成タイプ",
+    },
+    "ideas_content_type_ideas": {
+        "ko": "일반 아이디어",
+        "en": "Regular ideas",
+        "ja": "通常アイデア",
+    },
+    "ideas_content_type_grounded_tip": {
+        "ko": "근거 기반 팁",
+        "en": "Source-backed tips",
+        "ja": "根拠付きヒント",
+    },
+    "ideas_tip_category_label": {
+        "ko": "팁 분야",
+        "en": "Tip category",
+        "ja": "ヒントの分野",
+    },
+    "ideas_tip_category_daily": {
+        "ko": "일상",
+        "en": "Daily life",
+        "ja": "暮らし",
+    },
+    "ideas_tip_category_health": {
+        "ko": "건강",
+        "en": "Health",
+        "ja": "健康",
+    },
+    "ideas_tip_category_finance": {
+        "ko": "금융",
+        "en": "Finance",
+        "ja": "金融",
+    },
+    "ideas_tip_category_it_builder": {
+        "ko": "IT 빌더",
+        "en": "IT builder",
+        "ja": "ITビルダー",
+    },
+    "ideas_references_label": {
+        "ko": "참고 URL 또는 메모 (선택)",
+        "en": "Reference URLs or notes (optional)",
+        "ja": "参考URL・メモ（任意）",
+    },
+    "ideas_references_help": {
+        "ko": "검색 단서로만 사용합니다. 여기에 적은 내용이나 URL은 자동으로 사실·출처가 되지 않습니다.",
+        "en": "Used only as research leads. Text or URLs here are not automatically treated as facts or sources.",
+        "ja": "検索の手がかりとしてのみ使います。ここに書いた内容やURLが自動的に事実・出典になることはありません。",
+    },
+    "ideas_grok_research_note": {
+        "ko": "Grok CLI가 웹 검색으로 서로 다른 출처를 두 곳 이상 확인한 뒤 팁을 작성합니다.",
+        "en": "Grok CLI verifies at least two independent web sources before writing the tips.",
+        "ja": "Grok CLIがウェブ検索で異なる出典を2件以上確認してからヒントを作成します。",
+    },
+    "ideas_health_finance_notice": {
+        "ko": "건강·금융 팁은 일반 정보용입니다. 개인 증상·처방·복용량 또는 보유 종목·매수·매도 판단은 다루지 않습니다.",
+        "en": "Health and finance tips are general information only, not personal diagnosis, treatment, holdings, or buy/sell decisions.",
+        "ja": "健康・金融のヒントは一般情報です。個人の症状・処方・服用量や保有銘柄・売買判断は扱いません。",
+    },
+    "ideas_experimental_modes": {
+        "ko": "🧪 실험실 모드",
+        "en": "🧪 Experimental modes",
+        "ja": "🧪 実験モード",
+    },
+    "ideas_sources": {
+        "ko": "출처 보기",
+        "en": "View sources",
+        "ja": "出典を見る",
+    },
+    "ideas_verified_at": {
+        "ko": "출처 확인: {at}",
+        "en": "Sources verified: {at}",
+        "ja": "出典確認: {at}",
+    },
+    "ideas_error_insufficient_sources": {
+        "ko": "서로 다른 신뢰할 수 있는 출처를 두 곳 이상 확인하지 못했습니다. 주제를 조금 더 구체적으로 바꿔 다시 시도해 주세요.",
+        "en": "We could not verify two independent reliable sources. Try a more specific topic.",
+        "ja": "異なる信頼できる出典を2件以上確認できませんでした。テーマをもう少し具体的にして再試行してください。",
+    },
+    "ideas_error_unsafe_personalized_request": {
+        "ko": "건강·금융 팁은 일반 정보만 제공합니다. 개인 증상·처방·복용량이나 보유 종목·매수·매도 판단은 요청할 수 없습니다.",
+        "en": "Health and finance tips provide general information only; personal symptoms, prescriptions, holdings, and buy/sell decisions are not supported.",
+        "ja": "健康・金融のヒントは一般情報のみです。個人の症状・処方・服用量や保有銘柄・売買判断には対応していません。",
+    },
+    "ideas_error_unverified_evidence": {
+        "ko": "생성 결과의 근거 URL을 확인할 수 없어 표시하지 않았습니다. 다시 생성해 주세요.",
+        "en": "The generated evidence URLs could not be verified, so the result was not shown. Please try again.",
+        "ja": "生成結果の根拠URLを確認できなかったため表示しませんでした。もう一度生成してください。",
+    },
+    "ideas_error_grounded_tips_require_grok_cli": {
+        "ko": "근거 기반 팁에는 웹 조사가 가능한 Grok CLI가 필요합니다. Grok CLI 로그인을 확인해 주세요.",
+        "en": "Source-backed tips require Grok CLI with web research. Check the Grok CLI login.",
+        "ja": "根拠付きヒントにはウェブ調査ができるGrok CLIが必要です。Grok CLIのログインを確認してください。",
+    },
     "img_style_label": {
         "ko": "이미지 스타일",
         "en": "Image style",

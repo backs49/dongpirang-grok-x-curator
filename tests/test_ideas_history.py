@@ -118,5 +118,14 @@ def test_history_i18n_keys_cover_all_languages():
 
     for key in ("hist_expander", "hist_empty", "hist_count_caption",
                 "hist_restore_btn", "hist_edit_btn", "media_hist_expander",
-                "media_hist_empty", "media_hist_count"):
+                "media_hist_empty", "media_hist_count",
+                "ideas_content_type_label", "ideas_content_type_ideas",
+                "ideas_content_type_grounded_tip", "ideas_tip_category_label",
+                "ideas_tip_category_daily", "ideas_tip_category_health",
+                "ideas_tip_category_finance", "ideas_tip_category_it_builder",
+                "ideas_references_label", "ideas_references_help",
+                "ideas_grok_research_note", "ideas_health_finance_notice",
+                "ideas_experimental_modes", "ideas_sources", "ideas_verified_at",
+                "ideas_error_insufficient_sources", "ideas_error_unsafe_personalized_request",
+                "ideas_error_unverified_evidence", "ideas_error_grounded_tips_require_grok_cli"):
         assert set(_T[key]) >= set(LANGUAGES), f"missing translations for {key}"
