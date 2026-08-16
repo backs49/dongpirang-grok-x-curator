@@ -233,6 +233,43 @@ class _CaptureProvider:
         return self.responses.pop(0) if self.responses else {"error": "exhausted"}
 
 
+class _GroundedProvider:
+    """조사와 글쓰기 호출을 분리해 캡처하는 근거 기반 팁용 페이크."""
+
+    name = "Fake Grok CLI"
+
+    def __init__(self, research, ideas):
+        self.research_result = research
+        self.idea_result = ideas
+        self.research_calls = []
+        self.write_calls = []
+
+    def research_json(self, system, user):
+        self.research_calls.append((system, user))
+        return self.research_result
+
+    def generate_json(self, system, user):
+        self.write_calls.append((system, user))
+        return self.idea_result
+
+
+def _grounded_source(url):
+    return {
+        "title": "Official",
+        "url": url,
+        "publisher": "Publisher",
+        "published_at": "2026-08-16",
+        "excerpt": "Evidence",
+    }
+
+
+def _grounded_research(*urls):
+    return {
+        "facts": [{"statement": "검증된 사실", "source_urls": list(urls)}],
+        "sources": [_grounded_source(url) for url in urls],
+    }
+
+
 def _five_ideas(content="담백한 본문이다. 숫자 3이 있다."):
     return {
         "ideas": [
@@ -240,6 +277,72 @@ def _five_ideas(content="담백한 본문이다. 숫자 3이 있다."):
             for i in range(5)
         ]
     }
+
+
+class TestGenerateGroundedTips:
+    def test_does_not_pass_raw_references_to_writer(self):
+        provider = _GroundedProvider(
+            research=_grounded_research("https://who.int/a", "https://cdc.gov/b"),
+            ideas={"ideas": [{
+                "title": "수면 팁",
+                "content": "본문",
+                "evidence_urls": ["https://who.int/a"],
+            }]},
+        )
+
+        result = GrokClient(provider=provider).generate_grounded_tips(
+            "수면", category="health", references="https://user.example/note", mode="hankang"
+        )
+
+        assert "error" not in result
+        assert "user.example" in provider.research_calls[0][1]
+        assert "user.example" not in provider.write_calls[0][1]
+        assert result["ideas"][0]["sources"][0]["url"] == "https://who.int/a"
+        assert result["topic_category"] == "health"
+        assert result["verified_at"]
+        assert result["ideas"][0]["mode"] == "한강체"
+
+    def test_requires_grok_cli_research_transport(self):
+        result = GrokClient(provider=_CaptureProvider([])).generate_grounded_tips(
+            "수면", category="health"
+        )
+
+        assert result == {"error": "grounded_tips_require_grok_cli"}
+
+    def test_rejects_insufficient_research_before_writing(self):
+        provider = _GroundedProvider(
+            research=_grounded_research("https://who.int/a", "https://who.int/b"),
+            ideas={"ideas": []},
+        )
+
+        result = GrokClient(provider=provider).generate_grounded_tips("수면", category="health")
+
+        assert result == {"error": "insufficient_sources"}
+        assert provider.write_calls == []
+
+    def test_rejects_generated_url_not_returned_by_web_tool(self):
+        provider = _GroundedProvider(
+            research=_grounded_research("https://who.int/a", "https://cdc.gov/b"),
+            ideas={"ideas": [{
+                "content": "본문",
+                "evidence_urls": ["https://user.example/note"],
+            }]},
+        )
+
+        result = GrokClient(provider=provider).generate_grounded_tips("수면", category="health")
+
+        assert result == {"error": "unverified_evidence"}
+
+    def test_rejects_unsafe_personal_request_without_provider_calls(self):
+        provider = _GroundedProvider({}, {})
+
+        result = GrokClient(provider=provider).generate_grounded_tips(
+            "내 보유주식 매도", category="finance"
+        )
+
+        assert result == {"error": "unsafe_personalized_request"}
+        assert provider.research_calls == []
+        assert provider.write_calls == []
 
 
 class TestGenerateIdeasV2:
