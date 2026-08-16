@@ -133,6 +133,40 @@ _W = {
         "ja": "この方向で書く",
     },
 
+    # ─── 다듬기: 원문 입력 ───
+    "polish_input_label": {
+        "ko": "다듬을 포스트",
+        "en": "Post to rework",
+        "ja": "磨き直すポスト",
+    },
+    "polish_input_placeholder": {
+        "ko": "이미 써 둔 포스트 원문을 붙여넣는다.",
+        "en": "Paste a post you already wrote.",
+        "ja": "すでに書いたポストの原文を貼り付ける。",
+    },
+    "polish_input_required": {
+        "ko": "다듬을 원문을 먼저 붙여넣는다.",
+        "en": "Paste the original post first.",
+        "ja": "まず原文を貼り付ける。",
+    },
+    "polish_submit_cta": {
+        "ko": "다듬기 시작",
+        "en": "Start optimizing",
+        "ja": "推敲を始める",
+    },
+
+    # ─── 다듬기: 결과 ───
+    "polish_result_title": {
+        "ko": "다듬은 결과",
+        "en": "Optimized result",
+        "ja": "磨き直した結果",
+    },
+    "polish_open_editor": {
+        "ko": "에디터에서 계속 고치기",
+        "en": "Continue in the editor",
+        "ja": "エディタで編集を続ける",
+    },
+
     # ─── 작업 상태 ───
     "job_queued": {
         "ko": "차례를 기다린다.",

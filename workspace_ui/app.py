@@ -2,7 +2,8 @@
 
 이 모듈은 껍데기만 책임진다. 만들기/다듬기/발행 세 영역의 실제 내용은
 Task 6~8 이 workspace_ui.create / polish / publish 로 채워 넣고, 여기서는
-AREA_RENDERERS 의 자리 표시 렌더러만 교체하면 되도록 이음매를 열어 둔다.
+AREA_RENDERERS 의 자리 표시 렌더러를 실제 구현으로 교체하면 되도록
+이음매를 열어 둔다(발행은 아직 자리 표시자다).
 
 사용자 스토리지에는 자격 증명을 절대 넣지 않는다. 언어/테마/엔진 선택과
 아직 보내지 않은 입력 텍스트처럼, 새어 나가도 무해한 값만 둔다.
@@ -18,6 +19,7 @@ from i18n import normalize_language
 from workspace_ui import theme
 from workspace_ui.copy import LANGUAGE_OPTIONS, copy
 from workspace_ui.create import render_create
+from workspace_ui.polish import render_polish
 
 
 # 하단 내비 순서 = 글 한 편이 지나가는 순서.
@@ -45,13 +47,8 @@ STORAGE_DEFAULTS = {
 
 
 # ─────────────────────────────────────────────────────────────
-# 영역 렌더러 — Task 7~8 이 나머지를 실제 구현으로 교체한다.
+# 영역 렌더러 — Task 8 이 발행을 실제 구현으로 교체한다.
 # ─────────────────────────────────────────────────────────────
-
-def render_polish() -> None:
-    """다듬기 영역. Task 7 에서 workspace_ui.polish 로 대체된다."""
-    _render_pending_area("polish")
-
 
 def render_publish() -> None:
     """발행 영역. Task 8 에서 workspace_ui.publish 로 대체된다."""

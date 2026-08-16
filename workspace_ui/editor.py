@@ -124,13 +124,21 @@ def render_editor(
     pillar: str,
     on_published: Callable[[], None],
     queue_path: Path | None = None,
+    source_kind: str = SOURCE_KIND,
 ) -> None:
     """완성한 포스트 한 편을 고치는 화면을 현재 슬롯에 그린다.
 
     store 는 서명된 NiceGUI 사용자 스토리지다. 여기에는 본문과 초안 ID 만
     둔다 — 자격 증명은 어떤 경우에도 들어가지 않는다.
+
+    source_kind 는 이 초안이 어느 작업에서 나왔는지(만들기의 "post" 인지
+    다듬기의 "optimize" 인지)를 기록한다. 자동저장마다 같은 값을 다시
+    넘겨야 한다 — 생략하면 save_editor_draft 의 기본값("post")이 적용돼
+    다듬기 초안의 출처가 조용히 뒤바뀐다.
     """
-    text, on_disk = _restore_or_create_draft(job, store, pillar=pillar, queue_path=queue_path)
+    text, on_disk = _restore_or_create_draft(
+        job, store, pillar=pillar, queue_path=queue_path, source_kind=source_kind
+    )
     # 마지막으로 파일에 쓴 본문. 바뀌지 않았으면 자동저장이 파일을 만지지 않는다.
     # 복원한 경우에는 파일에 무엇이 있는지 모르므로(자동저장 전에 페이지가
     # 다시 그려졌을 수 있다) None 으로 두어 첫 저장을 반드시 한 번 한다.
@@ -163,6 +171,7 @@ def render_editor(
             current,
             pillar,
             store.get("editor_job_id"),
+            source_kind=source_kind,
             queue_path=queue_path,
         )
         if draft is not None:
@@ -252,7 +261,7 @@ def clear_editor_state(store) -> None:
 
 
 def _restore_or_create_draft(
-    job, store, *, pillar: str, queue_path: Path | None
+    job, store, *, pillar: str, queue_path: Path | None, source_kind: str = SOURCE_KIND
 ) -> tuple[str, str | None]:
     """완성 결과를 처음 봤으면 즉시 초안으로 저장하고, 아니면 복원한다.
 
@@ -271,7 +280,8 @@ def _restore_or_create_draft(
     text = post.get("content") or ""
     try:
         draft = save_editor_draft(
-            None, text, pillar, job_id, queue_path=queue_path, timeout=PAINT_LOCK_TIMEOUT
+            None, text, pillar, job_id,
+            source_kind=source_kind, queue_path=queue_path, timeout=PAINT_LOCK_TIMEOUT,
         )
         on_disk = text
     except TimeoutError:
