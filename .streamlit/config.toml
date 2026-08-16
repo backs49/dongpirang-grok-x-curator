@@ -10,3 +10,6 @@ hideTopBar = true
 
 [server]
 headless = true
+# 모바일 브라우저가 잠시 백그라운드로 가도 동일 WebSocket 세션으로 돌아올
+# 기회를 준다. 실제 생성 작업은 idea_worker.py가 별도로 보존한다.
+disconnectedSessionTTL = 1800

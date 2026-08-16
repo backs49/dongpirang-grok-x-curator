@@ -16,6 +16,7 @@ CLI 를 찾는 프로바이더는 워치독이 추가한 디렉터리에서만 C
 import os
 import re
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -80,3 +81,17 @@ class TestWatchdogPath:
             f"launchd 로 기동된 앱에서 '{command} CLI not found' 가 된다. "
             f"설치 위치: {shutil.which(command)}"
         )
+
+    def test_codex_version_runs_with_watchdog_path(self):
+        """Codex는 npm 실행 파일이라 Node까지 PATH에 있어야 실제로 실행된다."""
+        codex = shutil.which("codex")
+        if not codex:
+            pytest.skip("Codex CLI가 이 머신에 설치돼 있지 않다")
+        result = subprocess.run(
+            [codex, "--version"],
+            env={"PATH": _watchdog_path(), "HOME": os.path.expanduser("~")},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr or result.stdout

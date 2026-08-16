@@ -1,4 +1,5 @@
 import json
+from collections.abc import MutableMapping
 from pathlib import Path
 
 import streamlit as st
@@ -7,7 +8,9 @@ import image_modes
 import voice_card
 import writing_modes
 from content_queue import QUEUE_PATH, add_draft, queue_transaction
-from ideas_history import append_history, load_history
+from idea_job_runner import submit_job
+from idea_jobs import get_job
+from ideas_history import load_history
 from image_client import GENERATED_DIR, MASCOT_PATH
 from providers.base import ProviderError
 from utils import generate_tweet_intent_url
@@ -42,6 +45,64 @@ def _clear_stale_media_state():
     )
     for key in [k for k in st.session_state if str(k).startswith(stale_prefixes)]:
         del st.session_state[key]
+
+
+def _apply_terminal_job_state(job: dict, state: MutableMapping) -> str | None:
+    """완료된 영속 작업을 이번 Streamlit 세션에 한 번만 복원한다."""
+    job_id = str(job.get("id") or "")
+    if not job_id or state.get("_ideas_terminal_job_id") == job_id:
+        return None
+
+    status = job.get("status")
+    if status == "completed" and isinstance(job.get("result"), dict):
+        state["ideas_result"] = job["result"]
+        state["ideas_prompt_version"] = PROMPT_VERSION
+        state["_ideas_terminal_job_id"] = job_id
+        return "completed"
+    if status == "failed":
+        state["ideas_error"] = str(job.get("error") or "아이디어 생성에 실패했습니다")
+        state["_ideas_terminal_job_id"] = job_id
+        return "failed"
+    return None
+
+
+def _active_job_id() -> str:
+    value = st.query_params.get("idea_job", "")
+    if isinstance(value, list):
+        value = value[0] if value else ""
+    return str(value or "")
+
+
+def _restore_active_job() -> tuple[dict | None, str | None]:
+    job_id = _active_job_id()
+    if not job_id:
+        return None, None
+    job = get_job(job_id)
+    if job is None:
+        return None, None
+    return job, _apply_terminal_job_state(job, st.session_state)
+
+
+@st.fragment(run_every=2)
+def _watch_active_job(job_id: str):
+    """연결된 동안만 짧게 상태를 갱신한다. 생성 자체는 독립 워커가 계속한다."""
+    job = get_job(job_id)
+    if job is None:
+        st.warning(t("ideas_job_missing"))
+        return
+
+    status = job.get("status")
+    if status in ("queued", "running"):
+        st.info(t("ideas_job_running", engine=job.get("engine") or "AI"))
+        return
+
+    applied = _apply_terminal_job_state(job, st.session_state)
+    if applied == "completed":
+        # 프래그먼트 렌더는 기존 위젯 뒤에 올 수 있다. 다음 전체 실행에서
+        # 미디어 위젯 상태를 안전하게 초기화한다.
+        st.session_state["_ideas_clear_media_after_job"] = job_id
+    if applied is not None:
+        st.rerun(scope="app")
 
 
 def _apply_pending_restore():
@@ -88,6 +149,11 @@ def _use_v2_image_flow() -> bool:
 
 def render_ideas_tab(grok, image_client=None, video_client=None):
     _apply_pending_restore()
+    active_job, restored_status = _restore_active_job()
+    if restored_status == "completed" or st.session_state.pop(
+        "_ideas_clear_media_after_job", None
+    ):
+        _clear_stale_media_state()
     st.subheader(t("ideas_subheader"))
     st.caption(t("ideas_caption"))
 
@@ -147,26 +213,19 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
         elif not keywords.strip():
             st.warning(t("ideas_enter_keyword"))
         else:
-            with st.spinner(t("ideas_spinner")):
-                result = grok.generate_ideas(keywords, length=post_length, mode=mode)
-
-            if "error" in result:
-                st.error(result["error"])
-            else:
-                st.session_state.ideas_result = result
-                st.session_state.ideas_prompt_version = PROMPT_VERSION
-                append_history(
-                    keywords,
-                    post_length,
-                    result,
-                    mode=mode,
-                    engine=getattr(getattr(grok, "provider", None), "name", ""),
-                    prompt_version=PROMPT_VERSION,
-                )
+            engine = getattr(getattr(grok, "provider", None), "name", "")
+            active_job = submit_job(keywords, post_length, mode, engine)
+            st.query_params["idea_job"] = active_job["id"]
+            st.toast(t("ideas_job_submitted"))
+            restored_status = _apply_terminal_job_state(active_job, st.session_state)
+            if restored_status == "completed":
                 _clear_stale_media_state()
 
     if "ideas_error" in st.session_state:
         st.error(st.session_state.pop("ideas_error"))
+
+    if active_job and active_job.get("status") in ("queued", "running"):
+        _watch_active_job(active_job["id"])
 
     _render_voice_card_section(grok)
     _render_history_section()

@@ -730,6 +730,21 @@ _T = {
         "en": "The selected AI engine is generating x-algorithm optimized ideas...",
         "ja": "選択したAIエンジンがx-algorithm最適化アイデアを生成中...",
     },
+    "ideas_job_submitted": {
+        "ko": "아이디어 생성 요청을 보냈습니다. 연결이 끊겨도 같은 URL에서 결과를 확인할 수 있습니다.",
+        "en": "Idea generation has started. Reopen this URL to see the result if your connection drops.",
+        "ja": "アイデア生成を開始しました。接続が切れても同じURLで結果を確認できます。",
+    },
+    "ideas_job_running": {
+        "ko": "{engine}에서 아이디어를 생성하고 있습니다. 이 화면을 떠나도 작업은 계속됩니다.",
+        "en": "{engine} is generating ideas. The job continues even if you leave this screen.",
+        "ja": "{engine}がアイデアを生成中です。この画面を離れても処理は続きます。",
+    },
+    "ideas_job_missing": {
+        "ko": "이 아이디어 생성 작업을 찾을 수 없습니다. 새로 생성해 주세요.",
+        "en": "This idea-generation job could not be found. Please start a new one.",
+        "ja": "このアイデア生成ジョブが見つかりません。新しく生成してください。",
+    },
     "ideas_strategy": {
         "ko": "전략 보기",
         "en": "View Strategy",
