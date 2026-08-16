@@ -17,6 +17,7 @@ from nicegui import app, ui
 from i18n import normalize_language
 from workspace_ui import theme
 from workspace_ui.copy import LANGUAGE_OPTIONS, copy
+from workspace_ui.create import render_create
 
 
 # 하단 내비 순서 = 글 한 편이 지나가는 순서.
@@ -44,13 +45,8 @@ STORAGE_DEFAULTS = {
 
 
 # ─────────────────────────────────────────────────────────────
-# 영역 렌더러 — Task 6~8 이 실제 구현으로 교체한다.
+# 영역 렌더러 — Task 7~8 이 나머지를 실제 구현으로 교체한다.
 # ─────────────────────────────────────────────────────────────
-
-def render_create() -> None:
-    """만들기 영역. Task 6 에서 workspace_ui.create 로 대체된다."""
-    _render_pending_area("create")
-
 
 def render_polish() -> None:
     """다듬기 영역. Task 7 에서 workspace_ui.polish 로 대체된다."""

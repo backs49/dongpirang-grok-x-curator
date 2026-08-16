@@ -59,6 +59,174 @@ _W = {
         "ja": "この領域はまもなく接続される。",
     },
 
+    # ─── 만들기: 주제 한 줄 ───
+    "create_topic_label": {
+        "ko": "무엇에 대해 쓸까",
+        "en": "What are you writing about?",
+        "ja": "何について書く?",
+    },
+    "create_topic_placeholder": {
+        "ko": "주제 한 줄. 예) 배포 실수로 배운 것",
+        "en": "One line. e.g. what a bad deploy taught me",
+        "ja": "テーマを一行。例) デプロイ失敗から学んだこと",
+    },
+    "create_topic_required": {
+        "ko": "주제 한 줄을 먼저 적는다.",
+        "en": "Write one line of topic first.",
+        "ja": "まずテーマを一行書く。",
+    },
+    "create_type_ideas": {
+        "ko": "일반 아이디어",
+        "en": "Regular idea",
+        "ja": "通常アイデア",
+    },
+    "create_type_grounded": {
+        "ko": "사실 기반 팁",
+        "en": "Fact-based tip",
+        "ja": "事実ベースのヒント",
+    },
+    "create_options": {
+        "ko": "옵션",
+        "en": "Options",
+        "ja": "オプション",
+    },
+    "create_length_auto": {
+        "ko": "자동",
+        "en": "Auto",
+        "ja": "自動",
+    },
+    "create_directions_cta": {
+        "ko": "방향 3개 보기",
+        "en": "See three directions",
+        "ja": "方向を3つ見る",
+    },
+    "create_busy": {
+        "ko": "이미 만드는 중이다. 끝나면 카드가 뜬다.",
+        "en": "Already working. The cards appear when it finishes.",
+        "ja": "すでに作成中。終わればカードが出る。",
+    },
+
+    # ─── 만들기: 방향 카드 ───
+    "create_directions_title": {
+        "ko": "방향 3개",
+        "en": "Three directions",
+        "ja": "3つの方向",
+    },
+    "create_directions_hint": {
+        "ko": "하나만 고른다. 고른 방향으로만 한 편을 쓴다.",
+        "en": "Pick one. Only that direction becomes a post.",
+        "ja": "1つだけ選ぶ。選んだ方向だけを1本にする。",
+    },
+    "create_field_angle": {
+        "ko": "각도",
+        "en": "Angle",
+        "ja": "角度",
+    },
+    "create_field_core": {
+        "ko": "핵심",
+        "en": "Core",
+        "ja": "核",
+    },
+    "create_direction_select": {
+        "ko": "이 방향으로 쓰기",
+        "en": "Write this one",
+        "ja": "この方向で書く",
+    },
+
+    # ─── 작업 상태 ───
+    "job_queued": {
+        "ko": "차례를 기다린다.",
+        "en": "Waiting in line.",
+        "ja": "順番を待っている。",
+    },
+    "job_running": {
+        "ko": "쓰는 중이다. 화면을 닫아도 계속된다.",
+        "en": "Working. It keeps going even if you close this.",
+        "ja": "作成中。画面を閉じても続く。",
+    },
+    "job_missing": {
+        "ko": "저장된 작업을 찾을 수 없다.",
+        "en": "That saved job is gone.",
+        "ja": "保存された処理が見つからない。",
+    },
+    "job_failed": {
+        "ko": "만들지 못했다.",
+        "en": "It could not be created.",
+        "ja": "作成できなかった。",
+    },
+    "job_failed_detail": {
+        "ko": "만들지 못했다: {detail}",
+        "en": "It could not be created: {detail}",
+        "ja": "作成できなかった: {detail}",
+    },
+    "job_retry": {
+        "ko": "다시 시도",
+        "en": "Try again",
+        "ja": "再試行",
+    },
+    "invalid_directions": {
+        "ko": "방향 카드 3장을 제대로 받지 못했다. 주제를 조금 더 구체적으로 적고 다시 시도한다.",
+        "en": "The three direction cards came back malformed. Make the topic more specific and try again.",
+        "ja": "方向カード3枚を正しく受け取れなかった。テーマをもう少し具体的にして再試行する。",
+    },
+    "invalid_direction": {
+        "ko": "고른 방향이 온전하지 않다. 카드를 다시 받아 고른다.",
+        "en": "The selected direction was incomplete. Get the cards again and pick one.",
+        "ja": "選んだ方向が不完全だった。カードを取り直して選ぶ。",
+    },
+    "invalid_post": {
+        "ko": "본문이 빈 채로 돌아왔다. 다시 시도한다.",
+        "en": "The post came back without a body. Try again.",
+        "ja": "本文が空のまま返ってきた。再試行する。",
+    },
+
+    # ─── 에디터 ───
+    "editor_title": {
+        "ko": "완성한 포스트",
+        "en": "Finished post",
+        "ja": "完成したポスト",
+    },
+    "editor_hint": {
+        "ko": "고치면 발행 큐 초안에 자동으로 저장된다.",
+        "en": "Edits autosave into the publish-queue draft.",
+        "ja": "編集すると公開キューの下書きに自動保存される。",
+    },
+    "editor_open_x": {
+        "ko": "X 작성 화면 열기",
+        "en": "Open the X composer",
+        "ja": "Xの作成画面を開く",
+    },
+    "editor_save": {
+        "ko": "발행 큐에 저장",
+        "en": "Save to publish queue",
+        "ja": "公開キューに保存",
+    },
+    "editor_mark_published": {
+        "ko": "게시했음",
+        "en": "I posted it",
+        "ja": "投稿した",
+    },
+    "editor_saved": {
+        "ko": "발행 큐에 저장했다.",
+        "en": "Saved to the publish queue.",
+        "ja": "公開キューに保存した。",
+    },
+    "editor_published": {
+        "ko": "발행 기록에 남겼다.",
+        "en": "Recorded as published.",
+        "ja": "公開済みとして記録した。",
+    },
+    "editor_publish_failed": {
+        "ko": "이미 발행된 글이라 기록하지 않았다.",
+        "en": "Already published, so nothing was recorded.",
+        "ja": "すでに公開済みのため記録しなかった。",
+    },
+    "editor_empty": {
+        "ko": "본문이 비어 있다.",
+        "en": "The post body is empty.",
+        "ja": "本文が空だ。",
+    },
+
     # ─── 설정 ───
     "settings_title": {
         "ko": "설정",

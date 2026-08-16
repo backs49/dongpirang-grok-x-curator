@@ -1,6 +1,6 @@
 """모바일 워크스페이스 셸 — 하단 3영역, 설정 다이얼로그, 카피/테마 토큰."""
 
-from nicegui import ui
+from nicegui import ElementFilter, ui
 from nicegui.testing import user_simulation
 
 from workspace_ui import theme
@@ -31,8 +31,13 @@ async def test_settings_offers_local_engines_and_never_asks_for_a_key():
             engine_select = next(iter(user.find(marker="settings-engine").elements))
         assert engine_select.options == list(ENGINE_OPTIONS)
         assert "xAI API" not in engine_select.options
-        # 어떤 종류의 키/비밀번호 입력란도 이 화면에 존재하면 안 된다.
-        await user.should_not_see(kind=ui.input)
+        # 어떤 종류의 키/비밀번호 입력란도 설정에 존재하면 안 된다.
+        # 만들기 영역에는 주제 입력란이 생겼으므로(Task 6) 범위를 다이얼로그로
+        # 좁힌다 — 지키려는 경계는 "설정에서 키를 받지 않는다" 이기 때문이다.
+        # ui.textarea 도 ui.input 의 하위 타입이라 둘 다 함께 걸린다.
+        with user.client:
+            key_fields = list(ElementFilter(kind=ui.input).within(marker="settings-dialog"))
+        assert key_fields == []
 
 
 async def test_changing_the_language_rebuilds_the_bottom_navigation():
