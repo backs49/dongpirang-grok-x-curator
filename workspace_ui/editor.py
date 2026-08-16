@@ -20,6 +20,7 @@ import asyncio
 import copy as copy_module
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from typing import NamedTuple
 
 from nicegui import run, ui
 
@@ -48,6 +49,39 @@ PAINT_LOCK_TIMEOUT = 0.5
 
 # 워크스페이스 에디터가 만드는 초안의 출처 표시.
 SOURCE_KIND = "post"
+
+
+class EditorKeys(NamedTuple):
+    """에디터 하나가 쓰는 세 스토리지 키의 실제 이름."""
+
+    job_id: str
+    draft_id: str
+    text: str
+
+
+def editor_storage_keys(key_prefix: str = "") -> EditorKeys:
+    """영역별 접두어를 붙인 에디터 스토리지 키 세 개.
+
+    이 세 키(job_id/draft_id/text)는 페이지 안의 "지금 열려 있는 에디터"를
+    가리킨다. 만들기는 완성 글이 나오면 곧바로 이 에디터를 열고, 다듬기는
+    버튼을 눌러야 연다 — 그런데 ui.tab_panels 는 보이는 탭만 CSS 로 가릴
+    뿐 세 영역의 렌더 함수를 페이지를 열 때마다 모두 실행하므로, 두 영역이
+    같은 세 키를 쓰면 두 에디터가 같은 초안을 가리키게 된다. NiceGUI 의
+    값 바인딩은 화면에 보이는지와 무관하게 0.1초마다 같은 키에 묶인 모든
+    위젯에 최신 값을 밀어넣기 때문에, 이 상태에서는 어느 쪽 에디터에서
+    타이핑해도 상대방의 초안 파일에 그대로 쓰여 버린다(제목/기둥/출처까지
+    잘못된 채로).
+
+    기본값("")은 지금까지 써 온 이름 그대로("editor_job_id" 등)이므로
+    만들기와 기존 테스트는 이 변경으로 아무것도 바뀌지 않는다. 같은
+    페이지에 동시에 존재할 수 있는 두 번째 에디터(다듬기)는 다른 접두어를
+    넘겨 완전히 분리된 세 키를 쓰게 한다.
+    """
+    return EditorKeys(
+        job_id=f"{key_prefix}editor_job_id",
+        draft_id=f"{key_prefix}editor_draft_id",
+        text=f"{key_prefix}editor_text",
+    )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -125,6 +159,7 @@ def render_editor(
     on_published: Callable[[], None],
     queue_path: Path | None = None,
     source_kind: str = SOURCE_KIND,
+    key_prefix: str = "",
 ) -> None:
     """완성한 포스트 한 편을 고치는 화면을 현재 슬롯에 그린다.
 
@@ -135,9 +170,15 @@ def render_editor(
     다듬기의 "optimize" 인지)를 기록한다. 자동저장마다 같은 값을 다시
     넘겨야 한다 — 생략하면 save_editor_draft 의 기본값("post")이 적용돼
     다듬기 초안의 출처가 조용히 뒤바뀐다.
+
+    key_prefix 는 이 에디터가 쓸 세 스토리지 키(editor_storage_keys 참고)를
+    고른다. 같은 페이지에서 두 번째 완성 결과(다듬기)를 위한 에디터를
+    동시에 열 수 있는 이상, 두 호출은 반드시 서로 다른 key_prefix 를 써야
+    한다 — 같은 키를 쓰면 두 에디터가 같은 초안을 공유하게 된다.
     """
+    keys = editor_storage_keys(key_prefix)
     text, on_disk = _restore_or_create_draft(
-        job, store, pillar=pillar, queue_path=queue_path, source_kind=source_kind
+        job, store, pillar=pillar, queue_path=queue_path, source_kind=source_kind, keys=keys
     )
     # 마지막으로 파일에 쓴 본문. 바뀌지 않았으면 자동저장이 파일을 만지지 않는다.
     # 복원한 경우에는 파일에 무엇이 있는지 모르므로(자동저장 전에 페이지가
@@ -162,20 +203,20 @@ def render_editor(
         저장이 실제로 끝난 뒤에만 올라가므로, 실패하면 다음 틱이 같은
         본문을 다시 쓴다.
         """
-        current = store.get("editor_text") or ""
+        current = store.get(keys.text) or ""
         if current == flushed["text"]:
             return None
         draft = await run.io_bound(
             save_editor_draft,
-            store.get("editor_draft_id"),
+            store.get(keys.draft_id),
             current,
             pillar,
-            store.get("editor_job_id"),
+            store.get(keys.job_id),
             source_kind=source_kind,
             queue_path=queue_path,
         )
         if draft is not None:
-            store["editor_draft_id"] = draft["id"]
+            store[keys.draft_id] = draft["id"]
         flushed["text"] = current
         return draft
 
@@ -191,7 +232,7 @@ def render_editor(
         """
         async with writing:
             draft = await _write_pending()
-            draft_id = (draft or {}).get("id") or store.get("editor_draft_id")
+            draft_id = (draft or {}).get("id") or store.get(keys.draft_id)
             if not draft_id:
                 return None
             return await run.io_bound(
@@ -214,7 +255,7 @@ def render_editor(
         body = ui.textarea(value=text) \
             .props("autogrow outlined dense") \
             .classes("w-full") \
-            .bind_value(store, "editor_text") \
+            .bind_value(store, keys.text) \
             .mark("editor-text")
 
         with ui.row().classes("w-full items-center justify-between"):
@@ -238,30 +279,34 @@ def render_editor(
         # 설정 다이얼로그와 같은 규칙으로 채운 버튼의 대비를 뒤집는다.
         text_color = "white" if store.get("theme") == "light" else "dark"
         with ui.row().classes("w-full items-center gap-2"):
-            ui.button(copy("editor_save"), on_click=lambda: _save_now(flush, store)) \
+            ui.button(copy("editor_save"), on_click=lambda: _save_now(flush, store, keys)) \
                 .props("outline dense").classes("grow").mark("editor-save")
             ui.button(
                 copy("editor_mark_published"),
-                on_click=lambda: _mark_published(publish, store, on_published),
+                on_click=lambda: _mark_published(publish, store, on_published, keys),
             ).props(f"unelevated dense text-color={text_color}").classes("grow") \
                 .mark("editor-published")
 
         ui.timer(AUTOSAVE_SECONDS, autosave)
 
 
-def clear_editor_state(store) -> None:
+def clear_editor_state(store, *, key_prefix: str = "") -> None:
     """에디터가 들고 있던 초안 연결을 끊는다.
 
     발행을 기록한 뒤에는 반드시 불러야 한다. 남겨 두면 뒤늦은 자동저장이
-    편집 불가 초안을 만나 새 초안을 만들어 버린다.
+    편집 불가 초안을 만나 새 초안을 만들어 버린다. key_prefix 는 render_editor
+    를 부를 때 쓴 것과 반드시 같아야 한다 — 그래야 이 영역이 쓰는 세 키만
+    지우고 다른 영역(공유 에디터의 또 다른 슬롯)의 상태는 건드리지 않는다.
     """
-    store["editor_job_id"] = None
-    store["editor_draft_id"] = None
-    store["editor_text"] = ""
+    keys = editor_storage_keys(key_prefix)
+    store[keys.job_id] = None
+    store[keys.draft_id] = None
+    store[keys.text] = ""
 
 
 def _restore_or_create_draft(
-    job, store, *, pillar: str, queue_path: Path | None, source_kind: str = SOURCE_KIND
+    job, store, *, pillar: str, queue_path: Path | None, source_kind: str = SOURCE_KIND,
+    keys: EditorKeys,
 ) -> tuple[str, str | None]:
     """완성 결과를 처음 봤으면 즉시 초안으로 저장하고, 아니면 복원한다.
 
@@ -270,11 +315,11 @@ def _restore_or_create_draft(
     있으므로 자동저장이 한 번은 반드시 쓰게 만든다.
     """
     job_id = job.get("id")
-    if store.get("editor_job_id") == job_id:
+    if store.get(keys.job_id) == job_id:
         # 이 작업의 본문은 이미 스토리지에 있다. 파일에서 다시 읽지 않는다 —
         # 스토리지 쪽이 더 새것일 수 있다(첫 저장이 실패했거나 자동저장 전에
         # 다시 그려졌을 수 있다).
-        return store.get("editor_text") or "", None
+        return store.get(keys.text) or "", None
 
     post = (job.get("result") or {}).get("post") or {}
     text = post.get("content") or ""
@@ -290,14 +335,16 @@ def _restore_or_create_draft(
         ui.notify(copy("queue_busy"))
         draft, on_disk = None, None
 
-    store["editor_job_id"] = job_id
-    store["editor_draft_id"] = draft["id"] if draft is not None else None
-    store["editor_text"] = text
+    store[keys.job_id] = job_id
+    store[keys.draft_id] = draft["id"] if draft is not None else None
+    store[keys.text] = text
     return text, on_disk
 
 
-async def _save_now(flush: Callable[[], Awaitable[dict | None]], store) -> None:
-    if not (store.get("editor_text") or "").strip():
+async def _save_now(
+    flush: Callable[[], Awaitable[dict | None]], store, keys: EditorKeys
+) -> None:
+    if not (store.get(keys.text) or "").strip():
         ui.notify(copy("editor_empty"))
         return
     try:
@@ -312,13 +359,14 @@ async def _mark_published(
     publish: Callable[[], Awaitable[dict | None]],
     store,
     on_published: Callable[[], None],
+    keys: EditorKeys,
 ) -> None:
     """게시했음 — 사람이 직접 X 에 올린 글을 발행 기록으로 남긴다.
 
     publish 는 지금 본문을 저장하고 그 초안을 발행으로 표시하는 일을 한
     락 안에서 끝낸다 — 화면의 본문과 기록이 어긋나지 않게 하기 위해서다.
     """
-    if not (store.get("editor_text") or "").strip():
+    if not (store.get(keys.text) or "").strip():
         ui.notify(copy("editor_empty"))
         return
 
@@ -331,5 +379,9 @@ async def _mark_published(
         return
 
     ui.notify(copy("editor_published") if published else copy("editor_publish_failed"))
-    clear_editor_state(store)
+    # 이 에디터가 쓰던 세 키만 지운다 — 공유 스토리지의 다른 슬롯(다른
+    # 영역의 에디터)은 건드리지 않는다.
+    store[keys.job_id] = None
+    store[keys.draft_id] = None
+    store[keys.text] = ""
     on_published()

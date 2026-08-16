@@ -16,6 +16,15 @@
 에디터가 열리게 한 것은 의도된 차이다 — 만들기는 카드를 고른 순간 바로
 써야 할 글이 하나뿐이지만, 다듬기는 분석을 먼저 읽고 계속할지 결정할
 여지를 준다.
+
+에디터 스토리지 키는 만들기와 완전히 분리한다(key_prefix="optimize_").
+만들기는 완성 글이 나오면 곧바로 자기 에디터를 열고, 다듬기는 버튼을
+눌러야 연다 — 그런데 ui.tab_panels 는 보이는 탭만 CSS 로 가릴 뿐 세 영역의
+렌더 함수를 페이지를 열 때마다 모두 실행하므로, 두 에디터가 같은 스토리지
+키(editor_job_id 등)를 썼다면 둘 다 같은 초안을 가리키게 되고, 어느 쪽
+텍스트 영역에 타이핑해도 그 값이 두 텍스트 영역 모두에 밀려 들어가며
+자동저장은 상대방의 초안 파일에 잘못된 기둥·출처로 덮어써 버린다. 그래서
+다듬기는 처음부터 이 화면만의 세 키를 쓴다.
 """
 
 from __future__ import annotations
@@ -42,16 +51,23 @@ SOURCE_KIND = "optimize"
 # "curation" 이 된다 — create.py 가 고른 것과 같은 관례다.
 PILLAR = editor.editor_pillar(DEFAULT_MODE, CONTENT_TYPE_IDEAS)
 
+# 이 화면의 에디터가 쓰는 스토리지 키 접두어. 만들기의 에디터(접두어 없음)
+# 와 완전히 분리된 job_id/draft_id/text 세 키를 만든다 — editor.py 의
+# editor_storage_keys 문서에 그 이유가 적혀 있다.
+EDITOR_KEY_PREFIX = "optimize_"
+_EDITOR_KEYS = editor.editor_storage_keys(EDITOR_KEY_PREFIX)
+
 # 이 영역이 쓰는 사용자 스토리지. active_optimize_job_id 는 만들기의
 # active_direction_job_id/active_post_job_id 와 독립적이다 — 하단 탭을
-# 오가도 서로의 작업을 지우지 않기 위해서다. editor_* 키는 에디터가
-# 공유하는 슬롯이라 만들기도 같은 기본값을 둔다(먼저 그려진 쪽이 이긴다).
+# 오가도 서로의 작업을 지우지 않기 위해서다. 에디터 세 키도 만들기와
+# 분리된 이름(optimize_editor_*)을 쓴다 — 단일 소스(_EDITOR_KEYS)에서
+# 가져와 editor.render_editor 에 넘기는 key_prefix 와 절대 어긋나지 않는다.
 STORAGE_DEFAULTS = {
     "active_optimize_job_id": None,
     "optimize_editor_open": False,
-    "editor_job_id": None,
-    "editor_draft_id": None,
-    "editor_text": "",
+    _EDITOR_KEYS.job_id: None,
+    _EDITOR_KEYS.draft_id: None,
+    _EDITOR_KEYS.text: "",
 }
 
 
@@ -186,6 +202,7 @@ def _render_editor_for(job: dict, store, repaint: Callable[[], None]) -> None:
         pillar=PILLAR,
         on_published=lambda: _finish_optimize(store, repaint),
         source_kind=SOURCE_KIND,
+        key_prefix=EDITOR_KEY_PREFIX,
     )
 
 
@@ -201,10 +218,10 @@ def _start_optimize(store, settings: dict, repaint: Callable[[], None], text: st
     # 결과가 아니라 ID 만 들고 있는다. 결과의 주인은 작업 저장소다.
     store["active_optimize_job_id"] = job["id"]
     store["optimize_editor_open"] = False
-    # 새 다듬기 요청이 오는 중이다 — 공유 에디터가 이전 초안과의 연결을
-    # 그대로 들고 있으면, 이번 결과를 열었을 때 옛 본문 위에 자동저장이
-    # 덮어써질 수 있다.
-    editor.clear_editor_state(store)
+    # 새 다듬기 요청이 오는 중이다 — 이 화면의 에디터가 이전 초안과의
+    # 연결을 그대로 들고 있으면, 이번 결과를 열었을 때 옛 본문 위에
+    # 자동저장이 덮어써질 수 있다. 이 화면 전용 키만 지운다.
+    editor.clear_editor_state(store, key_prefix=EDITOR_KEY_PREFIX)
     repaint()
 
 
