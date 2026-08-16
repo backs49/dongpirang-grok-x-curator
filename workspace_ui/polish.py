@@ -11,11 +11,11 @@
 탭에서 새 글을 시작하는 순간 다듬기가 들고 있던 작업 ID 가 지워질 수
 있었다. 독립된 키를 쓰면 두 작업이 동시에 돌아도 서로를 건드리지 않는다.
 
-다듬기 결과는 점수·이유·제안까지 딸린 분석 전체다. 그걸 곧바로 에디터에
-밀어넣지 않고 우선 결과만 보여준 뒤 "에디터에서 계속 고치기" 버튼을 눌러야
-에디터가 열리게 한 것은 의도된 차이다 — 만들기는 카드를 고른 순간 바로
-써야 할 글이 하나뿐이지만, 다듬기는 분석을 먼저 읽고 계속할지 결정할
-여지를 준다.
+다듬기 작업 결과에는 점수·이유·제안까지 딸려 오지만, 화면은 그중 다듬은
+본문(optimized_post)만 보여준다. 그 본문을 곧바로 에디터에 밀어넣지 않고
+먼저 결과만 보여준 뒤 "에디터에서 계속 고치기" 버튼을 눌러야 에디터가
+열리게 한 것은 의도된 차이다 — 만들기는 카드를 고른 순간 바로 써야 할
+글이 하나뿐이지만, 다듬기는 결과를 먼저 읽고 계속할지 결정할 여지를 준다.
 
 에디터 스토리지 키는 만들기와 완전히 분리한다(key_prefix="optimize_").
 만들기는 완성 글이 나오면 곧바로 자기 에디터를 열고, 다듬기는 버튼을
@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from nicegui import app, ui
+from nicegui import app, run, ui
 
 import workspace_job_runner
 from grounded_tips import CONTENT_TYPE_IDEAS
@@ -210,8 +210,22 @@ def _render_editor_for(job: dict, store, repaint: Callable[[], None]) -> None:
 # 행동
 # ─────────────────────────────────────────────────────────────
 
-def _start_optimize(store, settings: dict, repaint: Callable[[], None], text: str) -> None:
-    job = submit_optimization(text, engine=settings["engine"], language=settings["language"])
+async def _start_optimize(store, settings: dict, repaint: Callable[[], None], text: str) -> None:
+    """다듬기 작업을 큐에 올린다.
+
+    submit_optimization 도 만들기의 submit_directions/submit_selected_direction
+    과 같은 flock 기반 큐 락(최대 10초)을 잡고 워커를 띄운다 — 클릭
+    핸들러에서 그대로 부르면 이벤트 루프가 멈춘다. editor.py 의 자동저장과
+    같은 이유로 run.io_bound 워커 스레드에서 돌리고, 락을 못 잡으면 같은
+    queue_busy 문구로 알린다.
+    """
+    try:
+        job = await run.io_bound(
+            submit_optimization, text, engine=settings["engine"], language=settings["language"]
+        )
+    except TimeoutError:
+        ui.notify(copy("queue_busy"))
+        return
     if job is None:
         ui.notify(copy("polish_input_required"))
         return

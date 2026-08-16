@@ -51,8 +51,12 @@ def _write_secret(path: Path, secret: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     try:
-        os.fchmod(fd, SECRET_MODE)
+        # fdopen 이 fd 를 넘겨받아야 실패해도 with 블록이 반드시 닫는다 —
+        # fchmod 를 fdopen 전에 부르면 그 호출이 예외를 낼 때 fd 가 아무
+        # 파일 객체에도 묶이지 않아 새어 나간다. f.fileno() 로 같은 fd 에
+        # 권한을 걸어 내용을 쓰기 전에 모드가 정해지는 순서는 그대로 지킨다.
         with os.fdopen(fd, "w", encoding="utf-8") as f:
+            os.fchmod(f.fileno(), SECRET_MODE)
             f.write(secret)
         os.replace(tmp_name, path)
     except BaseException:

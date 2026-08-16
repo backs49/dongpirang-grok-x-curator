@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from nicegui import app, ui
+from nicegui import app, run, ui
 
 import workspace_job_runner
 import writing_modes
@@ -327,12 +327,25 @@ def _render_directions(
 # 행동
 # ─────────────────────────────────────────────────────────────
 
-def _start_directions(store, settings: dict, repaint: Callable[[], None], keywords: str) -> None:
-    job = submit_directions(
-        {"keywords": keywords, "mode": store.get("create_mode")},
-        engine=settings["engine"],
-        language=settings["language"],
-    )
+async def _start_directions(store, settings: dict, repaint: Callable[[], None], keywords: str) -> None:
+    """방향 카드 작업을 큐에 올린다.
+
+    submit_directions 는 workspace_jobs.create_job 을 거쳐 flock 기반 큐
+    락(최대 10초)을 잡고 워커 프로세스까지 띄운다 — 클릭 핸들러에서 그대로
+    부르면 락을 기다리는 동안 이벤트 루프가, 곧 서버 전체가 멈춘다.
+    editor.py 의 자동저장과 같은 이유로 run.io_bound 워커 스레드에서 돌리고,
+    락을 못 잡으면 같은 queue_busy 문구로 알린다.
+    """
+    try:
+        job = await run.io_bound(
+            submit_directions,
+            {"keywords": keywords, "mode": store.get("create_mode")},
+            engine=settings["engine"],
+            language=settings["language"],
+        )
+    except TimeoutError:
+        ui.notify(copy("queue_busy"))
+        return
     if job is None:
         ui.notify(copy("create_topic_required"))
         return
@@ -341,22 +354,38 @@ def _start_directions(store, settings: dict, repaint: Callable[[], None], keywor
     repaint()
 
 
-def _select_direction(
+async def _select_direction(
     direction, store, settings: dict, repaint: Callable[[], None], keywords: str
 ) -> None:
-    job = submit_selected_direction(
-        keywords=keywords,
-        direction=direction,
-        length=store.get("create_length") or 0,
-        mode=store.get("create_mode") or DEFAULT_MODE,
-        language=settings["language"],
-        content_type=store.get("create_content_type") or CONTENT_TYPE_IDEAS,
-        category=store.get("create_category") or "",
-        references=store.get("create_references") or "",
-        engine=settings["engine"],
-    )
+    """고른 방향으로 완성 글 작업을 큐에 올린다.
+
+    run.io_bound 를 쓰는 이유는 _start_directions 와 같다 —
+    submit_selected_direction 도 같은 큐 락을 잡는다.
+    """
+    try:
+        job = await run.io_bound(
+            submit_selected_direction,
+            keywords=keywords,
+            direction=direction,
+            length=store.get("create_length") or 0,
+            mode=store.get("create_mode") or DEFAULT_MODE,
+            language=settings["language"],
+            content_type=store.get("create_content_type") or CONTENT_TYPE_IDEAS,
+            category=store.get("create_category") or "",
+            references=store.get("create_references") or "",
+            engine=settings["engine"],
+        )
+    except TimeoutError:
+        ui.notify(copy("queue_busy"))
+        return
     if job is None:
-        ui.notify(copy("create_topic_required"))
+        # 주제가 비었으면 그게 원인이다. 주제가 있는데도 None 이면
+        # normalize_direction 이 방향 카드를 걸러낸 것이므로 — 서로 다른
+        # 문구로 알려야 사람이 무엇을 고쳐야 하는지 안다.
+        if str(keywords or "").strip() and normalize_direction(direction) is None:
+            ui.notify(copy("invalid_direction"))
+        else:
+            ui.notify(copy("create_topic_required"))
         return
 
     store["create_direction"] = normalize_direction(direction)

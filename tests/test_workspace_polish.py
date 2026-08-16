@@ -21,6 +21,7 @@ import workspace_jobs
 from content_queue import load_queue
 from workspace_ui import create, editor, polish
 from workspace_ui.app import build_workspace
+from workspace_ui.copy import copy
 from workspace_ui.polish import submit_optimization
 
 
@@ -175,6 +176,26 @@ async def test_submitting_valid_text_shows_exactly_one_queued_status(monkeypatch
         # 아직 도는 작업이 있으면 제출 버튼은 다시 눌러도 반응하지 않는다.
         user.find(marker="polish-submit").click()
         assert len(calls) == 1
+
+
+async def test_optimize_submission_timeout_shows_queue_busy_and_stores_no_job(monkeypatch):
+    """다듬기 제출도 만들기와 같은 큐 락(10초)을 잡는다 — 락을 못 잡으면
+    같은 queue_busy 알림이 뜨고 active_optimize_job_id 는 비어 있어야
+    한다(유령 상태로 재시도를 오염시키지 않기 위해서)."""
+    def raise_timeout(*args, **kwargs):
+        raise TimeoutError("queue lock timeout (10.0s): workspace_jobs.json")
+
+    monkeypatch.setattr(workspace_job_runner, "submit_job", raise_timeout)
+
+    async with user_simulation(build_workspace) as user:
+        await user.open("/")
+        user.find(marker="nav-polish").click()
+        user.find(marker="polish-input").type("원문 포스트")
+        user.find(marker="polish-submit").click()
+
+        await user.should_see(copy("queue_busy"))
+        with user.client:
+            assert app.storage.user.get("active_optimize_job_id") is None
 
 
 async def test_completed_job_restores_without_resubmitting_and_shows_the_optimized_post(monkeypatch):

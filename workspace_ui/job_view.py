@@ -27,7 +27,15 @@ PENDING_STATUSES = ("queued", "running")
 
 
 def load_job(job_id: str | None, *, read_job: Callable | None = None) -> dict | None:
-    """저장된 작업 스냅샷. ID 가 없으면 읽지 않는다."""
+    """저장된 작업 스냅샷. ID 가 없으면 읽지 않는다.
+
+    workspace_jobs.get_job 은 일부러 락 없이 읽는다 — 작업 파일은 작고
+    workspace_jobs 쪽 쓰기가 이미 mkstemp+os.replace 로 원자적이라 반쯤
+    쓰인 내용을 볼 일이 없다. 이 읽기는 화면을 그리는 이벤트 루프 위에서
+    동기로 도는데(여기와 watch_jobs 의 폴링 타이머 둘 다), 락을 걸면 그
+    동안 다른 세션의 쓰기가 끝날 때까지 서버 전체가 멈춘다 — 락을 추가할
+    거면 이 동기 읽기 자체를 먼저 다시 설계해야 한다.
+    """
     if not job_id:
         return None
     reader = read_job or workspace_jobs.get_job

@@ -95,12 +95,6 @@ _W = {
         "en": "See three directions",
         "ja": "方向を3つ見る",
     },
-    "create_busy": {
-        "ko": "이미 만드는 중이다. 끝나면 카드가 뜬다.",
-        "en": "Already working. The cards appear when it finishes.",
-        "ja": "すでに作成中。終わればカードが出る。",
-    },
-
     # ─── 만들기: 방향 카드 ───
     "create_directions_title": {
         "ko": "방향 3개",

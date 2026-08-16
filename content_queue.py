@@ -36,7 +36,11 @@ slot: 승인 시 배정되는 발행 예정 시각 (ISO 문자열, 로컬 시간
 mark_manual_published 로 수동 발행 표시를 하면 슬롯은 다시 None 이 된다.
 
 워크스페이스(NiceGUI) 전용 선택 필드:
-  - origin: "workspace" 면 upsert_workspace_draft 로 새로 만든 초안
+  - origin: "workspace" 면 upsert_workspace_draft 로 새로 만든 초안.
+    scripts/generate_drafts.py 의 재고 계산(STOCK_TARGET)과 방치 리마인드는
+    origin 을 가리지 않고 status=="draft" 전부를 센다 — 워크스페이스에서
+    만든 초안도 사람이 승인해야 할 재고로 그대로 잡히는 것은 의도된
+    설계다(결정 사항, 바꾸려면 두 카운트를 함께 손봐야 한다).
   - source_job_id / source_kind: 초안이 나온 워크스페이스·아이디어 작업의
     id/kind (idea_jobs.py, workspace_jobs.py 의 job 레코드를 가리킨다).
     예외 하나: source_kind="reuse"(workspace_ui.publish 의 히스토리 재사용)

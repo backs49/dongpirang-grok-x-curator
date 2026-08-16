@@ -365,6 +365,78 @@ async def test_failed_job_waits_for_an_explicit_retry(monkeypatch):
         assert calls[0]["request"]["keywords"] == "배포 실수"
 
 
+async def test_direction_submission_timeout_shows_queue_busy_and_stores_no_job(monkeypatch):
+    """submit_job 이 큐 락(10초)을 못 잡으면 TimeoutError 가 올라온다 —
+    화면은 그걸 queue_busy 알림으로 보여주고, 실패한 제출이므로 작업
+    ID 도 남기지 않는다(재시도가 새 작업이 아니라 유령 상태를 이어받지
+    않게 하기 위해서)."""
+    def raise_timeout(*args, **kwargs):
+        raise TimeoutError("queue lock timeout (10.0s): workspace_jobs.json")
+
+    monkeypatch.setattr(workspace_job_runner, "submit_job", raise_timeout)
+
+    async with user_simulation(build_workspace) as user:
+        await user.open("/")
+        user.find(marker="create-topic").type("배포 실수")
+        user.find(marker="create-submit").click()
+
+        await user.should_see(copy("queue_busy"))
+        with user.client:
+            assert app.storage.user.get("active_direction_job_id") is None
+
+
+async def test_post_submission_timeout_shows_queue_busy_and_stores_no_job(monkeypatch):
+    """방향을 고른 뒤의 완성 글 제출도 같은 큐 락을 잡는다 — 락을 못 잡으면
+    같은 queue_busy 알림이 뜨고 active_post_job_id 는 비어 있어야 한다."""
+    def raise_timeout(*args, **kwargs):
+        raise TimeoutError("queue lock timeout (10.0s): workspace_jobs.json")
+
+    monkeypatch.setattr(workspace_job_runner, "submit_job", raise_timeout)
+    monkeypatch.setattr(
+        workspace_jobs, "get_job",
+        lambda job_id, **kw: DIRECTIONS_DONE if job_id == "dir-1" else None,
+    )
+
+    page = _seeded_page(create_input="배포 실수", active_direction_job_id="dir-1")
+    async with user_simulation(page) as user:
+        await user.open("/")
+        await user.should_see(marker="direction-select-0")
+
+        user.find(marker="direction-select-0").click()
+
+        await user.should_see(copy("queue_busy"))
+        with user.client:
+            assert app.storage.user.get("active_post_job_id") is None
+
+
+async def test_malformed_direction_notifies_invalid_direction_not_topic_required(monkeypatch):
+    """submit_selected_direction 이 None 을 돌려주는 이유는 두 가지다 —
+    주제가 비었거나 방향 카드가 망가졌거나. 주제는 채워져 있는데 카드의
+    한 필드가 비어 normalize_direction 이 걸러낸 경우에는 create_topic_required
+    가 아니라 invalid_direction 을 보여줘야 사람이 무엇을 고칠지 안다."""
+    calls = []
+    monkeypatch.setattr(workspace_job_runner, "submit_job", _recording_submitter(calls))
+    broken = _job(
+        "dir-1", "directions", "completed",
+        result={"directions": [{"title": "A", "hook": "", "angle": "a", "core_message": "m"}]},
+    )
+    monkeypatch.setattr(
+        workspace_jobs, "get_job", lambda job_id, **kw: broken if job_id == "dir-1" else None
+    )
+
+    page = _seeded_page(create_input="배포 실수", active_direction_job_id="dir-1")
+    async with user_simulation(page) as user:
+        await user.open("/")
+        await user.should_see(marker="direction-select-0")
+
+        user.find(marker="direction-select-0").click()
+
+        await user.should_see(copy("invalid_direction"))
+        await user.should_not_see(copy("create_topic_required"))
+        # 방향이 온전하지 않으므로 완성 글 요청은 나가지 않는다.
+        assert calls == []
+
+
 async def test_running_job_keeps_the_primary_action_disabled(monkeypatch):
     calls = []
     monkeypatch.setattr(workspace_job_runner, "submit_job", _recording_submitter(calls))
