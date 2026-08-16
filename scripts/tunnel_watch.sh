@@ -98,8 +98,20 @@ ensure_legacy_app() {
 
 # serve status 의 AllowFunnel 블록만 떼어내 해당 포트가 공개인지 본다.
 # jq 없이 파싱한다 (launchd 환경에 jq가 있다고 보장할 수 없다).
+#
+# AllowFunnel 키 자체가 안 보이면 두 가지다: (a) 공개된 포트가 하나도 없다,
+# (b) 출력 모양이 바뀌어 파서가 헛돌고 있다. (b) 라면 이 함수는 "비공개"로
+# 답하며 조용히 실패하고, 노출된 포트를 못 끄게 된다. 구분이 안 되니 최소한
+# 로그는 남긴다 — Task 10 검증에서 :443/:8443 이 공개인 걸 이미 알기 때문에
+# 이 줄이 뜨면 파서가 깨진 것으로 봐야 한다.
 workspace_port_is_public() {
-    "$TS_BIN" serve status --json 2>/dev/null | awk '
+    local status_json
+    status_json=$("$TS_BIN" serve status --json 2>/dev/null)
+    if ! printf '%s' "$status_json" | grep -q '"AllowFunnel"'; then
+        log "WARN: serve status --json has no AllowFunnel block — funnel probe may be blind"
+        return 1
+    fi
+    printf '%s' "$status_json" | awk '
         /"AllowFunnel"[[:space:]]*:/ { inblock = 1; next }
         inblock && /^[[:space:]]*}/  { inblock = 0 }
         inblock                      { print }

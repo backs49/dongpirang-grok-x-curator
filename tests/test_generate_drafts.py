@@ -251,6 +251,48 @@ class TestStaleDraftReminder:
         assert len(notify.messages) == 1
         assert not (saved.get("reminders") or {}).get("stale_drafts_at")
 
+    def test_reminder_link_comes_from_workspace_url_file(self, tmp_path, monkeypatch):
+        """링크 출처는 워치독이 실제로 쓰는 파일이어야 한다.
+
+        워치독이 Serve 로 넘어가며 funnel.url 쓰기를 멈췄다. 소비자가 옛 경로를
+        계속 읽으면 디스크에 남은 낡은 파일 덕에 한동안 맞는 것처럼 보이다가,
+        호스트명이 바뀌거나 logs/ 를 비우는 순간 링크가 조용히 사라진다.
+        """
+        url_file = tmp_path / "workspace.url"
+        url_file.write_text("https://node.tail0000.ts.net:10000\n", encoding="utf-8")
+        monkeypatch.setattr(generate_drafts, "WORKSPACE_URL_PATH", url_file)
+
+        data = empty_queue()
+        _waiting_draft(data, days_ago=generate_drafts.STALE_DRAFT_DAYS + 1)
+        notify = _FakeNotify()
+
+        _run(tmp_path, data, notify=notify, now=NOW)
+
+        assert notify.messages[0].endswith("https://node.tail0000.ts.net:10000")
+
+    def test_reminder_link_is_omitted_when_url_file_is_missing(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            generate_drafts, "WORKSPACE_URL_PATH", tmp_path / "nope" / "workspace.url"
+        )
+
+        data = empty_queue()
+        _waiting_draft(data, days_ago=generate_drafts.STALE_DRAFT_DAYS + 1)
+        notify = _FakeNotify()
+
+        _run(tmp_path, data, notify=notify, now=NOW)
+
+        assert len(notify.messages) == 1
+        assert "https://" not in notify.messages[0]
+
+    def test_url_path_matches_what_the_watchdog_writes(self):
+        watchdog = (
+            Path(__file__).parent.parent / "scripts" / "tunnel_watch.sh"
+        ).read_text(encoding="utf-8")
+        assert generate_drafts.WORKSPACE_URL_PATH.name == "workspace.url"
+        assert generate_drafts.WORKSPACE_URL_PATH.parent.name == "logs"
+        assert 'WORKSPACE_URL_FILE="$LOG_DIR/workspace.url"' in watchdog
+        assert not hasattr(generate_drafts, "FUNNEL_URL_PATH")
+
     def test_reminder_survives_the_generating_path(self, tmp_path):
         # 재고가 부족해 생성이 함께 도는 밤에도 리마인드는 나가고 보존된다.
         data = empty_queue()

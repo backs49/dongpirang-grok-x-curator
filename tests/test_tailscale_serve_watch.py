@@ -23,6 +23,7 @@ REQUIREMENTS = REPO / "requirements.txt"
 WORKSPACE_SERVE_CMD = 'serve --bg --https="$WORKSPACE_PORT" "http://127.0.0.1:$NICEGUI_PORT"'
 LEGACY_SERVE_CMD = 'serve --bg --https="$LEGACY_PORT" "http://127.0.0.1:$LEGACY_APP_PORT"'
 FUNNEL_OFF_CMD = 'funnel --https="$WORKSPACE_PORT" off'
+PUBLIC_PROBE = "workspace_port_is_public"
 
 
 def _script() -> str:
@@ -73,7 +74,12 @@ class TestNoPublicExposure:
         assert "funnel reset" not in script
         assert "--reset" not in script
 
-    def test_funnel_off_is_guarded_by_allowfunnel_probe(self):
+    def test_funnel_off_sits_inside_the_public_port_guard(self):
+        """off 명령이 정확히 `if workspace_port_is_public` 블록 안에 있어야 한다.
+
+        "앞 어딘가에 if 가 있다" 로는 부족하다 — 다른 조건문 안에 있어도 통과하기
+        때문이다. 여는 줄과 짝이 되는 `fi` 사이에 들어 있는지를 본다.
+        """
         script = _script()
         assert FUNNEL_OFF_CMD in script, "구 Funnel(:10000)을 끄는 명령이 없다"
         assert "AllowFunnel" in script, "AllowFunnel 확인 없이 끄면 매시간 serve가 지워진다"
@@ -83,15 +89,50 @@ class TestNoPublicExposure:
         off_lines = [i for i, line in enumerate(lines) if FUNNEL_OFF_CMD in line]
         assert len(off_lines) == 1
         off_idx = off_lines[0]
-        assert lines[off_idx].startswith((" ", "\t")), (
-            "funnel off 가 무조건 실행된다 — 조건 블록 안으로 들여써야 한다"
+
+        guard_lines = [
+            i for i, line in enumerate(lines) if line.strip() == f"if {PUBLIC_PROBE}; then"
+        ]
+        assert len(guard_lines) == 1, f"`if {PUBLIC_PROBE}; then` 가드를 찾을 수 없다"
+        guard_idx = guard_lines[0]
+        guard_indent = len(lines[guard_idx]) - len(lines[guard_idx].lstrip())
+        close_idx = next(
+            i
+            for i, line in enumerate(lines[guard_idx + 1 :], start=guard_idx + 1)
+            if line.strip() == "fi"
+            and len(line) - len(line.lstrip()) == guard_indent
         )
-        assert any(
-            line.strip().startswith("if ") for line in lines[:off_idx]
-        ), "funnel off 앞에 조건 가드가 없다"
+        assert guard_idx < off_idx < close_idx, (
+            "funnel off 가 공개 여부 가드 블록 밖에 있다 — 매시간 serve 핸들러가 지워진다"
+        )
 
         allow_idx = next(i for i, line in enumerate(lines) if "AllowFunnel" in line)
         assert allow_idx < off_idx, "가드 조회가 off 명령보다 뒤에 있다"
+
+    def test_guarded_teardown_is_actually_invoked(self):
+        """정의만 해두고 부르지 않으면 공개 상태가 영원히 남는다."""
+        lines = _script().splitlines()
+        calls = [line for line in lines if line.strip() == "disable_workspace_funnel"]
+        assert len(calls) == 1, "disable_workspace_funnel 호출이 정확히 한 번이어야 한다"
+        assert not calls[0].startswith((" ", "\t")), (
+            "스크립트 본문(최상위)에서 호출되지 않는다"
+        )
+
+        call_idx = lines.index(calls[0])
+        serve_idx = next(i for i, line in enumerate(lines) if WORKSPACE_SERVE_CMD in line)
+        serve_call_idx = next(
+            i for i, line in enumerate(lines) if line.strip() == "ensure_workspace_serve"
+        )
+        assert call_idx < serve_call_idx, (
+            "funnel off 는 serve 설정보다 먼저 돌아야 한다 — off 가 웹 핸들러까지 지우기 때문"
+        )
+        assert serve_idx != call_idx
+
+    def test_blind_probe_is_logged(self):
+        """AllowFunnel 블록이 아예 안 보이면 파서가 깨진 것일 수 있다 — 조용히 넘기지 않는다."""
+        script = _script()
+        assert 'grep -q \'"AllowFunnel"\'' in script
+        assert "funnel probe may be blind" in script
 
 
 class TestPreservedWatchdogPolicy:

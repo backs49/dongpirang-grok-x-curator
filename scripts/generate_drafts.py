@@ -57,7 +57,10 @@ STALE_DRAFT_DAYS = 3
 # 같은 정체 상황을 며칠마다 다시 알릴지 (매일 보내면 알림 피로로 무시된다).
 REMINDER_INTERVAL_DAYS = 3
 # tunnel_watch.sh 가 기록하는 고정 접속 URL. 알림에서 바로 앱으로 가려고 읽는다.
-FUNNEL_URL_PATH = REPO_ROOT / "logs" / "funnel.url"
+# 워치독이 Funnel(공개) 대신 Tailscale Serve(사설)로 바뀌면서 파일명도
+# funnel.url -> workspace.url 로 옮겼다. 승인은 워크스페이스에서 하므로
+# 레거시(logs/legacy.url) 가 아니라 워크스페이스 주소를 건다.
+WORKSPACE_URL_PATH = REPO_ROOT / "logs" / "workspace.url"
 
 
 def log_event(event: dict) -> None:
@@ -90,7 +93,7 @@ def _parse_dt(value) -> datetime | None:
 def _app_url() -> str:
     """고정 접속 URL. 없으면 빈 문자열 (알림에서 그 줄만 빠진다)."""
     try:
-        return FUNNEL_URL_PATH.read_text(encoding="utf-8").strip().splitlines()[0]
+        return WORKSPACE_URL_PATH.read_text(encoding="utf-8").strip().splitlines()[0]
     except (OSError, IndexError):
         return ""
 
