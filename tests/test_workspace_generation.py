@@ -210,6 +210,19 @@ class TestWritePost:
         assert "280자" in system
         assert "빌더 노트" in system  # builder_note 모드 카드 라벨
 
+    def test_prompt_forbids_alternatives_and_media_instructions(self):
+        provider = FakeProvider([{"post": {"title": "A", "content": "완성 글"}}])
+
+        GrokClient(provider=provider).write_post(
+            keywords="배포 실수", direction=_direction(), length=280, mode="builder_note", language="ko"
+        )
+
+        system = provider.calls[0][0]
+        assert "대안, 다른 버전, A/B 시안을 만들지 마세요" in system
+        assert "이미지·영상 지시를 **절대 넣지 마세요**" in system
+        # 모드 블록은 5개 아이디어 기준 문구라 개수·형식 우선순위를 못박아야 한다
+        assert "아이디어 개수" in system
+
 
 class TestWriteGroundedPost:
     def test_returns_one_verified_post_with_source_metadata(self):
@@ -240,6 +253,28 @@ class TestWriteGroundedPost:
         assert "user.example" in provider.research_calls[0][1]
         assert "user.example" not in provider.calls[0][1]
         assert "core_message" in provider.calls[0][1]
+
+    def test_prompt_carries_safety_rules_evidence_and_mode_precedence(self):
+        provider = FakeGroundedProvider(
+            [{"post": {"content": "본문이다.", "evidence_urls": ["https://who.int/a"]}}],
+            research=_research("https://who.int/a", "https://cdc.gov/b"),
+        )
+
+        GrokClient(provider=provider).write_grounded_post(
+            keywords="수면 습관",
+            direction=_direction(),
+            category="health",
+            length=280,
+            mode="builder_note",
+            language="ko",
+        )
+
+        system = provider.calls[0][0]
+        assert "개인 진단, 증상 판단, 치료·약물·복용량" in system
+        assert "특정 종목 추천, 매수·매도, 자산 배분을 제안하지 않는다" in system
+        assert "`evidence_urls`에는 최소 하나가 필요하다" in system
+        # 모드 블록은 5개 아이디어 기준 문구라 개수·형식 우선순위를 못박아야 한다
+        assert "아이디어 개수" in system
 
     def test_rejects_evidence_url_not_returned_by_web_tool(self):
         provider = FakeGroundedProvider(
@@ -318,6 +353,108 @@ def test_research_runs_only_for_grounded_posts():
     )
 
     assert provider.research_calls == []
+
+
+class TestSinglePostLintSafetyNet:
+    """5개 경로와 같은 S1 상투 표현 안전망이 한 편짜리 글에도 걸리는지."""
+
+    AI_SMELL = "결론적으로 이를 통해 배운 게 있다."
+    REWRITTEN = "배운 게 하나 있다. 배포 전에 로그를 본다."
+
+    def test_s1_hit_triggers_exactly_one_rewrite(self):
+        provider = FakeProvider([
+            {"post": {"title": "A", "content": self.AI_SMELL}},
+            {"content": self.REWRITTEN},
+        ])
+
+        result = GrokClient(provider=provider).write_post(
+            keywords="배포 실수", direction=_direction(), length=280, mode="builder_note", language="ko"
+        )
+
+        assert result["post"]["content"] == self.REWRITTEN
+        assert result["post"]["_lint"]["s1"] == []
+        assert len(provider.calls) == 2
+        assert self.AI_SMELL in provider.calls[1][1]
+
+    def test_rewrite_error_leaves_original_content(self):
+        provider = FakeProvider([
+            {"post": {"title": "A", "content": self.AI_SMELL}},
+            {"error": "API 오류"},
+        ])
+
+        result = GrokClient(provider=provider).write_post(
+            keywords="배포 실수", direction=_direction(), length=280, mode="builder_note", language="ko"
+        )
+
+        assert result["post"]["content"] == self.AI_SMELL
+        assert result["post"]["_lint"]["s1"]
+
+    def test_rewrite_failure_does_not_block_the_flow(self):
+        class ExplodingProvider(FakeProvider):
+            def generate_json(self, system_prompt, user_prompt, **kwargs):
+                if self.calls:
+                    self.calls.append((system_prompt, user_prompt))
+                    raise RuntimeError("provider down")
+                return super().generate_json(system_prompt, user_prompt)
+
+        provider = ExplodingProvider([{"post": {"title": "A", "content": self.AI_SMELL}}])
+
+        result = GrokClient(provider=provider).write_post(
+            keywords="배포 실수", direction=_direction(), length=280, mode="builder_note", language="ko"
+        )
+
+        assert result["post"]["content"] == self.AI_SMELL
+        assert len(provider.calls) == 2
+
+    def test_clean_content_makes_no_extra_call(self):
+        provider = FakeProvider([{"post": {"title": "A", "content": "담백한 본문이다."}}])
+
+        result = GrokClient(provider=provider).write_post(
+            keywords="배포 실수", direction=_direction(), length=280, mode="builder_note", language="ko"
+        )
+
+        assert len(provider.calls) == 1
+        assert result["post"]["_lint"] == {"s1": [], "s2": []}
+
+    def test_grounded_post_is_linted_too(self):
+        provider = FakeGroundedProvider(
+            [
+                {"post": {"content": self.AI_SMELL, "evidence_urls": ["https://who.int/a"]}},
+                {"content": self.REWRITTEN},
+            ],
+            research=_research("https://who.int/a", "https://cdc.gov/b"),
+        )
+
+        result = GrokClient(provider=provider).write_grounded_post(
+            keywords="수면 습관",
+            direction=_direction(),
+            category="health",
+            length=280,
+            mode="builder_note",
+            language="ko",
+        )
+
+        assert result["post"]["content"] == self.REWRITTEN
+        assert result["post"]["sources"][0]["url"] == "https://who.int/a"
+        assert len(provider.calls) == 2
+
+
+class TestExplicitLanguageIsRequired:
+    """워커 스레드에는 Streamlit 세션이 없다 — 언어는 반드시 넘겨받아야 한다."""
+
+    def test_new_methods_require_language_keyword(self):
+        import inspect
+
+        for name in ("generate_directions", "write_post", "write_grounded_post"):
+            parameter = inspect.signature(getattr(GrokClient, name)).parameters["language"]
+            assert parameter.kind is inspect.Parameter.KEYWORD_ONLY
+            assert parameter.default is inspect.Parameter.empty
+
+    def test_optimize_post_language_stays_optional(self):
+        import inspect
+
+        parameter = inspect.signature(GrokClient.optimize_post).parameters["language"]
+        assert parameter.default is None
 
 
 class TestOptimizePostLanguage:

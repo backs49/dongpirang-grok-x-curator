@@ -350,7 +350,7 @@ class GrokClient:
         keywords: str,
         *,
         mode: str = writing_modes.AUTO_MIX,
-        language: str | None = None,
+        language: str,
     ) -> dict:
         """완성 글 대신 값싼 방향 카드 3장을 먼저 만든다.
 
@@ -386,7 +386,7 @@ class GrokClient:
         *,
         length: int = 0,
         mode: str = writing_modes.AUTO_MIX,
-        language: str | None = None,
+        language: str,
     ) -> dict:
         """사용자가 고른 방향 하나로 포스트 한 편만 완성한다."""
         selected = self._normalize_direction(direction)
@@ -406,7 +406,12 @@ class GrokClient:
             "사용자가 고른 방향:\n"
             f"{json.dumps(selected, ensure_ascii=False, indent=2)}"
         )
-        return self._normalize_post(self.provider.generate_json(system_prompt, user_prompt))
+        result = self._normalize_post(self.provider.generate_json(system_prompt, user_prompt))
+        if "error" in result:
+            return result
+
+        self._lint_and_rewrite_post(result["post"], mode=mode, language=language)
+        return result
 
     def write_grounded_post(
         self,
@@ -417,7 +422,7 @@ class GrokClient:
         references: str = "",
         length: int = 0,
         mode: str = writing_modes.AUTO_MIX,
-        language: str | None = None,
+        language: str,
     ) -> dict:
         """검증된 사실과 고른 방향 하나로 근거 기반 포스트 한 편을 쓴다."""
         request = GroundedTipRequest(keywords, category, references)
@@ -477,7 +482,49 @@ class GrokClient:
         result["post"] = post
         result["topic_category"] = category
         result["verified_at"] = datetime.now().isoformat(timespec="seconds")
+        self._lint_and_rewrite_post(post, mode=mode, language=language)
         return result
+
+    def _lint_and_rewrite_post(self, post: dict, *, mode: str, language: str) -> None:
+        """한 편짜리 포스트도 S1 검출 시 1회만 재작성한다.
+
+        5개 경로의 `_lint_and_rewrite` 와 같은 안전망이지만, 배치가 아니라
+        포스트 하나를 다루므로 인덱스 대조 대신 본문만 주고받는다. 재작성이
+        실패하거나 상투 표현을 못 줄이면 원문을 그대로 둔다 — 승인 흐름을
+        막지 않는 것이 우선이다.
+        """
+        allow_polite = writing_modes.allow_polite(mode)
+        lr = style_lint.lint(post.get("content", ""), allow_polite=allow_polite)
+        post["_lint"] = {"s1": lr.s1_hits, "s2": lr.s2_hits}
+        if not lr.s1_hits:
+            return
+
+        rewrite_system = (
+            "당신은 X(Twitter) 포스트 윤문 전문가입니다. 아래 포스트에서 검출된 "
+            "AI 상투 표현을 제거하고, 같은 모드·같은 소재·같은 의미를 유지한 채 "
+            "다시 씁니다. 분량은 원문과 비슷하게 유지하세요.\n"
+            + writing_modes.build_mode_block(mode)
+            + NATURAL_STYLE_GUIDE
+            + '\n반드시 JSON만 출력: {"content": "고친 본문"}'
+            + get_lang_instruction(language)
+        )
+        listing = (
+            f"검출된 AI 상투 표현: {', '.join(lr.s1_hits)}\n"
+            f"원문:\n{post.get('content', '')}"
+        )
+        try:
+            retry = self.provider.generate_json(rewrite_system, listing)
+            new_content = (retry.get("content") or "").strip() if isinstance(retry, dict) else ""
+            if not new_content:
+                return
+            rewritten = style_lint.lint(new_content, allow_polite=allow_polite)
+            # 재작성이 원본보다 S1 검출을 실제로 줄였을 때만 채택한다.
+            if len(rewritten.s1_hits) < len(lr.s1_hits):
+                post["content"] = new_content
+                post["_lint"] = {"s1": rewritten.s1_hits, "s2": rewritten.s2_hits}
+        except Exception as exc:
+            logging.getLogger(__name__).warning("single post lint rewrite failed: %s", exc)
+            # 재작성 실패는 원본 유지 — 배지로만 알린다
 
     @staticmethod
     def _normalize_direction(direction: object) -> dict | None:
