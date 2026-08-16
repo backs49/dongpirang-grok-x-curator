@@ -15,7 +15,22 @@ AUTO_MIX = "auto_mix"
 
 # 자동 믹스에서 아이디어 1~5에 순서대로 못박아 배정하는 톤 5종.
 # "다양하게 써라"가 아니라 배정표로 다양성을 구조적으로 강제한다.
-TONE_ROTATION = ("serious", "humor", "satire", "story", "hook")
+TONE_ROTATION = ("serious", "humor", "story", "hook", "builder_note")
+
+# 기본 모드는 자동 믹스에 어울리는 안정적인 카드, 실험실 모드는 직접 선택용
+# 카드다. 실험실 카드도 일반 생성과 근거 기반 팁 모두에서 선택할 수 있다.
+BASE_MODE_KEYS = (
+    "serious",
+    "humor",
+    "story",
+    "hook",
+    "builder_note",
+    "kimhoon",
+    "haruki",
+    "hemingway",
+    "chimchakman",
+)
+EXPERIMENTAL_MODE_KEYS = ("satire", "haoche", "hankang")
 
 WRITING_MODES: dict[str, dict] = {
     "serious": {
@@ -98,6 +113,22 @@ WRITING_MODES: dict[str, dict] = {
         ],
         "extra_bans": ["'~하시나요?' 질문 마무리", "근거 없는 단정"],
     },
+    "builder_note": {
+        "label": "빌더 노트",
+        "category": "tone",
+        "allow_polite": False,
+        "pillar": "build_in_public",
+        "rules": (
+            "- 만들고 시험한 장면에서 시작한다. 과장보다 실제 작업의 마찰을 적는다.\\n"
+            "- 바꾼 것·막힌 제약·측정한 결과 중 하나를 구체적으로 넣는다.\\n"
+            "- 성공담으로 포장하지 말고, 다음 실험을 남기거나 조용히 끝낸다."
+        ),
+        "examples": [
+            "알림 버튼을 하나 덜어냈다. 클릭 수는 줄었는데 저장 완료 문의도 같이 사라졌다. 오늘은 그걸로 충분하다.",
+            "검색 결과를 먼저 보여주고 설명은 접었다. 오래된 휴대폰에서는 0.8초 빨라졌다. 내일은 빈 결과 화면을 고친다.",
+        ],
+        "extra_bans": ["성공 신화", "근거 없는 성장 수치", "훈계조 결론"],
+    },
     "kimhoon": {
         "label": "김훈체",
         "category": "author",
@@ -178,14 +209,38 @@ WRITING_MODES: dict[str, dict] = {
         ],
         "extra_bans": ["현대 존댓말 혼입", "캐릭터 이탈"],
     },
+    "hankang": {
+        "label": "한강체",
+        "category": "author",
+        "allow_polite": False,
+        "pillar": "curation",
+        "rules": (
+            "- 조용한 감각 장면 하나에서 시작한다. 빛, 온도, 소리, 손의 움직임을 구체적으로 적는다.\\n"
+            "- 감정을 설명하기보다 빈자리와 사물을 따라간다. 문장은 느리되 장식하지 않는다.\\n"
+            "- 뜻을 해설하지 않고, 조금 남겨 둔 채 끝낸다."
+        ),
+        "examples": [
+            "모니터의 푸른 빛이 책상 가장자리까지만 왔다. 커서가 한참 같은 자리에 있었다. 창문 밖에서는 누군가 우산을 접었다.",
+            "새 버전을 올린 뒤에도 팬은 계속 돌았다. 손바닥에 남은 열을 닦지 않았다. 로그는 아직 열려 있었다.",
+        ],
+        "extra_bans": ["감정의 직접 해설", "상징의 설명", "극적인 반전"],
+    },
 }
 
 
+def base_mode_options() -> tuple[str, ...]:
+    """기본 선택 영역에 표시할 안정적인 글쓰기 모드."""
+    return BASE_MODE_KEYS
+
+
+def experimental_mode_options() -> tuple[str, ...]:
+    """자동 믹스에는 넣지 않되 직접 선택 가능한 실험실 모드."""
+    return EXPERIMENTAL_MODE_KEYS
+
+
 def mode_options() -> list[str]:
-    """UI pills 순서: 자동 믹스 → 톤 5종 → 작가 5종."""
-    tones = [k for k, v in WRITING_MODES.items() if v["category"] == "tone"]
-    authors = [k for k, v in WRITING_MODES.items() if v["category"] == "author"]
-    return [AUTO_MIX] + tones + authors
+    """UI pills 순서: 자동 믹스 → 기본 모드 → 실험실 모드."""
+    return [AUTO_MIX, *BASE_MODE_KEYS, *EXPERIMENTAL_MODE_KEYS]
 
 
 def mode_label(key: str) -> str:

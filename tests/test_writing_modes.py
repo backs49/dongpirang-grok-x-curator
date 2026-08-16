@@ -6,8 +6,8 @@ import writing_modes as wm
 
 
 class TestModeCards:
-    def test_ten_modes_defined(self):
-        assert len(wm.WRITING_MODES) == 10
+    def test_twelve_modes_defined(self):
+        assert len(wm.WRITING_MODES) == 12
         assert set(wm.TONE_ROTATION) <= set(wm.WRITING_MODES)
 
     def test_every_card_complete(self):
@@ -21,7 +21,23 @@ class TestModeCards:
     def test_mode_options_order(self):
         opts = wm.mode_options()
         assert opts[0] == wm.AUTO_MIX
-        assert len(opts) == 11  # auto_mix + 10 modes
+        assert len(opts) == 13  # auto_mix + 12 modes
+
+    def test_auto_mix_replaces_satire_with_builder_note(self):
+        assert wm.TONE_ROTATION == ("serious", "humor", "story", "hook", "builder_note")
+        block = wm.build_mode_block(wm.AUTO_MIX)
+        assert "빌더 노트" in block
+        assert "풍자" not in block
+
+    def test_lab_modes_are_selectable_but_not_automatic(self):
+        assert wm.experimental_mode_options() == ("satire", "haoche", "hankang")
+        assert "hankang" in wm.mode_options()
+        assert set(wm.experimental_mode_options()).isdisjoint(wm.TONE_ROTATION)
+
+    def test_builder_and_hankang_cards_are_complete(self):
+        for key in ("builder_note", "hankang"):
+            assert len(wm.WRITING_MODES[key]["examples"]) >= 2
+            assert wm.WRITING_MODES[key]["rules"].strip()
 
     def test_label_roundtrip(self):
         for key in wm.WRITING_MODES:
