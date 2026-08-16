@@ -127,15 +127,21 @@ def render_polish() -> None:
 def _render_area(store, settings: dict, repaint: Callable[[], None]) -> None:
     optimize_job = job_view.load_job(store.get("active_optimize_job_id"))
 
+    # 이 렌더 패스 동안만 사는 "제출 중" 표시. create._render_area 와 같은
+    # 이유로 store 가 아니라 지역 dict 를 쓴다 — _start_optimize 참고.
+    submitting = {"optimize": False}
+
     text_input = _render_composer(
-        store, settings, repaint, busy=job_view.is_pending(optimize_job)
+        store, settings, repaint, submitting, busy=job_view.is_pending(optimize_job)
     )
 
     if store.get("active_optimize_job_id"):
         job_view.render_job(
             optimize_job,
             on_result=lambda job: _render_result(job, store, settings, repaint),
-            on_retry=lambda: _start_optimize(store, settings, repaint, text_input.value or ""),
+            on_retry=lambda: _start_optimize(
+                store, settings, repaint, submitting, text_input.value or ""
+            ),
             marker="optimize-job",
         )
 
@@ -146,7 +152,9 @@ def _render_area(store, settings: dict, repaint: Callable[[], None]) -> None:
     )
 
 
-def _render_composer(store, settings: dict, repaint: Callable[[], None], *, busy: bool):
+def _render_composer(
+    store, settings: dict, repaint: Callable[[], None], submitting: dict, *, busy: bool
+):
     """원문 붙여넣기 한 칸과 다듬기 시작 버튼."""
     with ui.column().classes("workspace-card w-full"):
         ui.label(copy("polish_input_label")).classes("text-base font-semibold")
@@ -159,7 +167,9 @@ def _render_composer(store, settings: dict, repaint: Callable[[], None], *, busy
 
         submit = ui.button(
             copy("polish_submit_cta"),
-            on_click=lambda: _start_optimize(store, settings, repaint, text_input.value or ""),
+            on_click=lambda: _start_optimize(
+                store, settings, repaint, submitting, text_input.value or ""
+            ),
         ).props(f'{filled_button_props(settings["theme"])} size=lg') \
             .classes("w-full").mark("polish-submit")
 
@@ -210,7 +220,9 @@ def _render_editor_for(job: dict, store, repaint: Callable[[], None]) -> None:
 # 행동
 # ─────────────────────────────────────────────────────────────
 
-async def _start_optimize(store, settings: dict, repaint: Callable[[], None], text: str) -> None:
+async def _start_optimize(
+    store, settings: dict, repaint: Callable[[], None], submitting: dict, text: str
+) -> None:
     """다듬기 작업을 큐에 올린다.
 
     submit_optimization 도 만들기의 submit_directions/submit_selected_direction
@@ -218,25 +230,36 @@ async def _start_optimize(store, settings: dict, repaint: Callable[[], None], te
     핸들러에서 그대로 부르면 이벤트 루프가 멈춘다. editor.py 의 자동저장과
     같은 이유로 run.io_bound 워커 스레드에서 돌리고, 락을 못 잡으면 같은
     queue_busy 문구로 알린다.
+
+    submitting["optimize"] 는 create.py 의 _start_directions 와 같은 이유로
+    첫 await 전에 동기로 검사·설정한다 — 두 번 연속 클릭이 아직 끝나지
+    않은 io_bound 호출 위로 두 번째 태스크를 얹어 프로바이더 작업을 두 번
+    보내지 못하게 막는다.
     """
+    if submitting["optimize"]:
+        return
+    submitting["optimize"] = True
     try:
-        job = await run.io_bound(
-            submit_optimization, text, engine=settings["engine"], language=settings["language"]
-        )
-    except TimeoutError:
-        ui.notify(copy("queue_busy"))
-        return
-    if job is None:
-        ui.notify(copy("polish_input_required"))
-        return
-    # 결과가 아니라 ID 만 들고 있는다. 결과의 주인은 작업 저장소다.
-    store["active_optimize_job_id"] = job["id"]
-    store["optimize_editor_open"] = False
-    # 새 다듬기 요청이 오는 중이다 — 이 화면의 에디터가 이전 초안과의
-    # 연결을 그대로 들고 있으면, 이번 결과를 열었을 때 옛 본문 위에
-    # 자동저장이 덮어써질 수 있다. 이 화면 전용 키만 지운다.
-    editor.clear_editor_state(store, key_prefix=EDITOR_KEY_PREFIX)
-    repaint()
+        try:
+            job = await run.io_bound(
+                submit_optimization, text, engine=settings["engine"], language=settings["language"]
+            )
+        except TimeoutError:
+            ui.notify(copy("queue_busy"))
+            return
+        if job is None:
+            ui.notify(copy("polish_input_required"))
+            return
+        # 결과가 아니라 ID 만 들고 있는다. 결과의 주인은 작업 저장소다.
+        store["active_optimize_job_id"] = job["id"]
+        store["optimize_editor_open"] = False
+        # 새 다듬기 요청이 오는 중이다 — 이 화면의 에디터가 이전 초안과의
+        # 연결을 그대로 들고 있으면, 이번 결과를 열었을 때 옛 본문 위에
+        # 자동저장이 덮어써질 수 있다. 이 화면 전용 키만 지운다.
+        editor.clear_editor_state(store, key_prefix=EDITOR_KEY_PREFIX)
+        repaint()
+    finally:
+        submitting["optimize"] = False
 
 
 def _open_editor(job: dict, store, repaint: Callable[[], None]) -> None:

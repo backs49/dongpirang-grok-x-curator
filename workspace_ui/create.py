@@ -165,8 +165,15 @@ def _render_area(store, settings: dict, repaint: Callable[[], None]) -> None:
     direction_job = job_view.load_job(store.get("active_direction_job_id"))
     post_job = job_view.load_job(store.get("active_post_job_id"))
 
+    # 이 렌더 패스 동안만 사는 "제출 중" 표시. store(영속 스토리지)가 아니라
+    # 지역 dict 를 쓰는 이유는, 이 값이 세션에 남을 이유가 전혀 없고(다음
+    # repaint 마다 새로 만들어야 다음 제출을 다시 받는다) 두 번째 클릭이
+    # 아직 끝나지 않은 io_bound 호출 위로 겹쳐 타지 못하게만 막으면 되기
+    # 때문이다 — _start_directions/_select_direction 참고.
+    submitting = {"directions": False, "post": False}
+
     topic = _render_composer(
-        store, settings, repaint, busy=job_view.is_pending(direction_job)
+        store, settings, repaint, submitting, busy=job_view.is_pending(direction_job)
     )
 
     def keywords() -> str:
@@ -176,11 +183,11 @@ def _render_area(store, settings: dict, repaint: Callable[[], None]) -> None:
         job_view.render_job(
             direction_job,
             on_result=lambda job: _render_directions(
-                job, store, settings, repaint,
+                job, store, settings, repaint, submitting,
                 keywords=keywords,
                 disabled=job_view.is_pending(post_job),
             ),
-            on_retry=lambda: _start_directions(store, settings, repaint, keywords()),
+            on_retry=lambda: _start_directions(store, settings, repaint, submitting, keywords()),
             marker="direction-job",
         )
 
@@ -195,7 +202,7 @@ def _render_area(store, settings: dict, repaint: Callable[[], None]) -> None:
                 on_published=lambda: _finish_post(store, repaint),
             ),
             on_retry=lambda: _select_direction(
-                store.get("create_direction"), store, settings, repaint, keywords()
+                store.get("create_direction"), store, settings, repaint, submitting, keywords()
             ),
             marker="post-job",
         )
@@ -210,7 +217,9 @@ def _render_area(store, settings: dict, repaint: Callable[[], None]) -> None:
     )
 
 
-def _render_composer(store, settings: dict, repaint: Callable[[], None], *, busy: bool):
+def _render_composer(
+    store, settings: dict, repaint: Callable[[], None], submitting: dict, *, busy: bool
+):
     """주제 한 줄과 그 아래 옵션. 화면에서 가장 큰 것은 입력과 버튼이다.
 
     주제 입력 요소를 돌려준다 — 방향 카드와 다시 시도 버튼이 스토리지가
@@ -273,7 +282,9 @@ def _render_composer(store, settings: dict, repaint: Callable[[], None], *, busy
 
         submit = ui.button(
             copy("create_directions_cta"),
-            on_click=lambda: _start_directions(store, settings, repaint, topic.value or ""),
+            on_click=lambda: _start_directions(
+                store, settings, repaint, submitting, topic.value or ""
+            ),
         ).props(f'{filled_button_props(settings["theme"])} size=lg') \
             .classes("w-full").mark("create-submit")
 
@@ -291,6 +302,7 @@ def _render_directions(
     store,
     settings: dict,
     repaint: Callable[[], None],
+    submitting: dict,
     *,
     keywords: Callable[[], str],
     disabled: bool,
@@ -314,7 +326,7 @@ def _render_directions(
             select = ui.button(
                 copy("create_direction_select"),
                 on_click=lambda _event, picked=direction: _select_direction(
-                    picked, store, settings, repaint, keywords()
+                    picked, store, settings, repaint, submitting, keywords()
                 ),
             ).props(f'{filled_button_props(settings["theme"])} dense') \
                 .classes("w-full").mark(f"direction-select-{index}")
@@ -327,7 +339,9 @@ def _render_directions(
 # 행동
 # ─────────────────────────────────────────────────────────────
 
-async def _start_directions(store, settings: dict, repaint: Callable[[], None], keywords: str) -> None:
+async def _start_directions(
+    store, settings: dict, repaint: Callable[[], None], submitting: dict, keywords: str
+) -> None:
     """방향 카드 작업을 큐에 올린다.
 
     submit_directions 는 workspace_jobs.create_job 을 거쳐 flock 기반 큐
@@ -335,65 +349,86 @@ async def _start_directions(store, settings: dict, repaint: Callable[[], None], 
     부르면 락을 기다리는 동안 이벤트 루프가, 곧 서버 전체가 멈춘다.
     editor.py 의 자동저장과 같은 이유로 run.io_bound 워커 스레드에서 돌리고,
     락을 못 잡으면 같은 queue_busy 문구로 알린다.
+
+    submitting["directions"] 는 첫 await(run.io_bound) 전에 동기로 검사·설정
+    한다 — asyncio 는 한 스레드에서 협조적으로만 전환되므로, 이 검사와 설정
+    사이에 다른 태스크가 끼어들 수 없다(별도 Lock 이 필요 없다). 이 가드가
+    없으면 버튼을 두 번 연속 눌렀을 때 첫 번째 io_bound 호출이 아직 락을
+    쥔 채 돌고 있는 동안 두 번째 태스크가 시작돼 프로바이더 작업이 두 번
+    나간다 — 하나는 어느 화면에도 걸리지 않는 유령 작업으로 남는다.
     """
+    if submitting["directions"]:
+        return
+    submitting["directions"] = True
     try:
-        job = await run.io_bound(
-            submit_directions,
-            {"keywords": keywords, "mode": store.get("create_mode")},
-            engine=settings["engine"],
-            language=settings["language"],
-        )
-    except TimeoutError:
-        ui.notify(copy("queue_busy"))
-        return
-    if job is None:
-        ui.notify(copy("create_topic_required"))
-        return
-    # 결과가 아니라 ID 만 들고 있는다. 결과의 주인은 작업 저장소다.
-    store["active_direction_job_id"] = job["id"]
-    repaint()
+        try:
+            job = await run.io_bound(
+                submit_directions,
+                {"keywords": keywords, "mode": store.get("create_mode")},
+                engine=settings["engine"],
+                language=settings["language"],
+            )
+        except TimeoutError:
+            ui.notify(copy("queue_busy"))
+            return
+        if job is None:
+            ui.notify(copy("create_topic_required"))
+            return
+        # 결과가 아니라 ID 만 들고 있는다. 결과의 주인은 작업 저장소다.
+        store["active_direction_job_id"] = job["id"]
+        repaint()
+    finally:
+        submitting["directions"] = False
 
 
 async def _select_direction(
-    direction, store, settings: dict, repaint: Callable[[], None], keywords: str
+    direction, store, settings: dict, repaint: Callable[[], None], submitting: dict, keywords: str
 ) -> None:
     """고른 방향으로 완성 글 작업을 큐에 올린다.
 
-    run.io_bound 를 쓰는 이유는 _start_directions 와 같다 —
-    submit_selected_direction 도 같은 큐 락을 잡는다.
+    run.io_bound 와 submitting["post"] 가드를 쓰는 이유는 _start_directions
+    와 같다 — submit_selected_direction 도 같은 큐 락을 잡고, 카드 여러
+    장이 이 함수를 공유하므로 어느 카드를 두 번 눌러도(또는 서로 다른
+    카드를 연달아 눌러도) 완성 글 요청은 한 번만 나가야 한다.
     """
+    if submitting["post"]:
+        return
+    submitting["post"] = True
     try:
-        job = await run.io_bound(
-            submit_selected_direction,
-            keywords=keywords,
-            direction=direction,
-            length=store.get("create_length") or 0,
-            mode=store.get("create_mode") or DEFAULT_MODE,
-            language=settings["language"],
-            content_type=store.get("create_content_type") or CONTENT_TYPE_IDEAS,
-            category=store.get("create_category") or "",
-            references=store.get("create_references") or "",
-            engine=settings["engine"],
-        )
-    except TimeoutError:
-        ui.notify(copy("queue_busy"))
-        return
-    if job is None:
-        # 주제가 비었으면 그게 원인이다. 주제가 있는데도 None 이면
-        # normalize_direction 이 방향 카드를 걸러낸 것이므로 — 서로 다른
-        # 문구로 알려야 사람이 무엇을 고쳐야 하는지 안다.
-        if str(keywords or "").strip() and normalize_direction(direction) is None:
-            ui.notify(copy("invalid_direction"))
-        else:
-            ui.notify(copy("create_topic_required"))
-        return
+        try:
+            job = await run.io_bound(
+                submit_selected_direction,
+                keywords=keywords,
+                direction=direction,
+                length=store.get("create_length") or 0,
+                mode=store.get("create_mode") or DEFAULT_MODE,
+                language=settings["language"],
+                content_type=store.get("create_content_type") or CONTENT_TYPE_IDEAS,
+                category=store.get("create_category") or "",
+                references=store.get("create_references") or "",
+                engine=settings["engine"],
+            )
+        except TimeoutError:
+            ui.notify(copy("queue_busy"))
+            return
+        if job is None:
+            # 주제가 비었으면 그게 원인이다. 주제가 있는데도 None 이면
+            # normalize_direction 이 방향 카드를 걸러낸 것이므로 — 서로 다른
+            # 문구로 알려야 사람이 무엇을 고쳐야 하는지 안다.
+            if str(keywords or "").strip() and normalize_direction(direction) is None:
+                ui.notify(copy("invalid_direction"))
+            else:
+                ui.notify(copy("create_topic_required"))
+            return
 
-    store["create_direction"] = normalize_direction(direction)
-    store["active_post_job_id"] = job["id"]
-    # 새 글이 오는 중이다 — 이전 초안과의 연결을 끊어야 그 초안이
-    # 이 글의 자동저장에 덮어써지지 않는다.
-    editor.clear_editor_state(store)
-    repaint()
+        store["create_direction"] = normalize_direction(direction)
+        store["active_post_job_id"] = job["id"]
+        # 새 글이 오는 중이다 — 이전 초안과의 연결을 끊어야 그 초안이
+        # 이 글의 자동저장에 덮어써지지 않는다.
+        editor.clear_editor_state(store)
+        repaint()
+    finally:
+        submitting["post"] = False
 
 
 def _finish_post(store, repaint: Callable[[], None]) -> None:

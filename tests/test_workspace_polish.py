@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 
 from nicegui import app
@@ -196,6 +197,49 @@ async def test_optimize_submission_timeout_shows_queue_busy_and_stores_no_job(mo
         await user.should_see(copy("queue_busy"))
         with user.client:
             assert app.storage.user.get("active_optimize_job_id") is None
+
+
+async def test_double_click_on_optimize_submit_sends_exactly_one_job(monkeypatch):
+    """버튼을 두 번 연달아 눌러도 다듬기 요청은 한 번만 나가야 한다 — 만들기
+    쪽 이중 클릭 테스트와 같은 경쟁을 겨눈다. _start_optimize 의
+    submitting["optimize"] 가드가 없으면 두 번째 클릭이 만드는 태스크가
+    첫 제출이 아직 큐 락을 쥐고 도는 동안 시작돼 프로바이더 작업이 두 번
+    나간다."""
+    calls = []
+    release = threading.Event()
+
+    def slow_submit(kind, request, *, engine="", language="", **kwargs):
+        calls.append({"kind": kind, "request": request})
+        assert release.wait(timeout=2), "release 이벤트가 제때 오지 않았다"
+        return _job("opt-slow", kind, "queued")
+
+    monkeypatch.setattr(workspace_job_runner, "submit_job", slow_submit)
+    monkeypatch.setattr(
+        workspace_jobs, "get_job",
+        lambda job_id, **kw: _job(job_id, "optimize", "queued") if job_id == "opt-slow" else None,
+    )
+
+    async with user_simulation(build_workspace) as user:
+        await user.open("/")
+        user.find(marker="nav-polish").click()
+        user.find(marker="polish-input").type("원문 포스트")
+
+        user.find(marker="polish-submit").click()
+        user.find(marker="polish-submit").click()
+
+        await _wait_until(lambda: len(calls) >= 1)
+        # 가드가 없다면 두 번째 클릭이 만든 태스크도 이 시점까지 워커
+        # 스레드에 진입해 calls 에 자기 몫을 남겼을 것이다 — 스레드 풀은
+        # 워커가 여럿이라 둘 다 release 를 기다리기 전에 append 부터 한다.
+        await asyncio.sleep(0.1)
+        assert len(calls) == 1
+
+        release.set()
+        await user.should_see(marker="optimize-job")
+
+        assert len(calls) == 1
+        with user.client:
+            assert app.storage.user.get("active_optimize_job_id") == "opt-slow"
 
 
 async def test_completed_job_restores_without_resubmitting_and_shows_the_optimized_post(monkeypatch):

@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 
 from nicegui import app
@@ -435,6 +436,93 @@ async def test_malformed_direction_notifies_invalid_direction_not_topic_required
         await user.should_not_see(copy("create_topic_required"))
         # 방향이 온전하지 않으므로 완성 글 요청은 나가지 않는다.
         assert calls == []
+
+
+async def test_double_click_on_directions_submit_sends_exactly_one_job(monkeypatch):
+    """버튼을 두 번 연달아 눌러도 방향 카드 요청은 한 번만 나가야 한다.
+
+    run.io_bound 는 실행을 워커 스레드로 옮기지만, NiceGUI 는 async 클릭
+    핸들러를 독립된 fire-and-forget 태스크로 스케줄한다 — 그래서 첫 제출이
+    아직 큐 락을 쥐고 도는 동안 두 번째 클릭이 만드는 태스크가 시작될 수
+    있다. _start_directions 의 submitting["directions"] 가드가 없으면
+    프로바이더 작업이 두 번 나가고 하나는 어느 화면에도 걸리지 않는
+    유령으로 남는다 — 이 테스트는 그 가드가 실제로 두 번째 제출을 막는지
+    확인한다(가드를 지우면 실패해야 한다)."""
+    calls = []
+    release = threading.Event()
+
+    def slow_submit(kind, request, *, engine="", language="", **kwargs):
+        calls.append({"kind": kind, "request": request})
+        assert release.wait(timeout=2), "release 이벤트가 제때 오지 않았다"
+        return _job("dir-slow", kind, "queued")
+
+    monkeypatch.setattr(workspace_job_runner, "submit_job", slow_submit)
+    monkeypatch.setattr(
+        workspace_jobs, "get_job",
+        lambda job_id, **kw: _job(job_id, "directions", "queued") if job_id == "dir-slow" else None,
+    )
+
+    async with user_simulation(build_workspace) as user:
+        await user.open("/")
+        user.find(marker="create-topic").type("배포 실수")
+
+        # 두 번 연달아 클릭한다 — 둘 다 아직 실행되지 않은 백그라운드
+        # 태스크로만 예약된다(테스트가 뭔가를 await 하기 전까지는 코루틴
+        # 바디가 시작조차 하지 않는다).
+        user.find(marker="create-submit").click()
+        user.find(marker="create-submit").click()
+
+        await _wait_until(lambda: len(calls) >= 1)
+        # 가드가 없다면 두 번째 클릭이 만든 태스크도 이 시점까지 워커
+        # 스레드에 진입해 calls 에 자기 몫을 남겼을 것이다 — 스레드 풀은
+        # 워커가 여럿이라 둘 다 release 를 기다리기 전에 append 부터 한다.
+        # 그러니 여기서 잠깐 더 기다려도 안전하게 판정할 수 있다.
+        await asyncio.sleep(0.1)
+        assert len(calls) == 1
+
+        release.set()
+        await user.should_see(marker="direction-job")
+
+        assert len(calls) == 1
+        with user.client:
+            assert app.storage.user.get("active_direction_job_id") == "dir-slow"
+
+
+async def test_double_click_on_direction_select_sends_exactly_one_post_job(monkeypatch):
+    """방향 카드를 골라 완성 글을 요청할 때도 같은 경쟁이 있다 — 이 테스트는
+    _select_direction 의 submitting["post"] 가드를 겨눈다."""
+    calls = []
+    release = threading.Event()
+
+    def slow_submit(kind, request, *, engine="", language="", **kwargs):
+        calls.append({"kind": kind, "request": request})
+        assert release.wait(timeout=2), "release 이벤트가 제때 오지 않았다"
+        return _job("post-slow", kind, "queued")
+
+    monkeypatch.setattr(workspace_job_runner, "submit_job", slow_submit)
+    monkeypatch.setattr(
+        workspace_jobs, "get_job",
+        lambda job_id, **kw: DIRECTIONS_DONE if job_id == "dir-1" else None,
+    )
+
+    page = _seeded_page(create_input="배포 실수", active_direction_job_id="dir-1")
+    async with user_simulation(page) as user:
+        await user.open("/")
+        await user.should_see(marker="direction-select-0")
+
+        user.find(marker="direction-select-0").click()
+        user.find(marker="direction-select-0").click()
+
+        await _wait_until(lambda: len(calls) >= 1)
+        await asyncio.sleep(0.1)
+        assert len(calls) == 1
+
+        release.set()
+        await user.should_see(marker="post-job")
+
+        assert len(calls) == 1
+        with user.client:
+            assert app.storage.user.get("active_post_job_id") == "post-slow"
 
 
 async def test_running_job_keeps_the_primary_action_disabled(monkeypatch):
