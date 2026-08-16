@@ -181,3 +181,11 @@ def validate_generated_ideas(ideas: Any, verified_urls: set[str]) -> dict[str, A
         normalized_ideas.append(idea)
 
     return {"ideas": normalized_ideas}
+
+
+def validate_generated_post(post: Any, verified_urls: set[str]) -> dict[str, Any]:
+    """한 편짜리 포스트에도 카드와 똑같은 출처 규칙을 적용한다."""
+    result = validate_generated_ideas([post], verified_urls)
+    if "error" in result:
+        return result
+    return {"post": result["ideas"][0]}
