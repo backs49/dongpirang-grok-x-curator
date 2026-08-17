@@ -77,8 +77,8 @@ _W = {
     },
     "create_type_grounded": {
         "ko": "근거 기반 팁",
-        "en": "Fact-based tip",
-        "ja": "事実ベースのヒント",
+        "en": "Source-backed tip",
+        "ja": "根拠付きヒント",
     },
     "create_options": {
         "ko": "옵션",
