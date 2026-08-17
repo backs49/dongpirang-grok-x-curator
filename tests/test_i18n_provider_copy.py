@@ -56,7 +56,8 @@ def test_dead_keys_removed():
 
 def test_ideas_error_keys_use_pyeoneo_not_yoche():
     # ideas_error_* 는 새 워크스페이스에서도 그대로 노출되는 폴백 문구라
-    # 평어체를 지킨다 — 어떤 문장도 "요.", "세요." 로 끝나면 안 된다.
+    # 평어체를 지킨다 — 어떤 문장도 요체("요.", "세요.")나 합쇼체("습니다.")로
+    # 끝나면 안 된다.
     for key in (
         "ideas_error_insufficient_sources",
         "ideas_error_unsafe_personalized_request",
@@ -65,5 +66,6 @@ def test_ideas_error_keys_use_pyeoneo_not_yoche():
     ):
         ko = _T[key]["ko"]
         for sentence in re.findall(r"[^.]+\.", ko):
-            assert not sentence.endswith("요.") and not sentence.endswith("세요."), \
-                f"{key}.ko 에 요체 어미가 남아 있다: {sentence!r}"
+            for banned in ("요.", "세요.", "습니다."):
+                assert not sentence.endswith(banned), \
+                    f"{key}.ko 에 평어체가 아닌 어미가 남아 있다: {sentence!r}"
