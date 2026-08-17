@@ -1,8 +1,24 @@
 from __future__ import annotations
 
+import json
+from datetime import datetime, timedelta
+
 import pytest
 
 import workspace_jobs
+
+
+def _rewrite_job(path, job_id, **updates):
+    """저장된 잡 레코드를 직접 고쳐 과거 시각·깨진 값 같은 상태를 만든다."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    for job in data["jobs"]:
+        if job["id"] == job_id:
+            job.update(updates)
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+
+def _stamp(delta: timedelta) -> str:
+    return (datetime.now() - delta).isoformat(timespec="seconds")
 
 
 def test_claim_allows_one_worker_and_restores_terminal_result(tmp_path):
@@ -104,3 +120,148 @@ def test_job_store_rejects_non_json_serializable_request(tmp_path):
             "optimize", {"text": "원문", "provider": NotSerializable()},
             engine="Grok CLI", language="ko", path=path,
         )
+
+
+def test_prune_removes_terminal_jobs_older_than_ttl(tmp_path):
+    path = tmp_path / "workspace_jobs.json"
+    old = workspace_jobs.create_job(
+        "optimize", {"text": "옛글"}, engine="Grok CLI", language="ko", path=path
+    )
+    workspace_jobs.complete_job(old["id"], {"optimized_post": "x"}, path=path)
+    _rewrite_job(
+        path, old["id"],
+        updated_at=_stamp(timedelta(days=workspace_jobs.PRUNE_TTL_DAYS, hours=1)),
+    )
+
+    fresh = workspace_jobs.create_job(
+        "optimize", {"text": "새글"}, engine="Grok CLI", language="ko", path=path
+    )
+
+    assert workspace_jobs.get_job(old["id"], path=path) is None
+    assert workspace_jobs.get_job(fresh["id"], path=path) is not None
+
+
+def test_prune_never_removes_pending_jobs_regardless_of_age(tmp_path):
+    path = tmp_path / "workspace_jobs.json"
+    stale = workspace_jobs.create_job(
+        "directions", {"keywords": "고양이"}, engine="Grok CLI", language="ko", path=path
+    )
+    _rewrite_job(path, stale["id"], updated_at=_stamp(timedelta(days=365)))
+
+    workspace_jobs.create_job(
+        "optimize", {"text": "다른 요청"}, engine="Grok CLI", language="ko", path=path
+    )
+
+    assert workspace_jobs.get_job(stale["id"], path=path) is not None
+
+
+def test_prune_keeps_terminal_jobs_with_unparseable_timestamps(tmp_path):
+    path = tmp_path / "workspace_jobs.json"
+    done = workspace_jobs.create_job(
+        "optimize", {"text": "원문"}, engine="Grok CLI", language="ko", path=path
+    )
+    workspace_jobs.complete_job(done["id"], {"optimized_post": "x"}, path=path)
+    _rewrite_job(path, done["id"], updated_at="not-a-date")
+
+    workspace_jobs.create_job(
+        "optimize", {"text": "새 요청"}, engine="Grok CLI", language="ko", path=path
+    )
+
+    assert workspace_jobs.get_job(done["id"], path=path) is not None
+
+
+def test_prune_caps_terminal_jobs_keeping_newest(tmp_path, monkeypatch):
+    monkeypatch.setattr(workspace_jobs, "PRUNE_MAX_TERMINAL", 2)
+    path = tmp_path / "workspace_jobs.json"
+    ids = []
+    for i in range(4):
+        job = workspace_jobs.create_job(
+            "optimize", {"text": f"글{i}"}, engine="Grok CLI", language="ko", path=path
+        )
+        workspace_jobs.complete_job(job["id"], {"optimized_post": "x"}, path=path)
+        _rewrite_job(path, job["id"], updated_at=_stamp(timedelta(minutes=40 - i * 10)))
+        ids.append(job["id"])
+
+    workspace_jobs.create_job(
+        "optimize", {"text": "트리거"}, engine="Grok CLI", language="ko", path=path
+    )
+
+    assert workspace_jobs.get_job(ids[0], path=path) is None
+    assert workspace_jobs.get_job(ids[1], path=path) is None
+    assert workspace_jobs.get_job(ids[2], path=path) is not None
+    assert workspace_jobs.get_job(ids[3], path=path) is not None
+
+
+def test_duplicate_pending_request_returns_same_job(tmp_path):
+    """탭 두 개가 같은 요청을 보내도 잡은 하나만 만들어진다 — 중복 과금 방지의
+    스토어 수준 방어선이다."""
+    path = tmp_path / "workspace_jobs.json"
+    first = workspace_jobs.create_job(
+        "directions", {"keywords": "배포 실수"}, engine="Grok CLI", language="ko", path=path
+    )
+
+    second = workspace_jobs.create_job(
+        "directions", {"keywords": "배포 실수"}, engine="Grok CLI", language="ko", path=path
+    )
+    assert second["id"] == first["id"]
+
+    workspace_jobs.claim_job(first["id"], path=path)
+    third = workspace_jobs.create_job(
+        "directions", {"keywords": "배포 실수"}, engine="Grok CLI", language="ko", path=path
+    )
+    assert third["id"] == first["id"]
+
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert len(data["jobs"]) == 1
+
+
+def test_different_request_engine_or_language_is_not_deduplicated(tmp_path):
+    path = tmp_path / "workspace_jobs.json"
+    base = workspace_jobs.create_job(
+        "directions", {"keywords": "고양이"}, engine="Grok CLI", language="ko", path=path
+    )
+
+    other_request = workspace_jobs.create_job(
+        "directions", {"keywords": "강아지"}, engine="Grok CLI", language="ko", path=path
+    )
+    other_engine = workspace_jobs.create_job(
+        "directions", {"keywords": "고양이"}, engine="Codex CLI", language="ko", path=path
+    )
+    other_language = workspace_jobs.create_job(
+        "directions", {"keywords": "고양이"}, engine="Grok CLI", language="en", path=path
+    )
+
+    assert len({base["id"], other_request["id"], other_engine["id"], other_language["id"]}) == 4
+
+
+def test_terminal_job_does_not_block_resubmission(tmp_path):
+    path = tmp_path / "workspace_jobs.json"
+    first = workspace_jobs.create_job(
+        "optimize", {"text": "원문"}, engine="Grok CLI", language="ko", path=path
+    )
+    workspace_jobs.fail_job(first["id"], "provider down", path=path)
+
+    retry = workspace_jobs.create_job(
+        "optimize", {"text": "원문"}, engine="Grok CLI", language="ko", path=path
+    )
+
+    assert retry["id"] != first["id"]
+
+
+def test_stale_pending_job_beyond_window_is_not_deduplicated(tmp_path):
+    """워커가 죽어 오래 queued 로 남은 잡이 재제출을 영구히 막으면 안 된다."""
+    path = tmp_path / "workspace_jobs.json"
+    first = workspace_jobs.create_job(
+        "directions", {"keywords": "고양이"}, engine="Grok CLI", language="ko", path=path
+    )
+    _rewrite_job(
+        path, first["id"],
+        updated_at=_stamp(timedelta(minutes=workspace_jobs.DEDUP_WINDOW_MINUTES + 1)),
+    )
+
+    second = workspace_jobs.create_job(
+        "directions", {"keywords": "고양이"}, engine="Grok CLI", language="ko", path=path
+    )
+
+    assert second["id"] != first["id"]
+    assert workspace_jobs.get_job(first["id"], path=path) is not None

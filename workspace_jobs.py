@@ -11,7 +11,7 @@ import copy
 import json
 import uuid
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from content_queue import queue_lock, save_queue
@@ -21,6 +21,19 @@ JOBS_PATH = Path("content_queue/workspace_jobs.json")
 
 # 방향 카드 생성 / 선택한 방향으로 포스트 한 편 작성 / 포스트 최적화.
 JOB_KINDS = ("directions", "post", "optimize")
+
+# job_view.PENDING_STATUSES 와 동일한 집합을 여기서도 유지한다 — 스토어가
+# UI 모듈을 import 하지 않도록 값만 그대로 복제한다.
+PENDING_STATUSES = ("queued", "running")
+TERMINAL_STATUSES = ("completed", "failed")
+
+# 종료된 작업 보관 기간과 최대 개수. 둘 중 하나라도 넘으면 정리한다.
+PRUNE_TTL_DAYS = 7
+PRUNE_MAX_TERMINAL = 200
+
+# 워커가 죽어 영원히 queued 로 남은 작업이 재제출을 영구히 막지 않도록,
+# 중복 판정은 이 창 안의 pending 작업으로만 제한한다.
+DEDUP_WINDOW_MINUTES = 15
 
 
 def _empty_store() -> dict:
@@ -57,6 +70,64 @@ def _find(data: dict, job_id: str) -> dict | None:
     return next((job for job in data["jobs"] if job.get("id") == job_id), None)
 
 
+def _parse_timestamp(value) -> datetime | None:
+    """updated_at 을 파싱한다. 비어 있거나 형식이 어긋나면 None — 나이를 알 수
+    없는 잡을 정리 대상으로 오판하지 않기 위해서다."""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _prune(jobs: list) -> list:
+    """추가 전 정리. TTL 을 넘긴 terminal 잡을 지우고, 그러고도 terminal 이
+    PRUNE_MAX_TERMINAL 을 넘으면 오래된 것부터 초과분을 지운다. pending 잡과
+    updated_at 파싱 실패 잡은 나이·개수와 무관하게 항상 남긴다."""
+    ttl_cutoff = datetime.now() - timedelta(days=PRUNE_TTL_DAYS)
+
+    remove_ids = set()
+    survivors = []  # (updated_at, id) — TTL 은 통과했지만 개수 상한 대상인 terminal 잡
+    for job in jobs:
+        if job.get("status") not in TERMINAL_STATUSES:
+            continue
+        updated_at = _parse_timestamp(job.get("updated_at"))
+        if updated_at is None:
+            continue
+        if updated_at < ttl_cutoff:
+            remove_ids.add(job.get("id"))
+            continue
+        survivors.append((updated_at, job.get("id")))
+
+    if len(survivors) > PRUNE_MAX_TERMINAL:
+        survivors.sort(key=lambda pair: pair[0])
+        excess = len(survivors) - PRUNE_MAX_TERMINAL
+        remove_ids.update(job_id for _, job_id in survivors[:excess])
+
+    return [job for job in jobs if job.get("id") not in remove_ids]
+
+
+def _find_duplicate(
+    jobs: list, *, kind: str, engine: str, language: str, request_key: str
+) -> dict | None:
+    """같은 요청이 이미 대기 중이면 그 잡을 돌려준다. DEDUP_WINDOW_MINUTES 를
+    넘긴 pending 잡은 워커가 죽었을 수 있으니 제외해 재제출을 막지 않는다."""
+    window_cutoff = datetime.now() - timedelta(minutes=DEDUP_WINDOW_MINUTES)
+    for job in jobs:
+        if job.get("status") not in PENDING_STATUSES:
+            continue
+        if job.get("kind") != kind or job.get("engine") != engine or job.get("language") != language:
+            continue
+        if json.dumps(job.get("request"), sort_keys=True, ensure_ascii=False) != request_key:
+            continue
+        updated_at = _parse_timestamp(job.get("updated_at"))
+        if updated_at is None or updated_at < window_cutoff:
+            continue
+        return job
+    return None
+
+
 def create_job(
     kind: str,
     request: dict,
@@ -70,16 +141,22 @@ def create_job(
     request 는 반드시 JSON 직렬화 가능한 평범한 데이터여야 한다 — API 키,
     쿠키, 프로바이더 객체를 절대 여기 담지 않는다. 알 수 없는 kind 나
     빈 request 는 아무것도 쓰지 않고 즉시 거부한다.
+
+    같은 kind/engine/language/request 로 이미 대기 중인 잡이 있으면 새로
+    만들지 않고 그 잡을 그대로 돌려준다 — 탭 두 개가 같은 요청을 동시에
+    보내도 워커는 한 번만 일한다.
     """
     if kind not in JOB_KINDS:
         raise ValueError(f"unknown workspace job kind: {kind!r}")
     if not isinstance(request, dict) or not request:
         raise ValueError("workspace job request must be a non-empty dict")
     try:
-        json.dumps(request, ensure_ascii=False)
+        request_key = json.dumps(request, sort_keys=True, ensure_ascii=False)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"workspace job request must be JSON-serializable: {exc}") from exc
 
+    engine = engine or ""
+    language = language or ""
     now = _now()
     job = {
         "id": uuid.uuid4().hex,
@@ -88,10 +165,16 @@ def create_job(
         "updated_at": now,
         "kind": kind,
         "request": copy.deepcopy(request),
-        "engine": engine or "",
-        "language": language or "",
+        "engine": engine,
+        "language": language,
     }
     with _transaction(path) as data:
+        data["jobs"] = _prune(data["jobs"])
+        duplicate = _find_duplicate(
+            data["jobs"], kind=kind, engine=engine, language=language, request_key=request_key
+        )
+        if duplicate is not None:
+            return copy.deepcopy(duplicate)
         data["jobs"].append(job)
     return copy.deepcopy(job)
 
