@@ -1,7 +1,5 @@
 """Internationalization module — Korean (default), English, Japanese."""
 
-import streamlit as st
-
 LANGUAGES = {"ko": "한국어", "en": "English", "ja": "日本語"}
 
 LANG_INSTRUCTION = {
@@ -1764,6 +1762,8 @@ _T = {
 
 def get_lang() -> str:
     """Get current language from session state."""
+    import streamlit as st  # 지연 임포트: 워커가 i18n을 임포트할 때 streamlit 비용을 내지 않게
+
     return st.session_state.get("lang", "ko")
 
 
