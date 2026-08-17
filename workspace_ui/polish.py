@@ -102,6 +102,32 @@ def optimized_text(job: dict | None) -> str:
     return ((job or {}).get("result") or {}).get("optimized_post") or ""
 
 
+def polish_score(job: dict | None) -> int | None:
+    """작업 결과에서 표시 가능한 점수만 뽑는다.
+
+    옛 잡·실험 모드 결과는 score 가 아예 없거나 형이 다를 수 있으므로
+    int 가 아니면 조용히 None 을 돌려준다. bool 은 int 의 서브클래스라
+    isinstance(True, int) 가 참이 되므로 따로 걸러낸다.
+    """
+    score = ((job or {}).get("result") or {}).get("score")
+    if isinstance(score, bool) or not isinstance(score, int):
+        return None
+    return score
+
+
+def polish_reasons(job: dict | None) -> list[str]:
+    """작업 결과에서 표시 가능한 분석 이유만 뽑는다.
+
+    reasons 가 없거나 리스트가 아니면 빈 리스트를 돌려주고, 항목 중
+    문자열이 아니거나 빈 문자열인 것은 걸러낸다 — 어느 쪽도 예외를 내지
+    않는다.
+    """
+    reasons = ((job or {}).get("result") or {}).get("reasons")
+    if not isinstance(reasons, list):
+        return []
+    return [reason for reason in reasons if isinstance(reason, str) and reason.strip()]
+
+
 # ─────────────────────────────────────────────────────────────
 # 화면
 # ─────────────────────────────────────────────────────────────
@@ -183,11 +209,29 @@ def _render_composer(
 
 
 def _render_result(job: dict, store, settings: dict, repaint: Callable[[], None]) -> None:
-    """완성한 분석을 보여주고, 계속 고칠지는 사람이 버튼으로 정한다."""
+    """완성한 분석을 보여주고, 계속 고칠지는 사람이 버튼으로 정한다.
+
+    점수·이유는 있을 때만 보여준다 — 옛 잡·실험 모드 결과는 둘 다 없을 수
+    있다(polish_score/polish_reasons 가 그 형 검사를 맡는다). suggestions
+    는 모바일 화면을 아끼려고 이번 범위에서 뺐다.
+    """
     optimized = optimized_text(job)
+    score = polish_score(job)
+    reasons = polish_reasons(job)
 
     with ui.column().classes("workspace-card w-full gap-2").mark("optimize-result"):
         ui.label(copy("polish_result_title")).classes("text-base font-semibold")
+
+        if score is not None:
+            ui.label(f'{copy("opt_score")}: {score}/100') \
+                .classes("text-sm font-semibold").mark("optimize-score")
+
+        if reasons:
+            with ui.column().classes("gap-1").mark("optimize-reasons"):
+                ui.label(copy("opt_reasons")).classes("text-sm font-semibold")
+                for reason in reasons:
+                    ui.label(f"· {reason}").classes("text-sm")
+
         ui.label(optimized).classes("text-sm whitespace-pre-wrap").mark("optimize-preview")
 
         # 이미 이 작업으로 에디터를 연 적이 있으면(재접속 포함) 버튼을 다시

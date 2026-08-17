@@ -136,6 +136,33 @@ def x_compose_url(text: str) -> str:
     return generate_tweet_intent_url(text or "")
 
 
+def editor_sources(job: dict | None) -> list[dict]:
+    """잡 결과에서 근거 출처만 뽑는다(라벨, URL).
+
+    grounded 잡의 post 에만 sources 가 붙는다(grounded_tips.py). 일반
+    포스트·옛 잡·형이 어긋난 항목은 조용히 빈 리스트/부분 리스트가 된다 —
+    호출자는 예외를 걱정하지 않아도 된다. url 이 없는 항목은 건너뛰고,
+    title 이 없으면 url 을 라벨로 쓴다.
+    """
+    post = ((job or {}).get("result") or {}).get("post")
+    if not isinstance(post, dict):
+        return []
+    sources = post.get("sources")
+    if not isinstance(sources, list):
+        return []
+    result = []
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        url = source.get("url")
+        if not isinstance(url, str) or not url.strip():
+            continue
+        title = source.get("title")
+        label = title if isinstance(title, str) and title.strip() else url
+        result.append({"label": label, "url": url})
+    return result
+
+
 def editor_pillar(mode: str, content_type: str) -> str:
     """초안에 붙일 콘텐츠 기둥.
 
@@ -272,6 +299,17 @@ def render_editor(
             x_link.props(f"href={x_compose_url(value)}")
 
         body.on_value_change(on_body_change)
+
+        # 출처는 넘겨받은 job 결과에서만 읽는다 — store 에는 담지 않는다.
+        # 에디터는 Create/Polish/Publish 세 곳에서 key_prefix 로 재사용되므로,
+        # 새 저장 키를 추가하면 그 키를 공유하는 다른 영역까지 오염된다.
+        sources = editor_sources(job)
+        if sources:
+            with ui.column().classes("gap-1").mark("editor-sources"):
+                ui.label(copy("ideas_sources")).classes("text-sm font-semibold")
+                for index, source in enumerate(sources):
+                    ui.link(source["label"], source["url"], new_tab=True) \
+                        .classes("text-sm").mark(f"editor-source-{index}")
 
         ui.label(copy("editor_hint")).classes("workspace-hint")
 

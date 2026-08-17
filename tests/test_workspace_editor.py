@@ -44,6 +44,32 @@ POST_JOB = {
     "result": {"post": {"title": "배포 실수", "content": "첫 문장"}},
 }
 
+# grounded_tips.py 가 write_grounded_post 결과에 붙이는 것과 같은 모양의
+# sources(title/url/publisher/published_at/excerpt) — grok_client.py:479-482.
+GROUNDED_POST_JOB = {
+    "id": "grounded-1",
+    "kind": "post",
+    "status": "completed",
+    "engine": "Demo",
+    "language": "ko",
+    "request": {},
+    "result": {
+        "post": {
+            "content": "근거 있는 본문",
+            "sources": [
+                {
+                    "title": "출처 제목",
+                    "url": "https://source.example/a",
+                    "publisher": "발행처",
+                    "published_at": "2026-08-01",
+                    "excerpt": "발췌",
+                },
+            ],
+            "evidence_urls": ["https://source.example/a"],
+        },
+    },
+}
+
 
 def _seeded_page(**seed):
     """스토리지에 이미 값이 들어 있는 상태로 페이지를 다시 그린다 =
@@ -152,6 +178,37 @@ def test_editor_pillar_follows_the_mode_and_grounded_tips_are_tips():
     assert editor_pillar("builder_note", "grounded_tip") == "tip"
 
 
+def test_editor_sources_extracts_label_and_url_and_skips_items_without_url():
+    job = {
+        "result": {
+            "post": {
+                "content": "본문",
+                "sources": [
+                    {"title": "제목1", "url": "https://a.example/1"},
+                    {"title": "", "url": "https://a.example/2"},
+                    {"url": "https://a.example/3"},
+                    {"title": "무시됨"},
+                    "not-a-dict",
+                    {"title": "빈 URL", "url": "   "},
+                ],
+            },
+        },
+    }
+    assert editor.editor_sources(job) == [
+        {"label": "제목1", "url": "https://a.example/1"},
+        {"label": "https://a.example/2", "url": "https://a.example/2"},
+        {"label": "https://a.example/3", "url": "https://a.example/3"},
+    ]
+
+
+def test_editor_sources_tolerates_missing_or_malformed_shapes():
+    assert editor.editor_sources(None) == []
+    assert editor.editor_sources({"result": {}}) == []
+    assert editor.editor_sources({"result": {"post": {"content": "본문"}}}) == []
+    assert editor.editor_sources({"result": {"post": {"sources": "not-a-list"}}}) == []
+    assert editor.editor_sources({"result": {"post": "not-a-dict"}}) == []
+
+
 # ─────────────────────────────────────────────────────────────
 # 화면 — 자동저장과 수동 발행 기록
 # ─────────────────────────────────────────────────────────────
@@ -204,6 +261,38 @@ async def test_reconnect_keeps_the_text_that_autosave_had_not_written_yet(monkey
 
         await _wait_until(lambda: load_queue(path)["drafts"][0]["text"] == "사람이 방금 친 문장")
         assert len(load_queue(path)["drafts"]) == 1
+
+
+async def test_grounded_job_shows_source_links_below_the_text_area(monkeypatch, tmp_path):
+    path = tmp_path / "queue.json"
+    monkeypatch.setattr(editor, "QUEUE_PATH", path)
+    monkeypatch.setattr(
+        workspace_jobs, "get_job",
+        lambda job_id, **kw: GROUNDED_POST_JOB if job_id == "grounded-1" else None,
+    )
+
+    async with user_simulation(_seeded_page(active_post_job_id="grounded-1")) as user:
+        await user.open("/")
+        await user.should_see(marker="editor-text")
+        await user.should_see(marker="editor-sources")
+        await user.should_see(copy("ideas_sources"))
+        await user.should_see("출처 제목")
+
+        with user.client:
+            link = next(iter(user.find(marker="editor-source-0").elements))
+        assert link.props["target"] == "_blank"
+        assert link.props["href"] == "https://source.example/a"
+
+
+async def test_regular_post_job_has_no_sources_section(monkeypatch, tmp_path):
+    path = tmp_path / "queue.json"
+    monkeypatch.setattr(editor, "QUEUE_PATH", path)
+    monkeypatch.setattr(workspace_jobs, "get_job", lambda job_id, **kw: POST_JOB if job_id == "post-1" else None)
+
+    async with user_simulation(_seeded_page(active_post_job_id="post-1")) as user:
+        await user.open("/")
+        await user.should_see(marker="editor-text")
+        await user.should_not_see(marker="editor-sources")
 
 
 async def test_x_composer_link_opens_a_new_tab_without_changing_status(monkeypatch, tmp_path):

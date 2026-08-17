@@ -48,6 +48,13 @@ OPTIMIZE_DONE = _job(
     },
 )
 
+# score/reasons 가 없는 옛 잡(또는 실험 모드) 결과 — 배지·이유 목록 없이
+# optimized_post 만 조용히 보여야 한다.
+OPTIMIZE_DONE_NO_SCORE = _job(
+    "opt-legacy", "optimize", "completed",
+    result={"optimized_post": "옛 잡 결과"},
+)
+
 
 def _seeded_page(**seed):
     """스토리지에 값이 이미 있는 상태에서 페이지를 그린다 = 재접속/재구성."""
@@ -116,6 +123,22 @@ def test_optimized_text_reads_the_worker_result_key():
     assert polish.optimized_text(OPTIMIZE_DONE) == "다듬은 문장"
     assert polish.optimized_text(None) == ""
     assert polish.optimized_text({"result": {}}) == ""
+
+
+def test_polish_score_accepts_int_and_rejects_bool_or_missing():
+    assert polish.polish_score(OPTIMIZE_DONE) == 80
+    assert polish.polish_score({"result": {"score": True}}) is None
+    assert polish.polish_score({"result": {"score": "80"}}) is None
+    assert polish.polish_score({"result": {}}) is None
+    assert polish.polish_score(None) is None
+
+
+def test_polish_reasons_filters_bad_items_and_tolerates_missing_key():
+    assert polish.polish_reasons(OPTIMIZE_DONE) == ["구체적인 숫자가 있다"]
+    assert polish.polish_reasons({"result": {"reasons": ["a", "", 3, None, "b"]}}) == ["a", "b"]
+    assert polish.polish_reasons({"result": {"reasons": "not a list"}}) == []
+    assert polish.polish_reasons({"result": {}}) == []
+    assert polish.polish_reasons(None) == []
 
 
 def test_active_optimize_job_id_is_independent_of_create_keys():
@@ -259,6 +282,46 @@ async def test_completed_job_restores_without_resubmitting_and_shows_the_optimiz
         await user.should_see(marker="optimize-open-editor")
         # 에디터는 아직 열지 않았다 — 버튼을 눌러야 열린다.
         await user.should_not_see(marker="editor-text")
+
+
+async def test_completed_job_shows_the_score_badge_and_reason_list(monkeypatch):
+    monkeypatch.setattr(workspace_job_runner, "submit_job", _boom)
+    monkeypatch.setattr(
+        workspace_jobs, "get_job",
+        lambda job_id, **kw: OPTIMIZE_DONE if job_id == "opt-1" else None,
+    )
+
+    page = _seeded_page(active_optimize_job_id="opt-1")
+    async with user_simulation(page) as user:
+        await user.open("/")
+        user.find(marker="nav-polish").click()
+
+        await user.should_see(marker="optimize-score")
+        await user.should_see("80/100")
+        await user.should_see(marker="optimize-reasons")
+        await user.should_see("구체적인 숫자가 있다")
+        # suggestions 는 브리핑 3a 범위에서 뺐다 — 배지·이유와 달리 절대 보이면 안 된다.
+        await user.should_not_see("1줄 요약을 추가한다")
+
+
+async def test_completed_job_without_a_score_hides_the_badge_without_raising(monkeypatch):
+    """옛 잡·실험 모드 결과에는 score/reasons 가 아예 없을 수 있다 — 배지와
+    이유 목록을 조용히 생략할 뿐 화면이 죽으면 안 된다."""
+    monkeypatch.setattr(workspace_job_runner, "submit_job", _boom)
+    monkeypatch.setattr(
+        workspace_jobs, "get_job",
+        lambda job_id, **kw: OPTIMIZE_DONE_NO_SCORE if job_id == "opt-legacy" else None,
+    )
+
+    page = _seeded_page(active_optimize_job_id="opt-legacy")
+    async with user_simulation(page) as user:
+        await user.open("/")
+        user.find(marker="nav-polish").click()
+
+        await user.should_see(marker="optimize-result")
+        await user.should_see("옛 잡 결과")
+        await user.should_not_see(marker="optimize-score")
+        await user.should_not_see(marker="optimize-reasons")
 
 
 async def test_opening_the_editor_creates_its_own_draft_tagged_as_optimize(monkeypatch, tmp_path):
