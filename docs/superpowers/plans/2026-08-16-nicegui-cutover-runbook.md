@@ -44,11 +44,20 @@ launchd가 매시간 새 tunnel_watch.sh를 실행하고, Streamlit은 app.py �
 
 ## 백로그 (최종 리뷰 선별, 가치 순)
 
-1. workspace_jobs.json 완료/실패 잡 프루닝(무한 성장 방지)
-2. i18n을 Streamlit 의존 없는 모듈로 분리(워커 스폰 ~1s+ 단축)
-3. grounded 근거 URL·Polish 점수/이유를 UI에 표출
-4. design.py ↔ theme.py 팔레트 드리프트 테스트
-5. pytest 9 + pytest-asyncio 1.x 업그레이드(+ 표적 filterwarnings) — Python 3.16 전
-6. Serve 구성 실패 시 Telegram 경보(현재 WARN 로그만)
-7. 멀티 탭 동시 제출 가드(현재 가드는 탭 단위; 크로스 탭은 기존 한계)
-8. 사실/근거 기반 팁 문구 통일, 레거시 ideas_error_* 요체 카피 평어체화
+**2026-08-17 전량 완료** — 계획 docs/superpowers/plans/2026-08-17-nicegui-backlog.md.
+
+1. ~~workspace_jobs.json 완료/실패 잡 프루닝~~ (TTL 7일·terminal 최대 200)
+2. ~~i18n을 Streamlit 의존 없는 모듈로 분리~~ (get_lang() 지연 임포트로 동일 효과)
+3. ~~grounded 근거 URL·Polish 점수/이유를 UI에 표출~~
+4. ~~design.py ↔ theme.py 팔레트 드리프트 테스트~~
+5. ~~pytest 9 + pytest-asyncio 1.x 업그레이드~~ (filterwarnings=error, 경고 0)
+6. ~~Serve 구성 실패 시 Telegram 경보~~ (실패 집합 상태파일로 중복 억제)
+7. ~~멀티 탭 동시 제출 가드~~ (create_job 멱등화: pending 동일요청 15분 창)
+8. ~~문구 통일·평어체화~~ ("근거 기반 팁" 정본, ideas_error_* 4건)
+
+### 후속 소항목 (최종 리뷰 발견, 비차단)
+
+- PENDING/TERMINAL 상태 튜플이 workspace_jobs.py와 job_view.py에 값 복제로
+  존재 — 동기화 테스트 추가하면 좋다.
+- 워커가 죽어 queued로 남은 잡은 프루닝 면제라 영구 누적 — 스토어가 커지면
+  stale-queued 청소 규칙 추가.
