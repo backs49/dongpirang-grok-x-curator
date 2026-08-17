@@ -149,6 +149,62 @@ class TestPreservedWatchdogPolicy:
         assert "워크스페이스" in script and "레거시" in script
 
 
+class TestFailureAlerts:
+    """Task 5: 로그만 남기던 실패 경로에 텔레그램 경보와 상태 파일 중복 억제를 추가한다."""
+
+    FAILURE_TAGS = [
+        "nicegui_start_failed",
+        "streamlit_start_failed",
+        "serve_config_failed_workspace",
+        "serve_config_failed_legacy",
+        "serve_endpoints_unresolved",
+    ]
+
+    def test_notify_admin_py_literal_still_appears_exactly_once(self):
+        """새 실패 경보도 기존 URL 알림과 같은 유일한 발송 지점을 거쳐야 한다."""
+        script = _script()
+        assert script.count("notify_admin.py") == 1
+
+    def test_notify_admin_function_defined_and_called_by_url_and_failure_paths(self):
+        script = _script()
+        assert "notify_admin() {" in script, "notify_admin 셸 함수가 정의돼 있지 않다"
+        # 셸 함수 호출은 괄호 없이 `notify_admin "..."` 형태다. 정의 자체는 이
+        # 패턴과 겹치지 않으므로, 이 카운트는 순수 호출 횟수다.
+        call_count = script.count('notify_admin "')
+        assert call_count >= 2, "notify_admin() 이 URL 블록과 실패 경로 모두에서 불려야 한다"
+
+    def test_alert_state_file_name_present(self):
+        assert "tunnel-alert.state" in _script()
+
+    def test_all_failure_tags_present(self):
+        script = _script()
+        for tag in self.FAILURE_TAGS:
+            assert tag in script, f"실패 태그 '{tag}' 가 스크립트에 없다"
+
+    def test_unresolved_endpoints_alerts_before_exiting(self):
+        """serve_endpoints_unresolved 는 exit 1 직전에 경보 평가를 먼저 해야 한다."""
+        lines = _script().splitlines()
+        exit_idx = next(
+            i for i, line in enumerate(lines) if "serve endpoints not resolved" in line
+        )
+        # exit 1 이 나오기 전, 같은 블록 안에서 실패 태그 적립과 경보 평가가 먼저 와야 한다.
+        following = "\n".join(lines[exit_idx : exit_idx + 5])
+        assert "serve_endpoints_unresolved" in following
+        assert "evaluate_failure_alert" in following
+        assert following.index("evaluate_failure_alert") < following.index("exit 1")
+
+    def test_flappy_warn_paths_are_excluded_from_alerting(self):
+        """AllowFunnel 블라인드 WARN과 일시적 URL 도달 실패 WARN은 경보 대상이 아니다."""
+        script = _script()
+        blind_probe_idx = script.index("funnel probe may be blind")
+        blind_line_end = script.index("\n", blind_probe_idx)
+        assert "add_failure" not in script[blind_probe_idx:blind_line_end]
+
+        unreachable_idx = script.index("serve URL not reachable right now")
+        unreachable_line_end = script.index("\n", unreachable_idx)
+        assert "add_failure" not in script[unreachable_idx:unreachable_line_end]
+
+
 class TestLegacyStreamlitEntry:
     def test_no_password_gate_or_cookie_component(self):
         source = _app_source()

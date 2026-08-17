@@ -48,6 +48,27 @@ log() {
     printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$WATCH_LOG"
 }
 
+# 이번 실행에서 모인 실패 태그(개행 구분 문자열). 배열 대신 문자열을 쓴다 —
+# macOS 기본 bash 3.2 에서 set -u 와 배열의 상호작용이 까다롭기 때문이다.
+FAILURE_TAGS=""
+
+# 실패 태그 하나를 이번 실행의 집합에 더한다.
+add_failure() {
+    if [[ -z "$FAILURE_TAGS" ]]; then
+        FAILURE_TAGS="$1"
+    else
+        FAILURE_TAGS="$FAILURE_TAGS
+$1"
+    fi
+}
+
+# 텔레그램 발송의 유일한 실행 지점. URL 변경 알림과 실패 경보 모두 이 함수를 거친다.
+# 발송 스크립트 호출 리터럴이 이 함수 안에 딱 한 번만 있어야 한다 — 새 알림을
+# 추가할 때도 이 함수를 통해서만 보낸다.
+notify_admin() {
+    "$PYTHON" "$REPO/scripts/notify_admin.py" "$1" >> "$WATCH_LOG" 2>&1
+}
+
 # 00:00–06:59 KST 수면 시간대는 체크하지 않는다 (ai-trader와 동일 정책).
 HOUR_NOW=$(date '+%H')
 if (( 10#$HOUR_NOW < 7 )); then
@@ -76,6 +97,7 @@ ensure_nicegui() {
         sleep 3
     done
     log "ERROR: nicegui failed to start in 45s"
+    add_failure "nicegui_start_failed"
     return 1
 }
 
@@ -93,6 +115,7 @@ ensure_legacy_app() {
         sleep 3
     done
     log "ERROR: streamlit failed to start in 45s"
+    add_failure "streamlit_start_failed"
     return 1
 }
 
@@ -147,14 +170,53 @@ serve_url() {
 # 대상 포트가 바뀐 경우에도 이 방식이라야 실제로 교정된다.
 ensure_workspace_serve() {
     "$TS_BIN" serve --bg --https="$WORKSPACE_PORT" "http://127.0.0.1:$NICEGUI_PORT" \
-        >> "$WATCH_LOG" 2>&1 \
-        || log "WARN: serve config failed (:$WORKSPACE_PORT -> $NICEGUI_PORT)"
+        >> "$WATCH_LOG" 2>&1 || {
+        log "WARN: serve config failed (:$WORKSPACE_PORT -> $NICEGUI_PORT)"
+        add_failure "serve_config_failed_workspace"
+    }
 }
 
 ensure_legacy_serve() {
     "$TS_BIN" serve --bg --https="$LEGACY_PORT" "http://127.0.0.1:$LEGACY_APP_PORT" \
-        >> "$WATCH_LOG" 2>&1 \
-        || log "WARN: serve config failed (:$LEGACY_PORT -> $LEGACY_APP_PORT)"
+        >> "$WATCH_LOG" 2>&1 || {
+        log "WARN: serve config failed (:$LEGACY_PORT -> $LEGACY_APP_PORT)"
+        add_failure "serve_config_failed_legacy"
+    }
+}
+
+ALERT_STATE_FILE="$LOG_DIR/tunnel-alert.state"
+
+# 이번 실행에서 모인 실패 태그 집합을 상태 파일과 비교해 필요할 때만 경보를 보낸다.
+# 같은 집합이 지속되면 재경보하지 않고, 실패가 모두 사라지면 복구 알림을 한 번
+# 보낸 뒤 상태 파일을 비운다. 상태 파일이 없으면 빈 집합으로 취급한다.
+evaluate_failure_alert() {
+    local current previous msg
+    current=$(printf '%s\n' "$FAILURE_TAGS" | sed '/^$/d' | sort)
+    previous=""
+    [[ -f "$ALERT_STATE_FILE" ]] && previous=$(cat "$ALERT_STATE_FILE")
+
+    if [[ -z "$current" ]]; then
+        if [[ -n "$previous" ]]; then
+            msg=$(printf '🐾 동피랑 워치독 복구\n이전에 알렸던 실패가 이번 실행에서 모두 해소됐다.\n자세한 로그는 logs/tunnel-watch.log 에 있다.')
+            if notify_admin "$msg"; then
+                log "recovery notified"
+            else
+                log "telegram notify failed (continuing)"
+            fi
+            : > "$ALERT_STATE_FILE"
+        fi
+        return 0
+    fi
+
+    if [[ "$current" != "$previous" ]]; then
+        msg=$(printf '🐾 동피랑 워치독 경보\n실패 태그:\n%s\n자세한 로그는 logs/tunnel-watch.log 에 있다.' "$current")
+        if notify_admin "$msg"; then
+            log "failure alert sent ($current)"
+        else
+            log "telegram notify failed (continuing)"
+        fi
+        printf '%s\n' "$current" > "$ALERT_STATE_FILE"
+    fi
 }
 
 STATUS=0
@@ -171,6 +233,8 @@ LEGACY_URL=$(serve_url "$LEGACY_PORT")
 
 if [[ -z "$WORKSPACE_URL" || -z "$LEGACY_URL" ]]; then
     log "ERROR: serve endpoints not resolved (workspace='$WORKSPACE_URL' legacy='$LEGACY_URL')"
+    add_failure "serve_endpoints_unresolved"
+    evaluate_failure_alert
     exit 1
 fi
 
@@ -191,12 +255,14 @@ if [[ "$WORKSPACE_URL" != "$LAST_WORKSPACE_URL" || "$LEGACY_URL" != "$LAST_LEGAC
     printf '%s\n' "$LEGACY_URL" > "$LEGACY_URL_FILE"
     MSG=$(printf '🐾 동피랑 접속 주소 (Tailscale 사설망)\n워크스페이스: %s\n레거시 도구: %s\n\n테일넷에 붙은 기기에서만 열린다. 재시작해도 주소는 그대로다.' \
         "$WORKSPACE_URL" "$LEGACY_URL")
-    if "$PYTHON" "$REPO/scripts/notify_admin.py" "$MSG" >> "$WATCH_LOG" 2>&1; then
+    if notify_admin "$MSG"; then
         log "admin notified (workspace=$WORKSPACE_URL legacy=$LEGACY_URL)"
     else
         log "telegram notify failed (continuing)"
     fi
 fi
+
+evaluate_failure_alert
 
 if (( STATUS == 0 )); then
     log "OK workspace=$WORKSPACE_URL legacy=$LEGACY_URL"
