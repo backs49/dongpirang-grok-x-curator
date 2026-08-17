@@ -40,7 +40,7 @@ def test_i18n_import_does_not_load_streamlit():
 
 
 def test_worker_import_chain_does_not_load_streamlit():
-    """워커 임포트 체인(provider_selection → grok_client.providers.xai_api → i18n)도
+    """워커 임포트 체인(provider_selection → grok_client·providers.xai_api → i18n)도
     streamlit을 끌어오면 안 된다 — 워커 경로는 런타임에 get_lang()을 호출하지
     않으므로, 이 체인을 타는 것만으로 streamlit이 로드되면 지연 임포트가 깨진
     것이다."""
