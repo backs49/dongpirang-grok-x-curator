@@ -87,8 +87,10 @@ def _prune(jobs: list) -> list:
     updated_at 파싱 실패 잡은 나이·개수와 무관하게 항상 남긴다."""
     ttl_cutoff = datetime.now() - timedelta(days=PRUNE_TTL_DAYS)
 
-    remove_ids = set()
-    survivors = []  # (updated_at, id) — TTL 은 통과했지만 개수 상한 대상인 terminal 잡
+    # 제거는 레코드 객체 동일성으로 판정한다 — "id" 필드를 쓰면 id 가 빠진 기형
+    # 레코드끼리 None 키로 충돌해 pending 잡까지 지워질 수 있다.
+    remove = set()
+    survivors = []  # (updated_at, job) — TTL 은 통과했지만 개수 상한 대상인 terminal 잡
     for job in jobs:
         if job.get("status") not in TERMINAL_STATUSES:
             continue
@@ -96,16 +98,16 @@ def _prune(jobs: list) -> list:
         if updated_at is None:
             continue
         if updated_at < ttl_cutoff:
-            remove_ids.add(job.get("id"))
+            remove.add(id(job))
             continue
-        survivors.append((updated_at, job.get("id")))
+        survivors.append((updated_at, job))
 
     if len(survivors) > PRUNE_MAX_TERMINAL:
         survivors.sort(key=lambda pair: pair[0])
         excess = len(survivors) - PRUNE_MAX_TERMINAL
-        remove_ids.update(job_id for _, job_id in survivors[:excess])
+        remove.update(id(job) for _, job in survivors[:excess])
 
-    return [job for job in jobs if job.get("id") not in remove_ids]
+    return [job for job in jobs if id(job) not in remove]
 
 
 def _find_duplicate(

@@ -192,6 +192,47 @@ def test_prune_caps_terminal_jobs_keeping_newest(tmp_path, monkeypatch):
     assert workspace_jobs.get_job(ids[3], path=path) is not None
 
 
+def test_prune_keeps_idless_pending_job_next_to_idless_stale_terminal(tmp_path):
+    """id 가 빠진 기형 레코드가 섞여도 pending 잡은 절대 지워지면 안 된다 —
+    id 필드 기반 제거는 None 키 충돌로 이 불변식을 깼었다."""
+    path = tmp_path / "workspace_jobs.json"
+    stale_terminal = {
+        "status": "completed", "kind": "optimize",
+        "created_at": _stamp(timedelta(days=30)), "updated_at": _stamp(timedelta(days=30)),
+        "request": {"text": "옛글"}, "engine": "Grok CLI", "language": "ko",
+    }
+    idless_pending = {
+        "status": "queued", "kind": "directions",
+        "created_at": _stamp(timedelta(days=30)), "updated_at": _stamp(timedelta(days=30)),
+        "request": {"keywords": "고양이"}, "engine": "Grok CLI", "language": "ko",
+    }
+    path.write_text(
+        json.dumps({"jobs": [stale_terminal, idless_pending]}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    workspace_jobs.create_job(
+        "optimize", {"text": "새 요청"}, engine="Grok CLI", language="ko", path=path
+    )
+
+    data = json.loads(path.read_text(encoding="utf-8"))
+    statuses = [job["status"] for job in data["jobs"]]
+    assert "queued" in statuses  # id 없는 pending 잡이 살아남았다
+    assert "completed" not in statuses  # TTL 넘긴 terminal 잡은 정리됐다
+
+
+def test_dedup_requires_same_kind(tmp_path):
+    path = tmp_path / "workspace_jobs.json"
+    directions = workspace_jobs.create_job(
+        "directions", {"keywords": "고양이"}, engine="Grok CLI", language="ko", path=path
+    )
+    post = workspace_jobs.create_job(
+        "post", {"keywords": "고양이"}, engine="Grok CLI", language="ko", path=path
+    )
+
+    assert post["id"] != directions["id"]
+
+
 def test_duplicate_pending_request_returns_same_job(tmp_path):
     """탭 두 개가 같은 요청을 보내도 잡은 하나만 만들어진다 — 중복 과금 방지의
     스토어 수준 방어선이다."""
