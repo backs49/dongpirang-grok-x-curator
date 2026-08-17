@@ -1,4 +1,5 @@
 streamlit==1.50.0
+altair==5.3.0  # 5.5.0은 Py3.14에서 임포트 불가(PEP 728 closed= 가드가 3.14 stdlib을 잘못 가정)
 openai>=1.66.0
 streamlit-analytics2>=0.10.1
 requests>=2.31.0
