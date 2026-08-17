@@ -174,7 +174,7 @@ def test_editor_pillar_follows_the_mode_and_grounded_tips_are_tips():
     assert editor_pillar("builder_note", "ideas") == "build_in_public"
     assert editor_pillar("hook", "ideas") == "tip"
     assert editor_pillar("auto_mix", "ideas") == "curation"
-    # 사실 기반 팁은 어떤 모드로 쓰든 팁이다.
+    # 근거 기반 팁은 어떤 모드로 쓰든 팁이다.
     assert editor_pillar("builder_note", "grounded_tip") == "tip"
 
 

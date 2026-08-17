@@ -830,22 +830,22 @@ _T = {
         "ja": "出典確認: {at}",
     },
     "ideas_error_insufficient_sources": {
-        "ko": "서로 다른 신뢰할 수 있는 출처를 두 곳 이상 확인하지 못했습니다. 주제를 조금 더 구체적으로 바꿔 다시 시도해 주세요.",
+        "ko": "서로 다른 신뢰할 수 있는 출처를 두 곳 이상 확인하지 못했다. 주제를 조금 더 구체적으로 바꿔 다시 시도한다.",
         "en": "We could not verify two independent reliable sources. Try a more specific topic.",
         "ja": "異なる信頼できる出典を2件以上確認できませんでした。テーマをもう少し具体的にして再試行してください。",
     },
     "ideas_error_unsafe_personalized_request": {
-        "ko": "건강·금융 팁은 일반 정보만 제공합니다. 개인 증상·처방·복용량이나 보유 종목·매수·매도 판단은 요청할 수 없습니다.",
+        "ko": "건강·금융 팁은 일반 정보만 다룬다. 개인 증상·처방·복용량이나 보유 종목·매수·매도 판단은 요청할 수 없다.",
         "en": "Health and finance tips provide general information only; personal symptoms, prescriptions, holdings, and buy/sell decisions are not supported.",
         "ja": "健康・金融のヒントは一般情報のみです。個人の症状・処方・服用量や保有銘柄・売買判断には対応していません。",
     },
     "ideas_error_unverified_evidence": {
-        "ko": "생성 결과의 근거 URL을 확인할 수 없어 표시하지 않았습니다. 다시 생성해 주세요.",
+        "ko": "생성 결과의 근거 URL을 확인할 수 없어 표시하지 않았다. 다시 생성하면 된다.",
         "en": "The generated evidence URLs could not be verified, so the result was not shown. Please try again.",
         "ja": "生成結果の根拠URLを確認できなかったため表示しませんでした。もう一度生成してください。",
     },
     "ideas_error_grounded_tips_require_grok_cli": {
-        "ko": "근거 기반 팁에는 웹 조사가 가능한 Grok CLI가 필요합니다. Grok CLI 로그인을 확인해 주세요.",
+        "ko": "근거 기반 팁에는 웹 조사가 가능한 Grok CLI가 필요하다. Grok CLI 로그인을 확인한다.",
         "en": "Source-backed tips require Grok CLI with web research. Check the Grok CLI login.",
         "ja": "根拠付きヒントにはウェブ調査ができるGrok CLIが必要です。Grok CLIのログインを確認してください。",
     },

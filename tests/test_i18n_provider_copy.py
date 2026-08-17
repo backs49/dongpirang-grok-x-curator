@@ -1,3 +1,5 @@
+import re
+
 from i18n import _T
 
 
@@ -50,3 +52,18 @@ def test_dead_keys_removed():
         "img_mascot_help",
     ):
         assert key not in _T, key
+
+
+def test_ideas_error_keys_use_pyeoneo_not_yoche():
+    # ideas_error_* 는 새 워크스페이스에서도 그대로 노출되는 폴백 문구라
+    # 평어체를 지킨다 — 어떤 문장도 "요.", "세요." 로 끝나면 안 된다.
+    for key in (
+        "ideas_error_insufficient_sources",
+        "ideas_error_unsafe_personalized_request",
+        "ideas_error_unverified_evidence",
+        "ideas_error_grounded_tips_require_grok_cli",
+    ):
+        ko = _T[key]["ko"]
+        for sentence in re.findall(r"[^.]+\.", ko):
+            assert not sentence.endswith("요.") and not sentence.endswith("세요."), \
+                f"{key}.ko 에 요체 어미가 남아 있다: {sentence!r}"

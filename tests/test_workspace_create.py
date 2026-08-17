@@ -311,7 +311,7 @@ async def test_grounded_tip_selection_carries_the_facts_options(monkeypatch, tmp
     )
     async with user_simulation(page) as user:
         await user.open("/")
-        # 사실 기반 팁을 고르면 분야 칩과 참고 자료 입력이 함께 보인다.
+        # 근거 기반 팁을 고르면 분야 칩과 참고 자료 입력이 함께 보인다.
         await user.should_see(marker="create-category")
         await user.should_see(marker="create-references")
 

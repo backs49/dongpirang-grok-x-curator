@@ -2,7 +2,7 @@
 
 흐름을 이렇게 쪼갠 이유는 돈과 시간이다. 방향 카드 3장은 조사도 글쓰기도
 하지 않아 싸고 빠르다. 완성 글은 비싸다. 그래서 사람이 카드 하나를 고른
-뒤에야 완성 글 요청이 한 번 나간다. 사실 기반 팁도 마찬가지다 — 조사는
+뒤에야 완성 글 요청이 한 번 나간다. 근거 기반 팁도 마찬가지다 — 조사는
 선택 이후 워커가 한다(카드 단계에서는 아무것도 검색하지 않는다).
 
 브라우저는 요청 결과를 들고 있지 않는다. 작업 ID 만 서명된 사용자
@@ -114,7 +114,7 @@ def submit_selected_direction(
 ) -> dict | None:
     """고른 방향 하나로 완성 글 작업을 만든다 — 정확히 한 번.
 
-    사실 기반 팁일 때만 content_type/category/references 를 함께 보낸다.
+    근거 기반 팁일 때만 content_type/category/references 를 함께 보낸다.
     워커는 이 키를 보고 write_grounded_post 로 분기하고, 조사는 그때
     거기서 일어난다.
     """
@@ -242,7 +242,7 @@ def _render_composer(
             .bind_value(store, "create_content_type") \
             .mark("create-type")
 
-        # 사실 기반 팁일 때만 보이는 것들. 조사는 방향을 고른 뒤 워커가 한다.
+        # 근거 기반 팁일 때만 보이는 것들. 조사는 방향을 고른 뒤 워커가 한다.
         grounded = ui.column().classes("w-full gap-2")
         grounded.bind_visibility_from(content_type, "value", value=CONTENT_TYPE_GROUNDED_TIP)
         with grounded:

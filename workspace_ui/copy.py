@@ -76,7 +76,7 @@ _W = {
         "ja": "通常アイデア",
     },
     "create_type_grounded": {
-        "ko": "사실 기반 팁",
+        "ko": "근거 기반 팁",
         "en": "Fact-based tip",
         "ja": "事実ベースのヒント",
     },

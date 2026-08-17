@@ -166,7 +166,7 @@ def editor_sources(job: dict | None) -> list[dict]:
 def editor_pillar(mode: str, content_type: str) -> str:
     """초안에 붙일 콘텐츠 기둥.
 
-    사실 기반 팁은 어떤 문체로 쓰든 팁이다. 나머지는 글쓰기 모드 카드가
+    근거 기반 팁은 어떤 문체로 쓰든 팁이다. 나머지는 글쓰기 모드 카드가
     이미 정해 둔 기둥을 그대로 쓴다(모르는 모드는 curation).
     """
     if content_type == CONTENT_TYPE_GROUNDED_TIP:
