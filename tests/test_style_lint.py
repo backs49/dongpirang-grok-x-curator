@@ -245,3 +245,32 @@ def test_generate_ideas_uses_explicit_language():
     assert NATURAL_STYLE_GUIDE_JA in fake.system
     assert NATURAL_STYLE_GUIDE not in fake.system
     assert get_lang_instruction("ja") in fake.system
+
+
+class TestKoreanSecondOrder:
+    """상투어를 피한 모델이 대신 쓰는 2차 AI 티 (2026-09-29 실사례)."""
+
+    def test_telegraphic_noun_endings(self):
+        text = "영화를 봤다. 감독은 허진호. 개봉은 9월. 가설 칸은 접힘. 오늘은 여기까지 했다."
+        assert any("명사 종결" in h for h in lint(text).s2_hits)
+
+    def test_fact_dump(self):
+        text = "누적 163만3616명, 점유 26.8%, 평점 8.3과 2.2. 1974년 8월 15일 일이다."
+        assert any("숫자" in h for h in lint(text).s2_hits)
+
+    def test_fade_out_closer_and_staged_scene(self):
+        text = "영화가 끝났다. 저녁 바람이 목덜미로 들어왔다. 나는 한 박자 늦게 발을 뗐다."
+        labels = " ".join(lint(text).s2_hits)
+        assert "여운" in labels
+        assert "배경 연출" in labels
+
+    def test_short_fade_line(self):
+        assert any("여운" in h for h in lint("앞줄이 숨을 내쉬었다. 박수는 없었다.").s2_hits)
+
+    def test_plain_conversational_post_is_clean(self):
+        text = (
+            "이 영화 논란은 좀 지나치다고 본다. 창작이라도 실존 인물의 죽음을 다룰 때는 "
+            "확인된 사실과 추측을 구분해 줘야 하는데, 그 선을 흐려 놓고 표현의 자유라고 하면 "
+            "납득이 안 된다. 보고 나서 든 생각이 그거였다."
+        )
+        assert lint(text).clean

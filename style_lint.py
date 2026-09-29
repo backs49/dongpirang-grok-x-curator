@@ -70,6 +70,45 @@ _FIRST_ORDINAL_RE = re.compile(r"첫째,")
 _SECOND_ORDINAL_RE = re.compile(r"둘째,")
 
 
+# 2차 AI 티 — 상투어를 피하도록 학습된 모델이 대신 쓰는 문체(2026-09-29 실사례).
+# 상투어 표는 이걸 못 잡는다. 문장 단위 통계라 전부 S2(배지만, 재작성 없음).
+_KO_SENT_RE = re.compile(r"[^.!?\n]+")
+# 서술어·구어 종결로 보는 마지막 음절. 여기 없는 음절로 끝나면 명사 종결로 센다.
+_KO_VERBAL_END = set("다요죠까지네군걸게야어아해래데나냐니자라고며서면듯ㅋㅎ")
+_KO_DIGIT_RE = re.compile(r"\d[\d,.]*")
+# 어디 있든 여운 공식인 표현 / 두 어절 이하 마지막 문장일 때만 여운인 표현
+# ("박수는 없었다." 는 여운, "어제 배포에 문제는 없었다." 는 그냥 사실)
+_KO_FADE_OUT_RE = re.compile(r"한 박자 늦|에서 멈췄다|그걸로 충분하다")
+_KO_SHORT_FADE_RE = re.compile(r"^\S+[은는] (?:없었다|그대로다)$")
+_KO_STAGED_RE = re.compile(r"목덜미|어깨에 파고|식은 커피|커피는 (?:이미 )?식|형광등|간판이 먼저")
+
+
+def _ko_sentences(text: str) -> list[str]:
+    return [s.strip() for s in _KO_SENT_RE.findall(text) if s.strip()]
+
+
+def _ko_second_order_hits(text: str) -> list[str]:
+    hits: list[str] = []
+    sents = _ko_sentences(text)
+    nominal = 0
+    for sent in sents:
+        last = next((c for c in reversed(sent) if "가" <= c <= "힣" or c in "ㅋㅎ"), "")
+        if last and last not in _KO_VERBAL_END:
+            nominal += 1
+    if nominal >= 3:
+        hits.append("명사 종결 3회 이상 (전보문)")
+    short = [len(s.split()) <= 5 for s in sents]
+    if any(all(short[i : i + 4]) for i in range(len(short) - 3)):
+        hits.append("짧은 문장 4연속")
+    if len(_KO_DIGIT_RE.findall(text)) >= 6:
+        hits.append("숫자·날짜 나열")
+    if sents and (_KO_FADE_OUT_RE.search(sents[-1]) or _KO_SHORT_FADE_RE.match(sents[-1])):
+        hits.append("여운 결말 공식")
+    if _KO_STAGED_RE.search(text):
+        hits.append("배경 연출 묘사")
+    return hits
+
+
 @dataclass
 class LintResult:
     s1_hits: list[str] = field(default_factory=list)
@@ -122,6 +161,7 @@ def _lint_ko(text: str, *, allow_polite: bool) -> LintResult:
             result.s2_hits.append(label)
     if not allow_polite and len(_POLITE_RE.findall(text)) >= 3:
         result.s2_hits.append("요체/합니다체 연속 (평어체 이탈)")
+    result.s2_hits.extend(_ko_second_order_hits(text))
     if len(_EMOJI_RE.findall(text)) >= 2:
         result.s2_hits.append("이모지 2개 이상")
     return result
