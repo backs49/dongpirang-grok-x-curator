@@ -227,3 +227,21 @@ class TestJapanesePatterns:
 
     def test_clock_time_colon_not_flagged(self):
         assert lint("14:30にデプロイして、15:10に戻した。", lang="ja").clean
+
+
+def test_generate_ideas_uses_explicit_language():
+    """워커가 넘긴 language 로 가이드와 출력 언어 지시가 결정된다."""
+    from grok_client import GrokClient
+    from i18n import get_lang_instruction
+    from xalgo_prompts import NATURAL_STYLE_GUIDE, NATURAL_STYLE_GUIDE_JA
+
+    class Fake:
+        def generate_json(self, system_prompt, user_prompt, **kw):
+            self.system = system_prompt
+            return {"error": "stop"}
+
+    fake = Fake()
+    GrokClient(provider=fake).generate_ideas("AI", language="ja")
+    assert NATURAL_STYLE_GUIDE_JA in fake.system
+    assert NATURAL_STYLE_GUIDE not in fake.system
+    assert get_lang_instruction("ja") in fake.system

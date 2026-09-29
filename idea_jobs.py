@@ -11,6 +11,7 @@ from pathlib import Path
 
 from content_queue import queue_lock, save_queue
 from grounded_tips import CONTENT_TYPE_GROUNDED_TIP, CONTENT_TYPE_IDEAS, TIP_CATEGORIES
+from i18n import normalize_language
 
 
 JOBS_PATH = Path("content_queue/idea_jobs.json")
@@ -36,6 +37,7 @@ def _load(path: Path) -> dict:
             job.setdefault("content_type", CONTENT_TYPE_IDEAS)
             job.setdefault("tip_category", "")
             job.setdefault("references", "")
+            job.setdefault("language", "ko")
     return data
 
 
@@ -65,6 +67,7 @@ def create_job(
     content_type: str = CONTENT_TYPE_IDEAS,
     tip_category: str = "",
     references: str = "",
+    language: str = "ko",
     path: Path = JOBS_PATH,
 ) -> dict:
     """새 작업을 먼저 저장한다. 워커는 이 저장이 성공한 뒤에만 시작한다."""
@@ -95,6 +98,8 @@ def create_job(
         "content_type": safe_content_type,
         "tip_category": safe_tip_category,
         "references": safe_references,
+        # 워커는 스트림릿 세션 밖이라 UI 언어를 모른다. 작업에 박아 넘긴다.
+        "language": normalize_language(language),
     }
     with _transaction(path) as data:
         data["jobs"].append(job)

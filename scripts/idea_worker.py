@@ -39,12 +39,14 @@ def run(job_id: str, *, jobs_path: Path = idea_jobs.JOBS_PATH) -> str:
                 references=job.get("references", ""),
                 length=job["length"],
                 mode=job["mode"],
+                language=job.get("language", "ko"),
             )
         else:
             result = grok.generate_ideas(
                 job["keywords"],
                 length=job["length"],
                 mode=job["mode"],
+                language=job.get("language", "ko"),
             )
         if "error" in result:
             idea_jobs.fail_job(job_id, result["error"], path=jobs_path)

@@ -21,7 +21,7 @@ from image_client import GENERATED_DIR, MASCOT_PATH
 from providers.base import ProviderError
 from utils import generate_tweet_intent_url
 from xalgo_prompts import PROMPT_VERSION
-from i18n import t
+from i18n import get_lang, t
 
 
 def _sync_from_slider():
@@ -360,6 +360,7 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
                 content_type=content_type,
                 tip_category=tip_category,
                 references=references,
+                language=get_lang(),
             )
             st.query_params["idea_job"] = active_job["id"]
             st.toast(t("ideas_job_submitted"))

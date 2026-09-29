@@ -23,6 +23,7 @@ def submit_job(
     content_type: str = CONTENT_TYPE_IDEAS,
     tip_category: str = "",
     references: str = "",
+    language: str = "ko",
     jobs_path: Path = idea_jobs.JOBS_PATH,
     popen=subprocess.Popen,
 ) -> dict:
@@ -35,6 +36,7 @@ def submit_job(
         content_type=content_type,
         tip_category=tip_category,
         references=references,
+        language=language,
         path=jobs_path,
     )
     try:
