@@ -80,12 +80,28 @@ class LintResult:
         return not self.s1_hits and not self.s2_hits
 
 
-def lint(text: str, *, allow_polite: bool = False) -> LintResult:
+def lint(text: str, *, allow_polite: bool = False, lang: str = "ko") -> LintResult:
     """텍스트에서 AI 상투 패턴을 찾는다.
 
     allow_polite: 침착맨체·하오체처럼 모드가 존댓말 어미를 명시적으로
-    요구할 때 True — 평어체 이탈 검사만 끈다.
+    요구할 때 True — 평어체 이탈 검사만 끈다(한국어 전용).
+    lang: 출력 언어. AI 티는 언어마다 달라서 언어별 표를 쓴다.
     """
+    if lang == "en":
+        return _lint_en(text)
+    return _lint_ko(text, allow_polite=allow_polite)
+
+
+def _count_hits(text: str, result: LintResult, s1, s2) -> None:
+    for label, pattern in s1:
+        if pattern.search(text):
+            result.s1_hits.append(label)
+    for label, pattern, allowed in s2:
+        if len(pattern.findall(text)) > allowed:
+            result.s2_hits.append(label)
+
+
+def _lint_ko(text: str, *, allow_polite: bool) -> LintResult:
     result = LintResult()
     for label, pattern in S1_PATTERNS:
         if pattern.search(text):
@@ -106,4 +122,59 @@ def lint(text: str, *, allow_polite: bool = False) -> LintResult:
         result.s2_hits.append("요체/합니다체 연속 (평어체 이탈)")
     if len(_EMOJI_RE.findall(text)) >= 2:
         result.s2_hits.append("이모지 2개 이상")
+    return result
+
+
+# 영어 — humanizer(SKILL.md 26패턴)·sepia(style-pass) 에서 짧은 1인칭 X 포스트에
+# 해당하는 것만. 캐주얼 담화 표지("honestly", "actually")는 사람다운 요소라
+# 문두 단독 "Honestly?" 만 잡는다.
+_EN_S1_RAW: tuple[tuple[str, str], ...] = (
+    ("chatbot residue", r"(?i)\b(?:i hope (?:this|that) helps|great question|you'?re absolutely right|let me know if|feel free to)\b"),
+    ("'not X, it's Y'", r"(?i)\bnot\s+(?:just|only|merely|simply)\s+[^.!?]{1,60}[,;]\s*(?:but|it'?s)\b"),
+    ("'in today's fast-paced world'", r"(?i)\bin (?:today'?s|this|an?) (?:fast[- ]paced|ever[- ]changing|ever[- ]evolving|rapidly (?:changing|evolving)|digital) (?:world|age|landscape|era)\b"),
+    ("'let that sink in'", r"(?i)\b(?:let that sink in|read that again)\b"),
+    ("throat-clearing opener", r"(?i)(?:^|[.!?]\s+)(?:here'?s the thing|the thing is[,:]|real talk|let'?s be honest|honestly\?)|\b(?:let'?s dive in|without further ado)\b"),
+    ("AI vocabulary (delve, tapestry...)", r"(?i)\b(?:delv(?:e|es|ed|ing)|tapestry|testament to|underscor(?:e|es|ed|ing)|pivotal|multifaceted|realm|beacon)\b"),
+    ("marketing hype (game-changer...)", r"(?i)\b(?:game[- ]?chang\w*|seamless\w*|unleash\w*|supercharg\w*)\b"),
+    ("moral/future closer", r"(?i)\b(?:the future (?:looks|is) bright|exciting times ahead|in conclusion|to sum up|key takeaway)\b"),
+    ("false depth ('at its core')", r"(?i)\b(?:at its core|the real question is|what really matters|the heart of the matter)\b"),
+    ("-ing commentary tail", r",\s+(?:highlighting|underscoring|showcasing|reflecting|fostering|ensuring)\b"),
+    ("staccato fragments ('No X. No Y. No Z.')", r"(?:\bNo \w+\.\s+){2}No \w+\."),
+    ("em/en dash", r"[—–]|\s--\s"),
+    ("AI emoji", r"[✨🚀💡]"),
+    ("markdown bold (**)", r"\*\*"),
+)
+EN_S1_PATTERNS = tuple((label, re.compile(pat)) for label, pat in _EN_S1_RAW)
+
+_EN_S2_RAW: tuple[tuple[str, str, int], ...] = (
+    ("'isn't just' contrast", r"(?i)\bisn'?t\s+(?:just|only|merely)\b", 1),
+    ("soft hype words (crucial, vibrant...)", r"(?i)\b(?:crucial|vibrant|intricate|foster\w*|navigat\w*|landscape|journey|elevat\w*|harness\w*|robust|thrilled)\b", 1),
+    ("strawman ('don't get me wrong')", r"(?i)\b(?:don'?t get me wrong|to be clear|i'?m not saying)\b", 1),
+    ("'serves as / stands as / boasts'", r"(?i)\b(?:serves as|stands as|boasts)\b", 0),
+    ("filter verbs ('I realized')", r"(?i)\bI (?:realized|noticed|felt)\b", 1),
+    ("engagement-bait ending", r"(?i)(?:thoughts|agree|anyone else)\?\s*\Z", 0),
+    ("'at the end of the day'", r"(?i)\bat the end of the day\b", 0),
+)
+EN_S2_PATTERNS = tuple((label, re.compile(pat), allowed) for label, pat, allowed in _EN_S2_RAW)
+
+_EN_SENTENCE_RE = re.compile(r"[^.!?\n]+[.!?]?")
+
+
+def _same_opener_run(text: str, run: int = 3) -> bool:
+    """문장 첫 단어가 run 번 연속 같은지 ("I tried... I found... I realized...")."""
+    firsts = [
+        m.group().split()[0].lower()
+        for m in _EN_SENTENCE_RE.finditer(text)
+        if m.group().split()
+    ]
+    return any(len(set(firsts[i : i + run])) == 1 for i in range(len(firsts) - run + 1))
+
+
+def _lint_en(text: str) -> LintResult:
+    result = LintResult()
+    _count_hits(text, result, EN_S1_PATTERNS, EN_S2_PATTERNS)
+    if _same_opener_run(text):
+        result.s2_hits.append("same sentence opener 3x in a row")
+    if len(_EMOJI_RE.findall(text)) >= 2:
+        result.s2_hits.append("2+ emoji")
     return result

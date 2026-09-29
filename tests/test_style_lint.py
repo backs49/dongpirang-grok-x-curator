@@ -132,3 +132,60 @@ class TestKoreanImNotAiPatterns:
     def test_mid_sentence_munjeneun_not_flagged(self):
         result = lint("어제 배포에 문제는 없었다.")
         assert result.clean
+
+
+class TestEnglishPatterns:
+    """humanizer·sepia 기반 영어 표."""
+
+    def test_clean_english_passes(self):
+        text = (
+            "Spent two hours on a flaky test yesterday. The cache TTL was 0 in staging. "
+            "Nobody wrote that down anywhere, so I did."
+        )
+        assert lint(text, lang="en").clean
+
+    def test_s1_contrast_vocab_and_closer(self):
+        text = "It's not just a tool, it's a mindset. Let's delve in. The future looks bright."
+        labels = " ".join(lint(text, lang="en").s1_hits)
+        assert "not X" in labels
+        assert "delve" in labels
+        assert "closer" in labels
+
+    def test_korean_table_not_applied_to_english(self):
+        # 한국어 요체 검사·한국어 패턴은 영어에 돌지 않는다.
+        assert lint("결론적으로 좋았습니다.", lang="en").s1_hits == []
+
+    def test_honestly_mid_sentence_is_human(self):
+        assert lint("I honestly thought the build would pass.", lang="en").clean
+
+    def test_s2_same_opener_and_bait(self):
+        text = "I tried the new CLI. I broke prod. I rolled back at 2am. Anyone else?"
+        labels = " ".join(lint(text, lang="en").s2_hits)
+        assert "opener" in labels
+        assert "bait" in labels
+
+
+class TestStyleGuideRouting:
+    def test_guide_per_language(self):
+        from xalgo_prompts import NATURAL_STYLE_GUIDE, NATURAL_STYLE_GUIDE_EN, style_guide_for
+
+        assert style_guide_for("ko") is NATURAL_STYLE_GUIDE
+        assert style_guide_for("en") is NATURAL_STYLE_GUIDE_EN
+        assert style_guide_for("xx") is NATURAL_STYLE_GUIDE
+
+    def test_english_prompt_does_not_stack_korean_guide(self):
+        from grok_client import GrokClient
+        from xalgo_prompts import NATURAL_STYLE_GUIDE, NATURAL_STYLE_GUIDE_EN
+
+        class Fake:
+            def __init__(self):
+                self.calls = []
+
+            def generate_json(self, system_prompt, user_prompt, **kw):
+                self.calls.append(system_prompt)
+                return {"score": 1}
+
+        fake = Fake()
+        GrokClient(provider=fake).optimize_post("body", language="en")
+        assert NATURAL_STYLE_GUIDE_EN in fake.calls[0]
+        assert NATURAL_STYLE_GUIDE not in fake.calls[0]
