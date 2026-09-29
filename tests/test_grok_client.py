@@ -227,9 +227,11 @@ class _CaptureProvider:
     def __init__(self, responses):
         self.responses = list(responses)
         self.calls = []  # (system, user) 튜플
+        self.timeouts = []  # 호출별 timeout 인자 (안 넘기면 "default")
 
-    def generate_json(self, system, user):
+    def generate_json(self, system, user, **kw):
         self.calls.append((system, user))
+        self.timeouts.append(kw.get("timeout", "default"))
         return self.responses.pop(0) if self.responses else {"error": "exhausted"}
 
 
@@ -248,7 +250,7 @@ class _GroundedProvider:
         self.research_calls.append((system, user))
         return self.research_result
 
-    def generate_json(self, system, user):
+    def generate_json(self, system, user, **kw):
         self.write_calls.append((system, user))
         return self.idea_result
 
@@ -561,3 +563,18 @@ class TestDraftFromMaterial:
 
         system = provider.calls[0][0]
         assert "계정 주인의 실제 목소리" not in system
+
+
+
+def test_ideas_call_gets_long_cap_but_rewrite_keeps_default():
+    """아이디어 일괄 생성만 넉넉한 상한, 재작성은 provider 기본값을 쓴다."""
+    import grok_client
+
+    bad = _five_ideas()
+    bad["ideas"][0]["content"] = "결론적으로 이것이 중요합니다."
+    provider = _CaptureProvider([bad, {"rewrites": []}])
+    GrokClient(provider=provider).generate_ideas("AI")
+
+    assert provider.timeouts[0] == grok_client.IDEAS_TIMEOUT_SECONDS
+    assert provider.timeouts[0] is not None  # 무제한이면 멈춘 CLI 가 잡을 영원히 붙잡는다
+    assert provider.timeouts[1] == "default"
