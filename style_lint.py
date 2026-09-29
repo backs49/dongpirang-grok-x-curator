@@ -89,6 +89,8 @@ def lint(text: str, *, allow_polite: bool = False, lang: str = "ko") -> LintResu
     """
     if lang == "en":
         return _lint_en(text)
+    if lang == "ja":
+        return _lint_ja(text, allow_polite=allow_polite)
     return _lint_ko(text, allow_polite=allow_polite)
 
 
@@ -177,4 +179,53 @@ def _lint_en(text: str) -> LintResult:
         result.s2_hits.append("same sentence opener 3x in a row")
     if len(_EMOJI_RE.findall(text)) >= 2:
         result.s2_hits.append("2+ emoji")
+    return result
+
+
+# 일본어 — textlint-rule-preset-ai-writing(no-ai-hype-expressions,
+# ai-tech-writing-guideline, no-ai-colon-continuation)의 리터럴을 옮기고
+# 블로그형 AI 상투구를 더했다. 기술문서 전용 규칙(適切な·効率的な, 수동태,
+# 용어 일관성)은 짧은 구어 포스트에서 오탐만 늘려서 뺐다.
+_JA_S1_RAW: tuple[tuple[str, str], ...] = (
+    ("ブログ定型句（いかがでしたか等）", r"いかがでしたか|について(?:解説|ご紹介|まとめ)(?:します|しました|していきます)|ぜひ参考に|参考になれば幸いです"),
+    ("ぼかし結び（と言えるでしょう等）", r"と言えるでしょう|ではないでしょうか"),
+    ("教訓まとめ（することが重要）", r"することが(?:重要|大切|大事)(?:です|だ)"),
+    ("結論定型（結論として・まとめると）", r"結論(?:として|から言うと)|まとめると"),
+    ("誇張語（ゲームチェンジャー等）", r"ゲームチェンジャー|パラダイムシフト|可能性を解き放つ|潜在能力を引き出す|スーパーチャージ|業界を再定義|新たな基準を設定|フロンティアを開拓|根本的に変革|民主化する|魔法のように|驚嘆させ"),
+    ("序数列挙（第一に）", r"第一に"),
+    ("見出し【】", r"(?:\A|\n)\s*【[^】]*】"),
+    ("ハッシュタグ", r"[#＃][^\s#＃]+"),
+    ("導入コロン（結論：）", r"(?:\A|\n)[^\n：:\d]{1,8}[：:]"),
+    ("ダッシュ（—）", r"[—–]"),
+    ("AI絵文字（✨🚀💡）", r"[✨🚀💡]"),
+    ("マークダウン太字（**）", r"\*\*"),
+    ("箇条書き", r"(?m)^\s*[-*+・]\s"),
+)
+JA_S1_PATTERNS = tuple((label, re.compile(pat)) for label, pat in _JA_S1_RAW)
+
+_JA_S2_RAW: tuple[tuple[str, str, int], ...] = (
+    ("誇張語（革命的・究極の等）", r"革命的な|世界初の|究極の|完璧な|最先端の|次世代の|未来を変える|奇跡的な|驚異的な|不可避の", 1),
+    ("口語でも出る強調（完全に・最高の）", r"完全に|最高の|大幅に", 2),
+    ("まさに・革新的・画期的", r"まさに|革新的|画期的", 1),
+    ("文中コロン", r"[：:](?!\d)", 1),  # 時刻 14:30 は除外
+    ("「また、」反復", r"また、", 1),
+    ("冗長表現（することができる）", r"することができ(?:る|ます)|する必要があ(?:る|ります)|言うまでもなく", 1),
+)
+JA_S2_PATTERNS = tuple((label, re.compile(pat), allowed) for label, pat, allowed in _JA_S2_RAW)
+
+_JA_POLITE_RE = re.compile(r"です[。！？\n]|ます[。！？\n]|でした[。！？\n]|ました[。！？\n]")
+_JA_SENTENCE_END_RE = re.compile(r"(..)[。！？!?]")
+
+
+def _lint_ja(text: str, *, allow_polite: bool) -> LintResult:
+    result = LintResult()
+    _count_hits(text, result, JA_S1_PATTERNS, JA_S2_PATTERNS)
+    # 같은 문말 3연속 — 한국어의 "같은 어미 4연속"을 짧은 일본어 글에 맞춰 3으로
+    ends = _JA_SENTENCE_END_RE.findall(text)
+    if any(ends[i] == ends[i + 1] == ends[i + 2] for i in range(len(ends) - 2)):
+        result.s2_hits.append("同じ文末が3連続")
+    if not allow_polite and len(_JA_POLITE_RE.findall(text)) >= 2:
+        result.s2_hits.append("です・ます調（常体からの逸脱）")
+    if len(_EMOJI_RE.findall(text)) >= 2:
+        result.s2_hits.append("絵文字2つ以上")
     return result

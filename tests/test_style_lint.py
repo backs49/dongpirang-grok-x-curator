@@ -167,10 +167,16 @@ class TestEnglishPatterns:
 
 class TestStyleGuideRouting:
     def test_guide_per_language(self):
-        from xalgo_prompts import NATURAL_STYLE_GUIDE, NATURAL_STYLE_GUIDE_EN, style_guide_for
+        from xalgo_prompts import (
+            NATURAL_STYLE_GUIDE,
+            NATURAL_STYLE_GUIDE_EN,
+            NATURAL_STYLE_GUIDE_JA,
+            style_guide_for,
+        )
 
         assert style_guide_for("ko") is NATURAL_STYLE_GUIDE
         assert style_guide_for("en") is NATURAL_STYLE_GUIDE_EN
+        assert style_guide_for("ja") is NATURAL_STYLE_GUIDE_JA
         assert style_guide_for("xx") is NATURAL_STYLE_GUIDE
 
     def test_english_prompt_does_not_stack_korean_guide(self):
@@ -189,3 +195,35 @@ class TestStyleGuideRouting:
         GrokClient(provider=fake).optimize_post("body", language="en")
         assert NATURAL_STYLE_GUIDE_EN in fake.calls[0]
         assert NATURAL_STYLE_GUIDE not in fake.calls[0]
+
+
+class TestJapanesePatterns:
+    """textlint-rule-preset-ai-writing 기반 일본어 표."""
+
+    def test_clean_japanese_passes(self):
+        text = "昨日、本番のキャッシュが全部飛んだ。原因はTTLの設定ミス。三時間溶けたけど、ログは残ってた。"
+        assert lint(text, lang="ja").clean
+
+    def test_s1_blog_cliches_and_hype(self):
+        text = "今回はAIについて解説します。まさにゲームチェンジャーと言えるでしょう。いかがでしたか？"
+        labels = " ".join(lint(text, lang="ja").s1_hits)
+        assert "ブログ定型句" in labels
+        assert "ぼかし結び" in labels
+        assert "誇張語" in labels
+
+    def test_intro_colon_and_heading(self):
+        labels = " ".join(lint("結論：早く帰れ。\n【まとめ】以上。", lang="ja").s1_hits)
+        assert "導入コロン" in labels
+        assert "見出し" in labels
+
+    def test_polite_run_and_same_ending(self):
+        text = "今日は晴れです。散歩しました。楽しかったです。"
+        assert any("です・ます" in h for h in lint(text, lang="ja").s2_hits)
+        text2 = "眠いんだ。疲れたんだ。帰るんだ。"
+        assert any("文末" in h for h in lint(text2, lang="ja").s2_hits)
+
+    def test_casual_saikou_once_allowed(self):
+        assert lint("仕事終わりのビールが最高のご褒美だった。", lang="ja").clean
+
+    def test_clock_time_colon_not_flagged(self):
+        assert lint("14:30にデプロイして、15:10に戻した。", lang="ja").clean
