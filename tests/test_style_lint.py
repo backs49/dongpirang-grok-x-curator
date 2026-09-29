@@ -94,3 +94,41 @@ class TestS2Patterns:
         result = lint("혁신적이지 않았다.")
         assert not any("혁신적" in h for h in result.s1_hits)
         assert any("혁신적" in h for h in result.s2_hits)
+
+
+class TestKoreanImNotAiPatterns:
+    """im-not-ai 택소노미에서 들여온 한국어 패턴."""
+
+    def test_s1_beyond_and_cleft(self):
+        result = lint("단순한 도구를 넘어 동료다. 중요한 것은 속도다.")
+        labels = " ".join(result.s1_hits)
+        assert "넘어" in labels
+        assert "분열문" in labels
+
+    def test_s1_editorial_metaphor_and_epigram(self):
+        result = lint("레거시가 팀을 잠식했다. 기다림은 포기의 다른 이름이다.")
+        labels = " ".join(result.s1_hits)
+        assert "사설 은유" in labels
+        assert "다른 이름" in labels
+
+    def test_s2_closing_formulas(self):
+        result = lint("그게 우리가 문서를 쓰는 이유다. 이제 움직일 때다.")
+        labels = " ".join(result.s2_hits)
+        assert "이유다" in labels
+        assert "할 때다" in labels
+
+    def test_s2_translationese(self):
+        result = lint("회사에서의 나는 권한을 가지고 있다.")
+        labels = " ".join(result.s2_hits)
+        assert "에서의" in labels
+        assert "가지고 있다" in labels
+
+    def test_single_contrast_and_single_gyeolguk_allowed(self):
+        # "A가 아니라 B"·"결국"·연결어미 쉼표는 한 번은 정상 수사다.
+        result = lint("버그가 아니라 설정이었다. 결국 캐시였지만, 찾는 데 하루 걸렸다.")
+        assert result.s1_hits == []
+        assert result.s2_hits == []
+
+    def test_mid_sentence_munjeneun_not_flagged(self):
+        result = lint("어제 배포에 문제는 없었다.")
+        assert result.clean
