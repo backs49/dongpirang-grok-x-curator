@@ -274,3 +274,10 @@ class TestKoreanSecondOrder:
             "납득이 안 된다. 보고 나서 든 생각이 그거였다."
         )
         assert lint(text).clean
+
+
+def test_en_and_ja_fact_dump_and_taigen():
+    en = "Released 9/23. 1.63M viewers. Rated 8.3 vs 2.2. Set on 8/15/1974."
+    assert any("fact dump" in h for h in lint(en, lang="en").s2_hits)
+    ja = "映画を見た。監督は許秦豪。公開は9月。評価は二極化。争点は計画説。"
+    assert any("体言止め" in h for h in lint(ja, lang="ja").s2_hits)

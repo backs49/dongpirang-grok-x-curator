@@ -217,6 +217,8 @@ def _lint_en(text: str) -> LintResult:
     _count_hits(text, result, EN_S1_PATTERNS, EN_S2_PATTERNS)
     if _same_opener_run(text):
         result.s2_hits.append("same sentence opener 3x in a row")
+    if len(_KO_DIGIT_RE.findall(text)) >= 6:
+        result.s2_hits.append("fact dump (6+ numbers)")
     if len(_EMOJI_RE.findall(text)) >= 2:
         result.s2_hits.append("2+ emoji")
     return result
@@ -264,6 +266,12 @@ def _lint_ja(text: str, *, allow_polite: bool) -> LintResult:
     ends = _JA_SENTENCE_END_RE.findall(text)
     if any(ends[i] == ends[i + 1] == ends[i + 2] for i in range(len(ends) - 2)):
         result.s2_hits.append("同じ文末が3連続")
+    # 体言止め 남발 — 문장이 한자·가타카나·숫자로 끝나면 명사 종결로 센다
+    ja_sents = [x.strip() for x in re.split(r"[。！？!?\n]", text) if x.strip()]
+    if sum(1 for x in ja_sents if re.search(r"[一-龯ァ-ヶー0-9０-９]$", x)) >= 3:
+        result.s2_hits.append("体言止め3回以上（電報文）")
+    if len(_KO_DIGIT_RE.findall(text)) >= 6:
+        result.s2_hits.append("数字・日付の羅列")
     if not allow_polite and len(_JA_POLITE_RE.findall(text)) >= 2:
         result.s2_hits.append("です・ます調（常体からの逸脱）")
     if len(_EMOJI_RE.findall(text)) >= 2:
