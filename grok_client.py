@@ -156,7 +156,10 @@ class GrokClient:
         # language 를 주면 세션 상태 없이 도는 워커에서도 출력 언어가 고정된다.
         # 주지 않으면 기존처럼 Streamlit 세션의 언어를 따른다.
         return self._write_json(
-            OPTIMIZER_SYSTEM_PROMPT + _style_guide(language) + get_lang_instruction(language),
+            OPTIMIZER_SYSTEM_PROMPT
+            + _style_guide(language)
+            + voice_card.build_voice_block()  # 가이드 뒤에 둬 말투는 보이스 카드가 이긴다
+            + get_lang_instruction(language),
             user_content,
         )
 
@@ -778,6 +781,6 @@ class GrokClient:
         user_content = f"두 포스트를 비교 분석해주세요:\n\n=== 포스트 A ===\n{post_a}\n\n=== 포스트 B ===\n{post_b}"
 
         return self.provider.generate_json(
-            AB_COMPARE_SYSTEM_PROMPT + _style_guide() + get_lang_instruction(),
+            AB_COMPARE_SYSTEM_PROMPT + _style_guide() + voice_card.build_voice_block() + get_lang_instruction(),
             user_content,
         )

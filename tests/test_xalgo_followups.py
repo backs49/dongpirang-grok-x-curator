@@ -36,3 +36,33 @@ def test_risk_and_performance_prompts_cover_new_signals():
     assert "관심 없음" in RISK_CHECK_SYSTEM_PROMPT
     assert "참여 구걸" in RISK_CHECK_SYSTEM_PROMPT
     assert "상세 보기" in PERFORMANCE_SYSTEM_PROMPT
+
+
+def test_optimizer_and_compare_follow_voice_card(tmp_path, monkeypatch):
+    import json
+
+    import voice_card
+    from grok_client import GrokClient
+    from xalgo_prompts import AB_COMPARE_SYSTEM_PROMPT, OPTIMIZER_SYSTEM_PROMPT
+
+    for prompt in (OPTIMIZER_SYSTEM_PROMPT, AB_COMPARE_SYSTEM_PROMPT):
+        assert "담백한 평어체" not in prompt
+        assert "계정 주인의 실제 목소리" in prompt
+
+    card = tmp_path / "voice_card.json"
+    card.write_text(json.dumps({"examples": ["해피밀 생수가 왔네요.ㅋ 정상일까요?"], "analysis": ""}, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(voice_card, "VOICE_CARD_PATH", card)
+
+    class Capture:
+        def __init__(self):
+            self.systems = []
+
+        def generate_json(self, system, user, **kw):
+            self.systems.append(system)
+            return {}
+
+    cap = Capture()
+    client = GrokClient(provider=cap)
+    client.optimize_post("본문", language="ko")
+    client.compare_posts("a", "b")
+    assert all("해피밀 생수가 왔네요" in s for s in cap.systems)
