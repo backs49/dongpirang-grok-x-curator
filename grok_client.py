@@ -123,11 +123,12 @@ class GrokClient:
         self.client = getattr(self.provider, "client", None)
 
     def _write_json(self, system_prompt: str, user_prompt: str, **kwargs) -> dict:
-        """글을 쓰는 호출. Grok 은 추론 강도를 low 로 낮춘다.
+        """글을 쓰는 호출. Grok·Claude CLI 는 추론 강도를 low 로 낮춘다.
 
         ~/.grok/config.toml 기본값(xhigh)으로는 짧은 글에 2~6분이 걸리고, 깊게
         생각할수록 다듬어져 AI 같아졌다(2026-09-30 실측: 메모 5편 xhigh 5.2점·
-        2~6분, low 5.8점·약 15초). 조사·분석 호출은 기본값을 그대로 쓴다.
+        2~6분, low 5.8점·약 15초). Claude Sonnet 5.5 도 low 5.8점이 xhigh
+        5.3점보다 낫고 두 배 빠르다. 조사·분석 호출은 기본값을 그대로 쓴다.
         """
         if not hasattr(self.provider, "reasoning_effort"):
             return self.provider.generate_json(system_prompt, user_prompt, **kwargs)

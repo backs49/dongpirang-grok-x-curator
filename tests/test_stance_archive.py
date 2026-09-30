@@ -111,3 +111,15 @@ def test_writing_calls_use_low_effort_but_analysis_keeps_default(monkeypatch):
     client.check_risk("본문")
     assert seen[0][-2:] == ["--effort", "low"]
     assert "--effort" not in seen[-1]
+
+
+def test_claude_writing_calls_use_low_effort(monkeypatch):
+    from providers.claude_cli import ClaudeCliProvider
+
+    provider = ClaudeCliProvider()
+    seen = []
+    monkeypatch.setattr(provider, "_run", lambda cmd, *, timeout: (seen.append(cmd), (0, '{"posts": [{"content": "x"}]}', ""))[1])
+    GrokClient(provider=provider).write_from_memo("테슬라", language="ko")
+    provider.generate_json("s", "u")
+    assert seen[0][-2:] == ["--effort", "low"]
+    assert "--effort" not in seen[1]

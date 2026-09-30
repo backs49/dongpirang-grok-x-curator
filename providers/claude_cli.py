@@ -12,6 +12,9 @@ class ClaudeCliProvider(CliProvider):
     name = "Claude CLI"
     command = "claude"
     supports_curator = False
+    # None 이면 Claude Code 설정을 따른다. 글쓰기 호출은 GrokClient._write_json 이
+    # low 로 바꾼다(2026-09-30 실측: Sonnet 5.5 low 5.8점, xhigh 5.3점·두 배 느림).
+    reasoning_effort: str | None = None
 
     def _json_command(self, system_prompt: str, user_prompt: str) -> list[str]:
         prompt = self._prompt(
@@ -29,6 +32,7 @@ class ClaudeCliProvider(CliProvider):
             "--tools",
             "",
             "--no-session-persistence",
+            *(["--effort", self.reasoning_effort] if self.reasoning_effort else []),
         ]
 
     def _text_command(self, system_prompt: str, user_prompt: str) -> list[str]:
