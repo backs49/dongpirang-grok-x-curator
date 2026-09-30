@@ -532,7 +532,15 @@ class GrokClient:
             + stance_archive.build_stance_block(text)
             + get_lang_instruction(lang)
         )
-        result = self.provider.generate_json(system_prompt, f"메모:\n{text}")
+        # 짧은 글은 깊게 생각할수록 다듬어져 AI 같아진다 — Grok 은 추론 강도를 낮춘다
+        previous = getattr(self.provider, "reasoning_effort", None)
+        if hasattr(self.provider, "reasoning_effort"):
+            self.provider.reasoning_effort = "low"
+        try:
+            result = self.provider.generate_json(system_prompt, f"메모:\n{text}")
+        finally:
+            if hasattr(self.provider, "reasoning_effort"):
+                self.provider.reasoning_effort = previous
         if not isinstance(result, dict):
             return {"error": "응답 형식 오류: 유효한 글이 없습니다"}
         if "error" in result:

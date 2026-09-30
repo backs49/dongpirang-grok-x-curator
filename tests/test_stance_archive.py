@@ -75,3 +75,21 @@ def test_memo_badges_skip_s2_rules_the_owner_also_trips(tmp_path, monkeypatch):
 
     result = GrokClient(provider=Fake()).write_from_memo("테슬라", language="ko")
     assert "짧은 문장 4연속" not in result["posts"][0]["_lint"]["s2"]
+
+
+def test_memo_uses_low_reasoning_effort_on_grok_only_for_that_call(tmp_path, monkeypatch):
+    from providers.grok_cli import GrokCliProvider
+
+    monkeypatch.setattr(stance_archive, "ARCHIVE_PATH", tmp_path / "none.json")
+    provider = GrokCliProvider()
+    seen = []
+
+    def fake_run(cmd, *, timeout):
+        seen.append(cmd)
+        return 0, '{"posts": [{"content": "언제 오르나.."}]}', ""
+
+    monkeypatch.setattr(provider, "_run", fake_run)
+    GrokClient(provider=provider).write_from_memo("테슬라", language="ko")
+    assert seen[0][-2:] == ["--effort", "low"]
+    assert provider.reasoning_effort is None
+    assert "--effort" not in provider._json_command("s", "u")

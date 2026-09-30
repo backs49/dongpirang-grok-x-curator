@@ -86,6 +86,9 @@ class GrokCliProvider(CliProvider):
     name = "Grok CLI"
     command = "grok"
     supports_curator = True
+    # None 이면 ~/.grok/config.toml 기본값(현재 xhigh)을 따른다. 메모로 쓰기처럼
+    # 짧은 글은 low 가 더 빠르고(15초 vs 2~6분) 사람 글에 더 가깝다(2026-09-30 실측).
+    reasoning_effort: str | None = None
 
     def research_json(self, system_prompt: str, user_prompt: str, *, timeout: int = 300) -> dict:
         """웹 검색/가져오기만 허용한 별도 사실 조사 경로."""
@@ -121,6 +124,7 @@ class GrokCliProvider(CliProvider):
             "--tools",
             "",
             "--no-memory",
+            *(["--effort", self.reasoning_effort] if self.reasoning_effort else []),
         ]
 
     def _text_command(self, system_prompt: str, user_prompt: str) -> list[str]:
