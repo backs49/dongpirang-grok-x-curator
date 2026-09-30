@@ -62,10 +62,18 @@ class TestOptimizerActionBreakdown:
     def test_contains_action_breakdown(self):
         assert "action_breakdown" in OPTIMIZER_SYSTEM_PROMPT
 
-    def test_contains_weight_values(self):
-        assert "13.5" in OPTIMIZER_SYSTEM_PROMPT
-        assert "11.0" in OPTIMIZER_SYSTEM_PROMPT
-        assert "0.5" in OPTIMIZER_SYSTEM_PROMPT
+    def test_uses_published_weights_not_estimates(self):
+        """추정치(Reply ×13.5)가 아니라 x-algorithm param.rs 값(2026-09-29)을 쓴다."""
+        import xalgo_prompts as xp
+
+        for name in ("OPTIMIZER_SYSTEM_PROMPT", "AB_COMPARE_SYSTEM_PROMPT", "PERFORMANCE_SYSTEM_PROMPT",
+                     "THREAD_SYSTEM_PROMPT", "DRAFT_FROM_MATERIAL_SYSTEM_PROMPT", "POST_FROM_DIRECTION_SYSTEM_PROMPT"):
+            prompt = getattr(xp, name)
+            assert "×13.5" not in prompt and "×11" not in prompt, name
+            assert "@@" not in prompt, name
+        assert '"weight": 5,' in OPTIMIZER_SYSTEM_PROMPT  # reply
+        assert '"weight": -47.52,' in OPTIMIZER_SYSTEM_PROMPT  # not_interested
+        assert "click_dwell_time 0.4" in OPTIMIZER_SYSTEM_PROMPT
 
 
 class TestCuratorPrompt:
@@ -118,7 +126,7 @@ class TestPromptV2:
     def test_prompt_version_constant(self):
         from xalgo_prompts import PROMPT_VERSION
 
-        assert PROMPT_VERSION == "2.0"
+        assert PROMPT_VERSION == "2.1"
 
     def test_ideas_schema_has_new_fields(self):
         assert '"mode"' in IDEAS_SYSTEM_PROMPT

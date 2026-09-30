@@ -676,6 +676,10 @@ _T = {
         "en": "🖼️ Photo Expand",
         "ja": "🖼️ 画像拡大",
     },
+    "action_share_link": {"ko": "🔗 링크 복사 공유", "en": "🔗 Copy-link share", "ja": "🔗 リンクコピー共有"},
+    "action_click": {"ko": "👆 눌러보기", "en": "👆 Click", "ja": "👆 クリック"},
+    "action_click_dwell": {"ko": "📖 눌러서 끝까지 읽기", "en": "📖 Read after click", "ja": "📖 開いて読む"},
+    "action_not_interested": {"ko": "🙅 관심 없음", "en": "🙅 Not interested", "ja": "🙅 興味なし"},
     "action_oon_discovery": {
         "ko": "🌐 OON 발견",
         "en": "🌐 OON Discovery",
@@ -1802,6 +1806,10 @@ def get_action_labels() -> dict:
         "share": t("action_share"),
         "photo_expansion": t("action_photo_expansion"),
         "oon_discovery": t("action_oon_discovery"),
+        "share_link": t("action_share_link"),
+        "click": t("action_click"),
+        "click_dwell": t("action_click_dwell"),
+        "not_interested": t("action_not_interested"),
     }
 
 

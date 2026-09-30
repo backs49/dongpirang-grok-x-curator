@@ -13,16 +13,16 @@ OPTIMIZER_DEMO = {
     "score": 72,
     "engagement_level": "High",
     "action_breakdown": {
-        "reply": {"probability": 45, "weight": 13.5, "contribution": 6.08},
-        "like": {"probability": 72, "weight": 0.5, "contribution": 0.36},
+        "share_link": {"probability": 6, "weight": 20.0, "contribution": 1.2},
+        "reply": {"probability": 45, "weight": 5.0, "contribution": 2.25},
+        "quote": {"probability": 12, "weight": 5.0, "contribution": 0.6},
+        "follow": {"probability": 18, "weight": 4.0, "contribution": 0.72},
+        "share": {"probability": 22, "weight": 2.0, "contribution": 0.44},
         "repost": {"probability": 28, "weight": 1.0, "contribution": 0.28},
-        "quote": {"probability": 12, "weight": 6.1, "contribution": 0.73},
-        "bookmark": {"probability": 34, "weight": 1.0, "contribution": 0.34},
-        "follow": {"probability": 18, "weight": 12.0, "contribution": 2.16},
-        "dwell_time": {"probability": 80, "weight": 0.5, "contribution": 0.40},
-        "share": {"probability": 22, "weight": 1.0, "contribution": 0.22},
-        "photo_expansion": {"probability": 55, "weight": 1.0, "contribution": 0.55},
-        "oon_discovery": {"probability": 15, "weight": 1.0, "contribution": 0.15},
+        "like": {"probability": 72, "weight": 0.5, "contribution": 0.36},
+        "click_dwell": {"probability": 40, "weight": 0.4, "contribution": 0.16},
+        "click": {"probability": 50, "weight": 0.3, "contribution": 0.15},
+        "not_interested": {"probability": 2, "weight": -47.52, "contribution": -0.95},
     },
     "reasons": [
         "구체적인 숫자와 개인 경험이 포함되어 신뢰도가 높습니다",
@@ -246,7 +246,7 @@ AB_DEMO = {
             "부담 없는 톤이라 like 확률은 준수합니다",
         ],
         "weaknesses": [
-            "질문이나 논점이 없어 reply 유도력이 약합니다 (×13.5 가중치를 놓침)",
+            "질문이나 논점이 없어 reply 유도력이 약합니다 (답글 가중치 5를 놓침)",
             "구체적인 숫자·경험이 없어 bookmark/repost 가치가 낮습니다",
         ],
     },
@@ -256,7 +256,7 @@ AB_DEMO = {
         "strengths": [
             "첫 문장의 구체적 숫자(+487명)가 스크롤을 멈추는 강력한 Hook입니다",
             "개인 경험 서사가 있어 dwell time과 신뢰도가 함께 올라갑니다",
-            "마지막 열린 질문이 reply(×13.5)를 직접 유도합니다",
+            "마지막 열린 질문이 답글(가중치 5)을 직접 유도합니다",
             "실용 팁이 담겨 있어 bookmark(×4.0) 확률이 높습니다",
         ],
         "weaknesses": [
