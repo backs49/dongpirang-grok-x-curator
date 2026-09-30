@@ -41,6 +41,9 @@ def render_performance_tab(grok):
     col3.metric(t("perf_recent_impressions"), f"{summary['recent_impressions']:,}")
     col4.metric(t("perf_engagement_rate"), f"{summary['avg_engagement_pct']:.2f}%")
 
+    if summary.get("has_detail"):
+        st.metric(t("perf_detail_rate"), f"{summary['avg_detail_pct']:.2f}%", help=t("perf_detail_help"))
+
     if not summary["has_dates"]:
         st.warning(t("perf_no_dates"))
 
@@ -97,8 +100,9 @@ def render_performance_tab(grok):
                 with st.container(border=True):
                     text = (p["text"] or "—")[:80]
                     st.markdown(text)
+                    detail = f" · 🔎 {p['detail_pct']:.2f}%" if "detail_pct" in p else ""
                     st.caption(
-                        f"👁 {p['impressions']:,} · 💬 {p['engagement_pct']:.2f}%"
+                        f"👁 {p['impressions']:,} · 💬 {p['engagement_pct']:.2f}%{detail}"
                     )
 
     # ─── AI 인사이트 ───

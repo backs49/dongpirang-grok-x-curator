@@ -420,6 +420,16 @@ _T = {
         "en": "Avg engagement",
         "ja": "平均エンゲージ率",
     },
+    "perf_detail_rate": {
+        "ko": "평균 상세 보기율",
+        "en": "Avg detail expand rate",
+        "ja": "平均詳細表示率",
+    },
+    "perf_detail_help": {
+        "ko": "상세 보기 ÷ 노출. 알고리즘의 '클릭'에 해당한다(2026-09-29부터 가중치 0.3). 클릭 뒤 머문 시간은 내보내기에 없다.",
+        "en": "Detail expands ÷ impressions. This is the algorithm's 'click' (weight 0.3 since 2026-09-29). Dwell after click isn't exported.",
+        "ja": "詳細表示 ÷ インプレッション。アルゴリズムの「クリック」に当たる(2026-09-29 以降の重み 0.3)。クリック後の滞在時間はエクスポートにない。",
+    },
     "perf_no_dates": {
         "ko": "날짜 열을 읽지 못해 전체 데이터를 최근 성과로 간주했어요. 90일 계산이 정확하려면 time/날짜 열이 있는 CSV를 사용하세요.",
         "en": "No date column found, so all data was treated as recent. Use a CSV with a time/date column for an accurate 90-day window.",

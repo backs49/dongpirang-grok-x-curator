@@ -76,9 +76,9 @@ _W = {
         "ja": "メモから書く",
     },
     "create_memo_help": {
-        "ko": "겪은 일이나 생각을 한두 줄 적는다. 예: 호주전 이겨서 잠이 안 옴",
-        "en": "Jot down what happened or what you think, in a line or two.",
-        "ja": "起きたことや考えを一、二行で書く。",
+        "ko": "겪은 일이나 생각을 한두 줄 적는다. 예: 호주전 이겨서 잠이 안 옴. '더 보기'가 붙는 긴 글(한글 140자 이상)을 원하면 실제 있었던 일을 3개 이상 적는다. 분량은 메모 내용만큼 나온다.",
+        "en": "Jot down what happened or what you think, in a line or two. For a long post that folds behind 'Show more', write down at least three things that actually happened. Length follows what the note contains.",
+        "ja": "起きたことや考えを一、二行で書く。「もっと見る」が付く長文にしたいなら、実際にあったことを3つ以上書く。分量はメモの中身の分だけになる。",
     },
     "create_memo_cta": {
         "ko": "내 말투로 5개 쓰기",

@@ -747,8 +747,9 @@ class GrokClient:
             lines = [label]
             for p in posts:
                 text = (p.get("text") or "").replace("\n", " ")[:140]
+                detail = f" · 상세 보기율 {p['detail_pct']:.2f}%" if "detail_pct" in p else ""
                 lines.append(
-                    f"- 노출 {p.get('impressions', 0):,} · 참여율 {p.get('engagement_pct', 0):.2f}% · \"{text}\""
+                    f"- 노출 {p.get('impressions', 0):,} · 참여율 {p.get('engagement_pct', 0):.2f}%{detail} · \"{text}\""
                 )
             return "\n".join(lines)
 
@@ -759,7 +760,8 @@ class GrokClient:
             f"- 총 노출: {summary.get('total_impressions', 0):,}\n"
             f"- 최근 90일 노출: {summary.get('recent_impressions', 0):,}\n"
             f"- 평균 참여율: {summary.get('avg_engagement_pct', 0):.2f}%\n"
-            f"- 수익화 요건(500만 노출) 진행률: {summary.get('monetization_pct', 0):.2f}%\n"
+            + (f"- 평균 상세 보기율(알고리즘의 클릭): {summary.get('avg_detail_pct', 0):.2f}%\n" if summary.get("has_detail") else "")
+            + f"- 수익화 요건(500만 노출) 진행률: {summary.get('monetization_pct', 0):.2f}%\n"
             f"- 일평균 노출: {summary.get('daily_avg_impressions', 0):,.0f}\n"
             f"- 현재 속도 기준 목표까지 예상 일수: {est_days if est_days is not None else '계산 불가'}\n\n"
             + _fmt_posts(summary.get("top_posts", []), "[상위 포스트]")

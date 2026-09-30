@@ -21,6 +21,9 @@ _ANALYTICS_COLUMN_ALIASES = {
     "replies": ("replies", "답글"),
     "reposts": ("retweets", "reposts", "재게시", "리포스트"),
     "bookmarks": ("bookmarks", "북마크"),
+    # 상세 보기 = 알고리즘의 '클릭'(2026-09-29 가중치 0.3). 클릭 뒤 머문 시간은 내보내기에 없다.
+    "detail_expands": ("detail expands", "detail expand", "상세 보기", "상세보기", "상세 보기 수", "세부 정보 확장"),
+    "profile_visits": ("profile visits", "user profile clicks", "프로필 방문", "프로필 방문 수"),
 }
 
 _TIME_FORMATS = (
@@ -220,6 +223,9 @@ def parse_analytics_csv(content: str) -> list[dict]:
         }
         for field in ("engagements", "likes", "replies", "reposts", "bookmarks"):
             post[field] = _parse_metric(row.get(column_for.get(field, ""), ""))
+        for field in ("detail_expands", "profile_visits"):
+            if field in column_for:
+                post[field] = _parse_metric(row.get(column_for[field]))
         posts.append(post)
     return posts
 
@@ -271,11 +277,17 @@ def summarize_performance(posts: list[dict], now: datetime | None = None) -> dic
             post.get("likes", 0) + post.get("replies", 0)
             + post.get("reposts", 0) + post.get("bookmarks", 0)
         )
-        return {
+        brief = {
             "text": post.get("text", ""),
             "impressions": impressions,
             "engagement_pct": engagements / impressions * 100 if impressions else 0.0,
         }
+        if "detail_expands" in post:
+            brief["detail_pct"] = post["detail_expands"] / impressions * 100 if impressions else 0.0
+        return brief
+
+    has_detail = any("detail_expands" in p for p in posts)
+    total_detail = sum(p.get("detail_expands", 0) for p in posts)
 
     return {
         "total_posts": len(posts),
@@ -283,6 +295,8 @@ def summarize_performance(posts: list[dict], now: datetime | None = None) -> dic
         "recent_impressions": recent_impressions,
         "has_dates": has_dates,
         "avg_engagement_pct": avg_engagement_pct,
+        "has_detail": has_detail,
+        "avg_detail_pct": total_detail / total_impressions * 100 if has_detail and total_impressions else 0.0,
         "monetization_pct": monetization_pct,
         "daily_avg_impressions": daily_avg,
         "est_days_to_target": est_days,
