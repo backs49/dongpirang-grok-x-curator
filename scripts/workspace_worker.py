@@ -40,6 +40,10 @@ def _demo_post() -> dict:
     return {"post": {"title": idea["title"], "content": idea["content"]}}
 
 
+def _demo_memo() -> dict:
+    return {"posts": [{"content": idea["content"]} for idea in demo_data.IDEAS_DEMO["ideas"][:5]]}
+
+
 def _demo_optimize() -> dict:
     return copy.deepcopy(demo_data.OPTIMIZER_DEMO)
 
@@ -48,6 +52,7 @@ _DEMO_RESULTS = {
     "directions": _demo_directions,
     "post": _demo_post,
     "optimize": _demo_optimize,
+    "memo": _demo_memo,
 }
 
 
@@ -99,6 +104,10 @@ def run(job_id: str, *, jobs_path: Path = workspace_jobs.JOBS_PATH) -> str:
                 length=request["length"],
                 mode=request["mode"],
                 language=job["language"],
+            )
+        elif job["kind"] == "memo":
+            result = grok.write_from_memo(
+                request["memo"], length=request.get("length", 0), language=job["language"]
             )
         else:
             result = grok.optimize_post(request["text"], language=job["language"])

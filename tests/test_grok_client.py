@@ -605,3 +605,25 @@ def test_write_post_injects_voice_card(monkeypatch, tmp_path):
         language="ko",
     )
     assert "오늘 저녁은 마라탕입니다" in provider.calls[0][0]
+
+
+def test_write_from_memo_uses_minimal_prompt_without_style_guide():
+    """메모로 쓰기는 글쓰기 가이드·모드 카드를 붙이지 않는다(v4 실측 근거)."""
+    from xalgo_prompts import NATURAL_STYLE_GUIDE
+
+    provider = _CaptureProvider([{"posts": [{"content": "잠이 안 오네요!!"}, "문자열도 받는다", {"content": ""}]}])
+    result = GrokClient(provider=provider).write_from_memo("호주전 이김", language="ko")
+
+    system, user = provider.calls[0]
+    assert "지어내" in system or "만들지 않는다" in system
+    assert NATURAL_STYLE_GUIDE not in system
+    assert "모드 카드" not in system
+    assert "호주전 이김" in user
+    assert [p["content"] for p in result["posts"]] == ["잠이 안 오네요!!", "문자열도 받는다"]
+    assert len(provider.calls) == 1  # 재작성 호출 없음
+
+
+def test_write_from_memo_rejects_blank_memo():
+    provider = _CaptureProvider([])
+    assert GrokClient(provider=provider).write_from_memo("  ", language="ko") == {"error": "memo_required"}
+    assert provider.calls == []

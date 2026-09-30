@@ -20,7 +20,7 @@ from content_queue import queue_lock, save_queue
 JOBS_PATH = Path("content_queue/workspace_jobs.json")
 
 # 방향 카드 생성 / 선택한 방향으로 포스트 한 편 작성 / 포스트 최적화.
-JOB_KINDS = ("directions", "post", "optimize")
+JOB_KINDS = ("directions", "post", "optimize", "memo")
 
 # job_view.PENDING_STATUSES 와 동일한 집합을 여기서도 유지한다 — 스토어가
 # UI 모듈을 import 하지 않도록 값만 그대로 복제한다.

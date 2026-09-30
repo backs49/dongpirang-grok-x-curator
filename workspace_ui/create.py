@@ -29,6 +29,13 @@ from workspace_ui.copy import copy
 DIRECTION_FIELDS = ("title", "hook", "angle", "core_message")
 
 DEFAULT_MODE = writing_modes.MY_VOICE
+
+# 메모로 쓰기 — 겪은 일 한두 줄을 계정 주인 말투의 짧은 글 5편으로(v4).
+# 방향 카드를 거치지 않고 한 번에 나온다. 에디터 키는 만들기의 완성 글
+# 에디터와 겹치지 않게 따로 쓴다(editor_storage_keys 참고).
+CONTENT_TYPE_MEMO = "memo"
+MEMO_EDITOR_PREFIX = "memo_"
+MEMO_SOURCE_KIND = "memo"
 DEFAULT_LANGUAGE = "ko"
 
 # 0 = 자동. 모바일에서 슬라이더를 미는 대신 몇 개만 고르게 한다.
@@ -44,6 +51,8 @@ STORAGE_DEFAULTS = {
     "create_direction": None,
     "active_direction_job_id": None,
     "active_post_job_id": None,
+    "active_memo_job_id": None,
+    "memo_choice": None,
     "editor_job_id": None,
     "editor_draft_id": None,
     "editor_text": "",
@@ -138,6 +147,38 @@ def submit_selected_direction(
     return submit("post", request, engine=engine, language=language)
 
 
+def submit_memo(
+    memo: str,
+    *,
+    length: int = 0,
+    engine: str = "",
+    language: str = DEFAULT_LANGUAGE,
+    submitter: Callable | None = None,
+) -> dict | None:
+    """메모 작업 하나를 만든다. 메모가 비면 아무것도 보내지 않는다."""
+    text = str(memo or "").strip()
+    if not text:
+        return None
+    submit = submitter or workspace_job_runner.submit_job
+    return submit("memo", {"memo": text, "length": int(length or 0)}, engine=engine, language=language)
+
+
+def memo_variant_job(job: dict, index: int) -> dict | None:
+    """고른 메모 초안 하나를 에디터가 읽는 완성 글 작업 모양으로 바꾼다.
+
+    에디터는 작업 ID 로 초안을 잇는다. 초안마다 ID 가 달라야 다른 초안을
+    골랐을 때 이전 초안의 본문이 복원되지 않는다.
+    """
+    posts = ((job or {}).get("result") or {}).get("posts") or []
+    if not isinstance(index, int) or not 0 <= index < len(posts):
+        return None
+    return {
+        "id": f"{job.get('id')}-{index}",
+        "status": "completed",
+        "result": {"post": {"content": posts[index].get("content", "")}},
+    }
+
+
 # ─────────────────────────────────────────────────────────────
 # 화면
 # ─────────────────────────────────────────────────────────────
@@ -164,16 +205,18 @@ def render_create() -> None:
 def _render_area(store, settings: dict, repaint: Callable[[], None]) -> None:
     direction_job = job_view.load_job(store.get("active_direction_job_id"))
     post_job = job_view.load_job(store.get("active_post_job_id"))
+    memo_job = job_view.load_job(store.get("active_memo_job_id"))
 
     # 이 렌더 패스 동안만 사는 "제출 중" 표시. store(영속 스토리지)가 아니라
     # 지역 dict 를 쓰는 이유는, 이 값이 세션에 남을 이유가 전혀 없고(다음
     # repaint 마다 새로 만들어야 다음 제출을 다시 받는다) 두 번째 클릭이
     # 아직 끝나지 않은 io_bound 호출 위로 겹쳐 타지 못하게만 막으면 되기
     # 때문이다 — _start_directions/_select_direction 참고.
-    submitting = {"directions": False, "post": False}
+    submitting = {"directions": False, "post": False, "memo": False}
 
     topic = _render_composer(
-        store, settings, repaint, submitting, busy=job_view.is_pending(direction_job)
+        store, settings, repaint, submitting,
+        busy=job_view.is_pending(direction_job) or job_view.is_pending(memo_job),
     )
 
     def keywords() -> str:
@@ -207,11 +250,20 @@ def _render_area(store, settings: dict, repaint: Callable[[], None]) -> None:
             marker="post-job",
         )
 
+    if store.get("active_memo_job_id"):
+        job_view.render_job(
+            memo_job,
+            on_result=lambda job: _render_memo_posts(job, store, settings, repaint),
+            on_retry=lambda: _start_memo(store, settings, repaint, submitting, keywords()),
+            marker="memo-job",
+        )
+
     # 끝나지 않은 작업만 지켜본다. 상태가 바뀌면 영역을 한 번 다시 그린다.
     job_view.watch_jobs(
         {
             store.get("active_direction_job_id"): (direction_job or {}).get("status"),
             store.get("active_post_job_id"): (post_job or {}).get("status"),
+            store.get("active_memo_job_id"): (memo_job or {}).get("status"),
         },
         on_change=repaint,
     )
@@ -235,12 +287,16 @@ def _render_composer(
             .mark("create-topic")
 
         content_type = ui.toggle({
+            CONTENT_TYPE_MEMO: copy("create_type_memo"),
             CONTENT_TYPE_IDEAS: copy("create_type_ideas"),
             CONTENT_TYPE_GROUNDED_TIP: copy("create_type_grounded"),
         }).props("unelevated no-caps dense") \
             .classes("w-full") \
             .bind_value(store, "create_content_type") \
             .mark("create-type")
+
+        ui.label(copy("create_memo_help")).classes("workspace-hint") \
+            .bind_visibility_from(content_type, "value", value=CONTENT_TYPE_MEMO)
 
         # 근거 기반 팁일 때만 보이는 것들. 조사는 방향을 고른 뒤 워커가 한다.
         grounded = ui.column().classes("w-full gap-2")
@@ -274,11 +330,15 @@ def _render_composer(
             ).props("outlined dense").classes("w-full") \
                 .bind_value(store, "create_length").mark("create-length")
 
+            # 메모로 쓰기는 모드 카드를 쓰지 않는다(보이스 카드가 말투를 정한다).
             ui.select(
                 {key: writing_modes.mode_label(key) for key in writing_modes.mode_options()},
                 label=copy("ideas_mode_label"),
             ).props("outlined dense").classes("w-full") \
-                .bind_value(store, "create_mode").mark("create-mode")
+                .bind_value(store, "create_mode").mark("create-mode") \
+                .bind_visibility_from(
+                    content_type, "value", backward=lambda value: value != CONTENT_TYPE_MEMO
+                )
 
         submit = ui.button(
             copy("create_directions_cta"),
@@ -293,6 +353,20 @@ def _render_composer(
             topic, "value",
             backward=lambda value: bool((value or "").strip()) and not busy,
         )
+        submit.bind_visibility_from(
+            content_type, "value", backward=lambda value: value != CONTENT_TYPE_MEMO
+        )
+
+        memo_submit = ui.button(
+            copy("create_memo_cta"),
+            on_click=lambda: _start_memo(store, settings, repaint, submitting, topic.value or ""),
+        ).props(f'{filled_button_props(settings["theme"])} size=lg') \
+            .classes("w-full").mark("create-memo-submit")
+        memo_submit.bind_enabled_from(
+            topic, "value",
+            backward=lambda value: bool((value or "").strip()) and not busy,
+        )
+        memo_submit.bind_visibility_from(content_type, "value", value=CONTENT_TYPE_MEMO)
 
     return topic
 
@@ -429,6 +503,78 @@ async def _select_direction(
         repaint()
     finally:
         submitting["post"] = False
+
+
+def _render_memo_posts(job: dict, store, settings: dict, repaint: Callable[[], None]) -> None:
+    """메모 초안 5편. 하나를 고르면 그 아래에 에디터가 열린다."""
+    posts = (job.get("result") or {}).get("posts") or []
+    ui.label(copy("create_memo_title")).classes("text-base font-semibold")
+    ui.label(copy("create_memo_hint")).classes("workspace-hint")
+
+    for index, post in enumerate(posts):
+        with ui.column().classes("workspace-card w-full gap-1") \
+                .mark("memo-card", f"memo-card-{index}"):
+            ui.label(post.get("content", "")).classes("text-base whitespace-pre-wrap")
+            ui.button(
+                copy("create_memo_select"),
+                on_click=lambda _event, picked=index: _select_memo(picked, store, repaint),
+            ).props(f'{filled_button_props(settings["theme"])} dense') \
+                .classes("w-full").mark(f"memo-select-{index}")
+
+    chosen = memo_variant_job(job, store.get("memo_choice"))
+    if chosen is not None:
+        editor.render_editor(
+            chosen, store,
+            pillar=editor.editor_pillar(DEFAULT_MODE, CONTENT_TYPE_IDEAS),
+            on_published=lambda: _finish_memo(store, repaint),
+            source_kind=MEMO_SOURCE_KIND,
+            key_prefix=MEMO_EDITOR_PREFIX,
+        )
+
+
+async def _start_memo(
+    store, settings: dict, repaint: Callable[[], None], submitting: dict, memo: str
+) -> None:
+    """메모 작업을 큐에 올린다. 가드와 io_bound 를 쓰는 이유는 _start_directions 와 같다."""
+    if submitting["memo"]:
+        return
+    submitting["memo"] = True
+    try:
+        try:
+            job = await run.io_bound(
+                submit_memo,
+                memo,
+                length=store.get("create_length") or 0,
+                engine=settings["engine"],
+                language=settings["language"],
+            )
+        except TimeoutError:
+            ui.notify(copy("queue_busy"))
+            return
+        if job is None:
+            ui.notify(copy("create_topic_required"))
+            return
+        store["active_memo_job_id"] = job["id"]
+        store["memo_choice"] = None
+        editor.clear_editor_state(store, key_prefix=MEMO_EDITOR_PREFIX)
+        repaint()
+    finally:
+        submitting["memo"] = False
+
+
+def _select_memo(index: int, store, repaint: Callable[[], None]) -> None:
+    """초안 하나를 고른다. 다른 초안으로 바꾸면 에디터는 그 초안으로 새로 연다."""
+    if store.get("memo_choice") != index:
+        store["memo_choice"] = index
+        editor.clear_editor_state(store, key_prefix=MEMO_EDITOR_PREFIX)
+    repaint()
+
+
+def _finish_memo(store, repaint: Callable[[], None]) -> None:
+    """발행을 기록한 뒤 메모 결과와 에디터를 닫는다(_finish_post 와 같은 이유)."""
+    store["active_memo_job_id"] = None
+    store["memo_choice"] = None
+    repaint()
 
 
 def _finish_post(store, repaint: Callable[[], None]) -> None:

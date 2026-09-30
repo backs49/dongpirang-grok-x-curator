@@ -238,3 +238,36 @@ def test_worker_completes_demo_optimize_without_building_a_provider(monkeypatch,
     assert build_calls == []
     result = workspace_jobs.get_job(job["id"], path=path)["result"]
     assert "optimized_post" in result
+
+
+class MemoFake:
+    def __init__(self, result):
+        self.result = result
+        self.calls = []
+
+    def write_from_memo(self, memo, *, length, language):
+        self.calls.append((memo, length, language))
+        return self.result
+
+
+def test_worker_runs_memo_job(monkeypatch, tmp_path):
+    path = tmp_path / "workspace_jobs.json"
+    job = workspace_jobs.create_job(
+        "memo", {"memo": "호주전 이겨서 잠이 안 옴", "length": 0},
+        engine="Grok CLI", language="ko", path=path,
+    )
+    fake = MemoFake({"posts": [{"content": "잠이 안 오네요!!"}]})
+    monkeypatch.setattr(workspace_worker, "build_provider", lambda *_: (fake, Ready()))
+
+    assert workspace_worker.run(job["id"], jobs_path=path) == "completed"
+    assert fake.calls == [("호주전 이겨서 잠이 안 옴", 0, "ko")]
+    assert workspace_jobs.get_job(job["id"], path=path)["result"]["posts"][0]["content"] == "잠이 안 오네요!!"
+
+
+def test_worker_completes_demo_memo_without_building_a_provider(tmp_path):
+    path = tmp_path / "workspace_jobs.json"
+    job = workspace_jobs.create_job(
+        "memo", {"memo": "메모", "length": 0}, engine="Demo", language="ko", path=path,
+    )
+    assert workspace_worker.run(job["id"], jobs_path=path) == "completed"
+    assert workspace_jobs.get_job(job["id"], path=path)["result"]["posts"]

@@ -543,3 +543,66 @@ async def test_running_job_keeps_the_primary_action_disabled(monkeypatch):
 
         user.find(marker="create-submit").click()
         assert calls == []
+
+
+def test_memo_submits_one_memo_job_and_skips_blank():
+    from workspace_ui.create import submit_memo
+
+    captured = []
+    submitter = lambda kind, request, **kwargs: captured.append((kind, request, kwargs)) or {"id": "m1"}
+    assert submit_memo("   ", submitter=submitter) is None
+    submit_memo(" 호주전 이김 ", length=80, engine="Grok CLI", language="ko", submitter=submitter)
+    assert captured == [("memo", {"memo": "호주전 이김", "length": 80}, {"engine": "Grok CLI", "language": "ko"})]
+
+
+def test_memo_variant_becomes_an_editor_job_with_its_own_id():
+    from workspace_ui.create import memo_variant_job
+
+    job = {"id": "m1", "result": {"posts": [{"content": "첫째"}, {"content": "둘째"}]}}
+    chosen = memo_variant_job(job, 1)
+    assert chosen["id"] == "m1-1"
+    assert chosen["result"]["post"]["content"] == "둘째"
+    assert memo_variant_job(job, 5) is None
+    assert memo_variant_job(job, None) is None
+
+
+MEMO_DONE = _job(
+    "memo-1", "memo", "completed",
+    result={"posts": [{"content": "잠이 안 오네요!!"}, {"content": "17년 만에 8강이라니"}]},
+)
+
+
+async def test_memo_mode_submits_one_memo_job(monkeypatch):
+    calls = []
+    monkeypatch.setattr(workspace_job_runner, "submit_job", _recording_submitter(calls, "memo-1"))
+    page = _seeded_page(create_content_type="memo")
+    async with user_simulation(page) as user:
+        await user.open("/")
+        await user.should_see(marker="create-memo-submit")
+        await user.should_see("내 말투로 5개 쓰기")
+        user.find(marker="create-topic").type("호주전 이겨서 잠이 안 옴")
+        user.find(marker="create-memo-submit").click()
+        await _wait_until(lambda: calls)
+        assert calls[0]["kind"] == "memo"
+        assert calls[0]["request"]["memo"] == "호주전 이겨서 잠이 안 옴"
+        assert len(calls) == 1
+
+
+async def test_picking_a_memo_draft_opens_the_editor(monkeypatch, tmp_path):
+    calls = []
+    monkeypatch.setattr(editor, "QUEUE_PATH", tmp_path / "queue.json")
+    monkeypatch.setattr(workspace_job_runner, "submit_job", _recording_submitter(calls))
+    monkeypatch.setattr(
+        workspace_jobs, "get_job", lambda job_id, **kw: MEMO_DONE if job_id == "memo-1" else None
+    )
+    page = _seeded_page(create_content_type="memo", active_memo_job_id="memo-1")
+    async with user_simulation(page) as user:
+        await user.open("/")
+        await user.should_see(marker="memo-card-1")
+        await user.should_see("17년 만에 8강이라니")
+
+        user.find(marker="memo-select-1").click()
+        await user.should_see(marker="editor-text")
+        # 결과를 다시 그리고 고르는 동안 프로바이더 요청은 한 번도 나가지 않는다.
+        assert calls == []
+        assert load_queue(tmp_path / "queue.json")["drafts"][0]["text"] == "17년 만에 8강이라니"

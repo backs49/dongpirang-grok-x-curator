@@ -70,6 +70,36 @@ _W = {
         "en": "Write one line of topic first.",
         "ja": "まずテーマを一行書く。",
     },
+    "create_type_memo": {
+        "ko": "메모로 쓰기",
+        "en": "From a note",
+        "ja": "メモから書く",
+    },
+    "create_memo_help": {
+        "ko": "겪은 일이나 생각을 한두 줄 적는다. 예: 호주전 이겨서 잠이 안 옴",
+        "en": "Jot down what happened or what you think, in a line or two.",
+        "ja": "起きたことや考えを一、二行で書く。",
+    },
+    "create_memo_cta": {
+        "ko": "내 말투로 5개 쓰기",
+        "en": "Write five in my voice",
+        "ja": "自分の口調で5つ書く",
+    },
+    "create_memo_title": {
+        "ko": "내 말투 초안 5개",
+        "en": "Five drafts in your voice",
+        "ja": "自分の口調の下書き5つ",
+    },
+    "create_memo_hint": {
+        "ko": "메모에 없는 내용은 넣지 않았다. 마음에 드는 걸 골라 다듬는다.",
+        "en": "Nothing outside your note was added. Pick one and polish it.",
+        "ja": "メモにない内容は入れていない。気に入ったものを選んで整える。",
+    },
+    "create_memo_select": {
+        "ko": "이걸로 다듬기",
+        "en": "Edit this one",
+        "ja": "これを整える",
+    },
     "create_type_ideas": {
         "ko": "일반 아이디어",
         "en": "Regular idea",

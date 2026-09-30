@@ -33,6 +33,7 @@ from xalgo_prompts import (
     GROUNDED_RESEARCH_SYSTEM_PROMPT,
     GROUNDED_TIP_SYSTEM_PROMPT,
     IDEAS_SYSTEM_PROMPT,
+    MEMO_SYSTEM_PROMPT,
     OPTIMIZER_SYSTEM_PROMPT,
     PERFORMANCE_SYSTEM_PROMPT,
     POST_FROM_DIRECTION_SYSTEM_PROMPT,
@@ -512,6 +513,38 @@ class GrokClient:
         result["verified_at"] = datetime.now().isoformat(timespec="seconds")
         self._lint_and_rewrite_post(post, mode=mode, language=language)
         return result
+
+    def write_from_memo(self, memo: str, *, length: int = 0, language: str) -> dict:
+        """겪은 일 메모 한두 줄을 계정 주인 말투의 짧은 글 5편으로.
+
+        글쓰기 가이드·모드 카드를 붙이지 않는 최소 프롬프트다(MEMO_SYSTEM_PROMPT
+        주석 참고). 린트는 배지로만 붙이고 재작성하지 않는다 — 재작성 프롬프트는
+        가이드를 다시 끌어와 말투를 AI 쪽으로 되돌린다.
+        """
+        text = (memo or "").strip()
+        if not text:
+            return {"error": "memo_required"}
+        lang = _resolve_lang(language)
+        system_prompt = (
+            MEMO_SYSTEM_PROMPT.format(length_instruction=_length_instruction(length))
+            + voice_card.build_voice_block()
+            + get_lang_instruction(lang)
+        )
+        result = self.provider.generate_json(system_prompt, f"메모:\n{text}")
+        if not isinstance(result, dict):
+            return {"error": "응답 형식 오류: 유효한 글이 없습니다"}
+        if "error" in result:
+            return result
+        posts = []
+        for item in result.get("posts") or []:
+            content = (item.get("content") if isinstance(item, dict) else item) or ""
+            content = str(content).strip()
+            if content:
+                lr = style_lint.lint(content, allow_polite=True, lang=lang)
+                posts.append({"content": content, "_lint": {"s1": lr.s1_hits, "s2": lr.s2_hits}})
+        if not posts:
+            return {"error": "응답 형식 오류: 유효한 글이 없습니다"}
+        return {"posts": posts[:5]}
 
     def _lint_and_rewrite_post(self, post: dict, *, mode: str, language: str) -> None:
         """한 편짜리 포스트도 S1 검출 시 1회만 재작성한다.
