@@ -356,8 +356,17 @@ class TestGenerateIdeasV2:
         result = grok.generate_ideas("AI")
 
         system = provider.calls[0][0]
-        assert "글쓰기 모드 배정" in system  # 자동 믹스 블록
-        # 자동 믹스: 라벨이 비어 있으면 톤 순환으로 보정된다
+        # v3: 기본은 내 말투 — 장르 배정표(자동 믹스)를 붙이지 않는다
+        assert "[내 말투]" in system
+        assert "글쓰기 모드 배정" not in system
+        assert all(idea["mode"] == writing_modes.MY_VOICE_LABEL for idea in result["ideas"])
+
+    def test_auto_mix_still_selectable(self):
+        import writing_modes
+
+        provider = _CaptureProvider([_five_ideas()])
+        result = GrokClient(provider=provider).generate_ideas("AI", mode=writing_modes.AUTO_MIX)
+        assert "글쓰기 모드 배정" in provider.calls[0][0]
         labels = [idea["mode"] for idea in result["ideas"]]
         assert labels == [
             writing_modes.WRITING_MODES[k]["label"] for k in writing_modes.TONE_ROTATION
@@ -578,3 +587,21 @@ def test_ideas_call_gets_long_cap_but_rewrite_keeps_default():
     assert provider.timeouts[0] == grok_client.IDEAS_TIMEOUT_SECONDS
     assert provider.timeouts[0] is not None  # 무제한이면 멈춘 CLI 가 잡을 영원히 붙잡는다
     assert provider.timeouts[1] == "default"
+
+
+def test_write_post_injects_voice_card(monkeypatch, tmp_path):
+    """워크스페이스 완성 글 경로에도 계정 주인의 실제 글이 붙어야 한다."""
+    import json
+
+    import voice_card
+
+    card = tmp_path / "voice_card.json"
+    card.write_text(json.dumps({"examples": ["오늘 저녁은 마라탕입니다 😸"], "analysis": ""}), encoding="utf-8")
+    monkeypatch.setattr(voice_card, "VOICE_CARD_PATH", card)
+    provider = _CaptureProvider([{"post": {"content": "본문"}}])
+    GrokClient(provider=provider).write_post(
+        "AI",
+        {"title": "t", "hook": "h", "angle": "a", "core_message": "c"},
+        language="ko",
+    )
+    assert "오늘 저녁은 마라탕입니다" in provider.calls[0][0]

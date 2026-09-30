@@ -13,6 +13,12 @@ from __future__ import annotations
 
 AUTO_MIX = "auto_mix"
 
+# 기본 모드(2026-09-30 v3). 장르를 흉내 내지 않고 계정 주인의 말투 하나로
+# 5편을 쓴다. 자동 믹스는 어떤 주제든 유머·스토리·빌더 노트 같은 장르에
+# 끼워 맞추느라 장면을 지어내게 만들어 실험실로 옮겼다.
+MY_VOICE = "my_voice"
+MY_VOICE_LABEL = "내 말투"
+
 # 자동 믹스에서 아이디어 1~5에 순서대로 못박아 배정하는 톤 5종.
 # "다양하게 써라"가 아니라 배정표로 다양성을 구조적으로 강제한다.
 TONE_ROTATION = ("serious", "humor", "story", "hook", "builder_note")
@@ -25,12 +31,19 @@ BASE_MODE_KEYS = (
     "story",
     "hook",
     "builder_note",
+)
+# 작가 문체 카드는 실측에서 사람다움을 떨어뜨렸다(김훈체 2.8 vs 기본 3.8).
+# 선택은 가능하게 두되 기본 목록에서는 뺀다.
+EXPERIMENTAL_MODE_KEYS = (
+    AUTO_MIX,
     "kimhoon",
     "haruki",
     "hemingway",
     "chimchakman",
+    "satire",
+    "haoche",
+    "hankang",
 )
-EXPERIMENTAL_MODE_KEYS = ("satire", "haoche", "hankang")
 
 WRITING_MODES: dict[str, dict] = {
     "serious": {
@@ -240,11 +253,13 @@ def experimental_mode_options() -> tuple[str, ...]:
 
 
 def mode_options() -> list[str]:
-    """UI pills 순서: 자동 믹스 → 기본 모드 → 실험실 모드."""
-    return [AUTO_MIX, *BASE_MODE_KEYS, *EXPERIMENTAL_MODE_KEYS]
+    """UI pills 순서: 내 말투 → 기본 모드 → 실험실 모드(자동 믹스 포함)."""
+    return [MY_VOICE, *BASE_MODE_KEYS, *EXPERIMENTAL_MODE_KEYS]
 
 
 def mode_label(key: str) -> str:
+    if key == MY_VOICE:
+        return MY_VOICE_LABEL
     if key == AUTO_MIX:
         return "자동 믹스"
     card = WRITING_MODES.get(key)
@@ -256,6 +271,8 @@ def label_to_key(label: str) -> str:
     # LLM 이 대괄호를 그대로 에코하는 경우가 있어, 매칭 전에 앞뒤 공백과
     # 대괄호를 벗겨낸다.
     cleaned = label.strip().strip("[]").strip()
+    if cleaned == MY_VOICE_LABEL:
+        return MY_VOICE
     for key, card in WRITING_MODES.items():
         if card["label"] == cleaned:
             return key
@@ -263,6 +280,9 @@ def label_to_key(label: str) -> str:
 
 
 def allow_polite(key: str) -> bool:
+    # 내 말투는 보이스 카드가 어미를 정한다. 계정 주인이 존댓말을 쓰면 존댓말이 맞다.
+    if key == MY_VOICE:
+        return True
     card = WRITING_MODES.get(key)
     return bool(card and card["allow_polite"])
 
@@ -284,6 +304,15 @@ def _card(key: str) -> str:
 
 def build_mode_block(mode_key: str) -> str:
     """IDEAS 시스템 프롬프트 뒤에 붙일 모드 블록."""
+    if mode_key == MY_VOICE:
+        return (
+            f"\n\n# 글쓰기 모드: [{MY_VOICE_LABEL}] — 5개 아이디어 전부 이 모드로 작성\n"
+            f'모든 아이디어의 "mode" 필드에 "{MY_VOICE_LABEL}" 를 넣는다.\n'
+            "- 장르(유머·스토리·분석)를 흉내 내지 않는다. 계정 주인이 평소에 올리는 말투 하나로 쓴다.\n"
+            "- 5개는 말투가 아니라 각도로 다르게 한다: 의견 한마디, 관찰, 질문, 짧은 반응, "
+            "입력에 겪은 일이 있으면 그 일.\n"
+            "- 계정 주인의 실제 글(보이스 카드)이 있으면 길이감·어미·이모지·말버릇까지 그 글에 맞춘다.\n"
+        )
     if mode_key == AUTO_MIX:
         table = "\n".join(
             f"- 아이디어 {i + 1}: [{WRITING_MODES[k]['label']}]"

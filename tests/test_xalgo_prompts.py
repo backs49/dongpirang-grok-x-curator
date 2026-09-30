@@ -40,9 +40,19 @@ class TestIdeasPrompt:
     def test_exists_and_nonempty(self):
         assert len(IDEAS_SYSTEM_PROMPT) > 50
 
-    def test_contains_algorithm_reference(self):
-        lower = IDEAS_SYSTEM_PROMPT.lower()
-        assert "algorithm" in lower or "알고리즘" in lower
+    def test_no_engagement_optimizer_framing(self):
+        # v3(2026-09-30): 생성 단계의 '반응 공식' 틀이 짜인 콘텐츠(AI 티)를 만든다.
+        # 알고리즘 점수·전략은 다듬기 단계(OPTIMIZER)에만 둔다.
+        assert "engagement를 내는 콘텐츠 전략가" not in IDEAS_SYSTEM_PROMPT
+        assert "X Algorithm 최적화 전략" not in IDEAS_SYSTEM_PROMPT
+        assert "직접 쓴 것처럼" in IDEAS_SYSTEM_PROMPT
+
+    def test_guides_forbid_invented_experience(self):
+        from xalgo_prompts import NATURAL_STYLE_GUIDE, NATURAL_STYLE_GUIDE_EN, NATURAL_STYLE_GUIDE_JA
+
+        assert "지어내지 마라" in NATURAL_STYLE_GUIDE
+        assert "Never invent experiences" in NATURAL_STYLE_GUIDE_EN
+        assert "作らない" in NATURAL_STYLE_GUIDE_JA
 
     def test_contains_five_ideas(self):
         assert "5" in IDEAS_SYSTEM_PROMPT

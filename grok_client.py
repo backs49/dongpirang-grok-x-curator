@@ -69,14 +69,21 @@ def _style_guide(language: str | None = None) -> str:
 
 
 def _length_instruction(length: int) -> str:
-    """사용자가 지정한 분량을 완성 글 프롬프트의 지시문으로 바꾼다."""
+    """사용자가 지정한 분량을 완성 글 프롬프트의 지시문으로 바꾼다.
+
+    지정하지 않으면 분량 할당을 두지 않는다. 예전의 '반드시 200~500자,
+    한두 줄로 끝내지 마세요'는 짧게 끝날 글을 억지로 늘려 짜인 에세이
+    (AI 티)를 만들었다(2026-09-30 실측: 80자 제약만으로 사람다움 +1점).
+    """
     if length and length > 0:
         return (
-            f"**분량: 반드시 정확히 약 {length}자(±10% 이내)**. "
-            f"사용자가 직접 지정한 분량이므로 엄격하게 지키세요. "
-            f"한두 줄로 끝내지 마세요."
+            f"**분량: 약 {length}자(±10% 이내)**. 사용자가 직접 지정한 분량이다. "
+            f"분량을 채우려고 사실·장면을 덧붙이지 말고, 할 말의 밀도로 맞춘다."
         )
-    return "**분량: 반드시 200~500자**. 한두 줄로 끝내지 마세요."
+    return (
+        "**분량: 정해진 길이는 없다.** 할 말을 다 하면 끝낸다. 한두 줄이어도 된다. "
+        "억지로 늘리지 않는다."
+    )
 
 
 def _avoid_block(max_sets: int = 3, max_lines: int = 15) -> str:
@@ -137,21 +144,14 @@ class GrokClient:
         self,
         keywords: str,
         length: int = 0,
-        mode: str = writing_modes.AUTO_MIX,
+        mode: str = writing_modes.MY_VOICE,
         language: str | None = None,
     ) -> dict:
         # 워커는 스트림릿 세션 밖에서 돌아서 language 를 받아야 출력 언어가 맞는다.
         lang = _resolve_lang(language)
         current_date_kr = datetime.now().strftime("%Y년 %m월 %d일")
 
-        if length and length > 0:
-            length_instruction = (
-                f"**분량: 반드시 정확히 약 {length}자(±10% 이내)**. "
-                f"사용자가 직접 지정한 분량이므로 엄격하게 지키세요. "
-                f"한두 줄로 끝내지 마세요."
-            )
-        else:
-            length_instruction = "**분량: 반드시 200~500자**. 한두 줄로 끝내지 마세요."
+        length_instruction = _length_instruction(length)
 
         system_prompt = (
             IDEAS_SYSTEM_PROMPT.format(
@@ -198,7 +198,7 @@ class GrokClient:
         category: str,
         references: str = "",
         length: int = 0,
-        mode: str = writing_modes.AUTO_MIX,
+        mode: str = writing_modes.MY_VOICE,
         language: str | None = None,
     ) -> dict:
         """웹 도구가 수집·검증한 사실만 사용해 팁 카드로 작성한다."""
@@ -305,7 +305,7 @@ class GrokClient:
                 fallback = writing_modes.WRITING_MODES[rotation[i % len(rotation)]]["label"]
                 idea["mode"] = (idea.get("mode") or "").strip() or fallback
         else:
-            label = writing_modes.WRITING_MODES[mode]["label"]
+            label = writing_modes.mode_label(mode)
             for idea in result["ideas"]:
                 idea["mode"] = label
 
@@ -375,7 +375,7 @@ class GrokClient:
         self,
         keywords: str,
         *,
-        mode: str = writing_modes.AUTO_MIX,
+        mode: str = writing_modes.MY_VOICE,
         language: str,
     ) -> dict:
         """완성 글 대신 값싼 방향 카드 3장을 먼저 만든다.
@@ -411,7 +411,7 @@ class GrokClient:
         direction: dict,
         *,
         length: int = 0,
-        mode: str = writing_modes.AUTO_MIX,
+        mode: str = writing_modes.MY_VOICE,
         language: str,
     ) -> dict:
         """사용자가 고른 방향 하나로 포스트 한 편만 완성한다."""
@@ -425,6 +425,7 @@ class GrokClient:
             )
             + writing_modes.build_mode_block(mode)
             + _style_guide(language)
+            + voice_card.build_voice_block()
             + get_lang_instruction(language)
         )
         user_prompt = (
@@ -447,7 +448,7 @@ class GrokClient:
         category: str,
         references: str = "",
         length: int = 0,
-        mode: str = writing_modes.AUTO_MIX,
+        mode: str = writing_modes.MY_VOICE,
         language: str,
     ) -> dict:
         """검증된 사실과 고른 방향 하나로 근거 기반 포스트 한 편을 쓴다."""
@@ -492,6 +493,7 @@ class GrokClient:
             GROUNDED_POST_SYSTEM_PROMPT
             + writing_modes.build_mode_block(mode)
             + _style_guide(language)
+            + voice_card.build_voice_block()
             + get_lang_instruction(language)
         )
         result = self._normalize_post(self.provider.generate_json(writer_system, fact_sheet))

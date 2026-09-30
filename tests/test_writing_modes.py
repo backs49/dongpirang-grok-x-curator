@@ -20,8 +20,10 @@ class TestModeCards:
 
     def test_mode_options_order(self):
         opts = wm.mode_options()
-        assert opts[0] == wm.AUTO_MIX
-        assert len(opts) == 13  # auto_mix + 12 modes
+        # v3: 내 말투가 기본, 자동 믹스는 실험실로
+        assert opts[0] == wm.MY_VOICE
+        assert wm.AUTO_MIX in opts
+        assert len(opts) == 14  # my_voice + auto_mix + 12 modes
 
     def test_auto_mix_replaces_satire_with_builder_note(self):
         assert wm.TONE_ROTATION == ("serious", "humor", "story", "hook", "builder_note")
@@ -30,9 +32,13 @@ class TestModeCards:
         assert "풍자" not in block
 
     def test_lab_modes_are_selectable_but_not_automatic(self):
-        assert wm.experimental_mode_options() == ("satire", "haoche", "hankang")
+        lab = wm.experimental_mode_options()
+        # v3: 작가 문체 카드와 자동 믹스는 실측에서 사람다움을 떨어뜨려 실험실로
+        for key in (wm.AUTO_MIX, "kimhoon", "haruki", "hemingway", "chimchakman", "satire", "haoche", "hankang"):
+            assert key in lab
         assert "hankang" in wm.mode_options()
-        assert set(wm.experimental_mode_options()).isdisjoint(wm.TONE_ROTATION)
+        assert set(lab).isdisjoint(wm.TONE_ROTATION)
+        assert set(lab).isdisjoint(wm.base_mode_options())
 
     def test_builder_and_hankang_cards_are_complete(self):
         for key in ("builder_note", "hankang"):
@@ -84,3 +90,15 @@ class TestModeBlock:
         block = wm.build_mode_block("haruki")
         for ex in wm.WRITING_MODES["haruki"]["examples"]:
             assert ex in block
+
+
+class TestMyVoiceMode:
+    def test_my_voice_is_default_and_roundtrips(self):
+        assert wm.mode_label(wm.MY_VOICE) == "내 말투"
+        assert wm.label_to_key("내 말투") == wm.MY_VOICE
+        assert wm.allow_polite(wm.MY_VOICE)  # 어미는 보이스 카드가 정한다
+
+    def test_my_voice_block_varies_angle_not_genre(self):
+        block = wm.build_mode_block(wm.MY_VOICE)
+        assert "장르" in block and "각도" in block
+        assert "모드 카드" not in block  # 장르 카드를 붙이지 않는다

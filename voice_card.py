@@ -59,7 +59,9 @@ def split_examples(raw: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
-def build_voice_block(max_examples: int = 3) -> str:
+# 계정 주인의 실제 게시글은 대개 짧아서(중앙값 80자 안팎) 3편으로는 말버릇이
+# 잘 안 잡힌다. 짧은 글 6편이면 프롬프트 부담도 크지 않다.
+def build_voice_block(max_examples: int = 6) -> str:
     """시스템 프롬프트에 붙일 보이스 카드 블록. 카드가 비었으면 빈 문자열."""
     card = load_voice_card()
     if not card["examples"]:
@@ -70,7 +72,11 @@ def build_voice_block(max_examples: int = 3) -> str:
     ]
     if card["analysis"]:
         lines.append(f"스타일 분석: {card['analysis']}")
-    lines.append("실제 포스트 예시 (문체·리듬·어휘 감각만 흡수, 소재 복제 금지):")
+    lines.append(
+        "실제 포스트 예시 (소재 복제 금지). 어미(존댓말/반말), 이모지, ㅋㅋ·ㅠ·줄임표 같은 "
+        "말버릇, 글 길이감은 글쓰기 가이드의 문체 규칙보다 이 예시를 따른다. "
+        "AI 티 금지 규칙(지어낸 경험·전보문·사실 나열·여운 결말)은 그대로 지킨다:"
+    )
     for ex in card["examples"][:max_examples]:
         if len(ex) > _MAX_EXAMPLE_CHARS:
             ex = ex[:_MAX_EXAMPLE_CHARS] + "…"

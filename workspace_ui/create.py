@@ -28,7 +28,7 @@ from workspace_ui.copy import copy
 # 화면과 요청 어디에도 이 밖의 값을 흘려보내지 않는다.
 DIRECTION_FIELDS = ("title", "hook", "angle", "core_message")
 
-DEFAULT_MODE = writing_modes.AUTO_MIX
+DEFAULT_MODE = writing_modes.MY_VOICE
 DEFAULT_LANGUAGE = "ko"
 
 # 0 = 자동. 모바일에서 슬라이더를 미는 대신 몇 개만 고르게 한다.

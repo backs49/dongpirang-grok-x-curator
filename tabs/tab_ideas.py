@@ -92,7 +92,7 @@ def _ideas_error_message(error: object) -> str:
 
 def _select_base_mode() -> None:
     selected = st.session_state.get("ideas_base_mode")
-    st.session_state["ideas_mode"] = selected or writing_modes.AUTO_MIX
+    st.session_state["ideas_mode"] = selected or writing_modes.MY_VOICE
     if selected:
         st.session_state["ideas_lab_mode"] = None
 
@@ -188,7 +188,7 @@ def _apply_pending_restore():
     if restore is None:
         return
     st.session_state.keywords_input = restore.get("keywords", "")
-    st.session_state.ideas_mode = restore.get("mode") or writing_modes.AUTO_MIX
+    st.session_state.ideas_mode = restore.get("mode") or writing_modes.MY_VOICE
     st.session_state.pop("ideas_base_mode", None)
     st.session_state.pop("ideas_lab_mode", None)
     restored = _restore_fields(restore)
@@ -316,8 +316,8 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
     post_length = st.session_state.post_length
 
     if "ideas_mode" not in st.session_state:
-        st.session_state.ideas_mode = writing_modes.AUTO_MIX
-    base_modes = (writing_modes.AUTO_MIX, *writing_modes.base_mode_options())
+        st.session_state.ideas_mode = writing_modes.MY_VOICE
+    base_modes = (writing_modes.MY_VOICE, *writing_modes.base_mode_options())
     if "ideas_base_mode" not in st.session_state:
         st.session_state["ideas_base_mode"] = (
             st.session_state.ideas_mode if st.session_state.ideas_mode in base_modes else None
@@ -343,7 +343,7 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
             key="ideas_lab_mode",
             on_change=_select_lab_mode,
         )
-    mode = st.session_state.get("ideas_mode") or writing_modes.AUTO_MIX
+    mode = st.session_state.get("ideas_mode") or writing_modes.MY_VOICE
 
     if st.button(t("ideas_generate_btn"), use_container_width=True, type="primary"):
         if grok is None:
