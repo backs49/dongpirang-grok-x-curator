@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import providers.codex_cli as codex_mod
@@ -16,6 +17,8 @@ def _fake_run_writing(payload: str, *, returncode: int = 0, stderr: str = ""):
         assert cmd[1] == "exec"
         assert "--ephemeral" in cmd
         assert "read-only" in cmd
+        assert cmd[cmd.index("-m") + 1] == "gpt-6-luna"
+        assert any(c.startswith("model_reasoning_effort=") for c in cmd)
         out_idx = cmd.index("-o") + 1
         if returncode == 0:
             Path(cmd[out_idx]).write_text(payload, encoding="utf-8")
@@ -76,3 +79,23 @@ class TestCodexCliProvider:
         result = CodexCliProvider().generate_json("system", "user")
         assert "error" in result
         assert "timed out" in result["error"]
+
+
+def test_codex_writing_calls_use_low_and_analysis_keeps_medium(monkeypatch):
+    from grok_client import GrokClient
+    from providers import codex_cli
+
+    seen = []
+
+    def fake_run(cmd, **kw):
+        seen.append(cmd)
+        Path(cmd[cmd.index("-o") + 1]).write_text('{"posts": [{"content": "x"}]}', encoding="utf-8")
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    monkeypatch.setattr(codex_cli.subprocess, "run", fake_run)
+    provider = codex_cli.CodexCliProvider()
+    GrokClient(provider=provider).write_from_memo("테슬라", language="ko")
+    provider.generate_json("s", "u")
+    assert 'model_reasoning_effort="low"' in seen[0]
+    assert 'model_reasoning_effort="medium"' in seen[1]
+    assert seen[0][seen[0].index("-m") + 1] == "gpt-6-luna"

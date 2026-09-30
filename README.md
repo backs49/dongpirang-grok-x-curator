@@ -57,7 +57,7 @@ LLM 호출은 `providers/` 아래 프로바이더 하나로 추상화돼 있다.
 |------|------|
 | **Grok CLI** (기본) | 텍스트 생성 전반, 피드 큐레이터·근거 기반 팁의 검색, 이미지·영상 생성(Grok Imagine) |
 | **Claude CLI** | 텍스트 생성(Sonnet 고정, 카피라이팅에 최상위 모델은 과함) |
-| **Codex CLI** | 텍스트 생성(reasoning medium), 이미지 생성 |
+| **Codex CLI** | 텍스트 생성(gpt-6-luna, reasoning low), 이미지 생성 |
 | **xAI API** | Streamlit 전용. BYOK 키로 `grok-4.3` 등 API 모델 선택. 키는 이미지·영상 API 백엔드에도 쓴다 |
 | **Demo** | 키 없이 미리 준비된 예시 결과로 화면 둘러보기 |
 

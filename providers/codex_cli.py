@@ -8,6 +8,13 @@ from pathlib import Path
 from providers.base import ProviderStatus, extract_json_object
 
 
+# 2026-09-30 메모 블라인드 채점: Codex 중 gpt-6-luna + low 가 품질과 속도
+# 모두 가장 나았다(low 5.5, medium 5.3, high 5.0, xhigh 5.2, max 4.5.
+# Sol 은 강도 불문 4.5–4.9). 모델은 ~/.codex/config.toml 을 따르지 않는다.
+DEFAULT_CODEX_MODEL = "gpt-6-luna"
+DEFAULT_CODEX_EFFORT = "low"
+
+
 class CodexCliProvider:
     """로컬 Codex CLI 텍스트 프로바이더 (ChatGPT 구독 기반).
 
@@ -19,6 +26,9 @@ class CodexCliProvider:
     name = "Codex CLI"
     command = "codex"
     supports_curator = False
+    # 분석·검토 호출은 예전 값 medium 을 유지하고, 글쓰기 호출만
+    # GrokClient._write_json 이 DEFAULT_CODEX_EFFORT(low)로 바꿨다가 되돌린다.
+    reasoning_effort: str | None = "medium"
 
     def is_available(self) -> ProviderStatus:
         if shutil.which(self.command):
@@ -40,10 +50,13 @@ class CodexCliProvider:
                 "read-only",
                 "--color",
                 "never",
-                # 카피라이팅에는 high reasoning 이 과하다 — 품질 차이 없이
-                # 사용량만 아끼도록 medium 으로 고정 (모델 자체는 CLI 기본).
-                "-c",
-                'model_reasoning_effort="medium"',
+                "-m",
+                DEFAULT_CODEX_MODEL,
+                *(
+                    ["-c", f'model_reasoning_effort="{self.reasoning_effort}"']
+                    if self.reasoning_effort
+                    else []
+                ),
                 "-o",
                 str(out_file),
                 prompt,
