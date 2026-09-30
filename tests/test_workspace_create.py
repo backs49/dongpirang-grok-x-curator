@@ -59,7 +59,8 @@ def _seeded_page(**seed):
     """스토리지에 값이 이미 있는 상태에서 페이지를 그린다 = 재접속/재구성."""
 
     def build() -> None:
-        app.storage.user.update(seed)
+        # 기본 선택 이관(메모로 쓰기)은 이미 끝난 상태로 둔다 — 시드가 이긴다.
+        app.storage.user.update({"create_default_version": 4, **seed})
         build_workspace()
 
     return build
@@ -198,7 +199,7 @@ async def test_create_opens_with_one_line_prompt_and_refuses_an_empty_topic(monk
     calls = []
     monkeypatch.setattr(workspace_job_runner, "submit_job", _recording_submitter(calls))
 
-    async with user_simulation(build_workspace) as user:
+    async with user_simulation(_seeded_page(create_content_type="ideas")) as user:
         await user.open("/")
         await user.should_see(marker="create-topic")
         await user.should_see(marker="create-submit")
@@ -221,7 +222,7 @@ async def test_one_topic_line_submits_exactly_one_directions_job(monkeypatch):
         lambda job_id, **kw: _job(job_id, "directions", "queued"),
     )
 
-    async with user_simulation(build_workspace) as user:
+    async with user_simulation(_seeded_page(create_content_type="ideas")) as user:
         await user.open("/")
         user.find(marker="create-topic").type("배포 실수로 배운 것")
 
@@ -376,7 +377,7 @@ async def test_direction_submission_timeout_shows_queue_busy_and_stores_no_job(m
 
     monkeypatch.setattr(workspace_job_runner, "submit_job", raise_timeout)
 
-    async with user_simulation(build_workspace) as user:
+    async with user_simulation(_seeded_page(create_content_type="ideas")) as user:
         await user.open("/")
         user.find(marker="create-topic").type("배포 실수")
         user.find(marker="create-submit").click()
@@ -462,7 +463,7 @@ async def test_double_click_on_directions_submit_sends_exactly_one_job(monkeypat
         lambda job_id, **kw: _job(job_id, "directions", "queued") if job_id == "dir-slow" else None,
     )
 
-    async with user_simulation(build_workspace) as user:
+    async with user_simulation(_seeded_page(create_content_type="ideas")) as user:
         await user.open("/")
         user.find(marker="create-topic").type("배포 실수")
 
@@ -532,7 +533,9 @@ async def test_running_job_keeps_the_primary_action_disabled(monkeypatch):
         workspace_jobs, "get_job", lambda job_id, **kw: _job(job_id, "directions", "running")
     )
 
-    page = _seeded_page(create_input="배포 실수", active_direction_job_id="dir-1")
+    page = _seeded_page(
+        create_input="배포 실수", active_direction_job_id="dir-1", create_content_type="ideas"
+    )
     async with user_simulation(page) as user:
         await user.open("/")
         await user.should_see(marker="direction-job-progress")
@@ -606,3 +609,17 @@ async def test_picking_a_memo_draft_opens_the_editor(monkeypatch, tmp_path):
         # 결과를 다시 그리고 고르는 동안 프로바이더 요청은 한 번도 나가지 않는다.
         assert calls == []
         assert load_queue(tmp_path / "queue.json")["drafts"][0]["text"] == "17년 만에 8강이라니"
+
+
+
+async def test_memo_is_the_default_and_old_browsers_move_to_it_once(monkeypatch):
+    """처음 여는 브라우저도, 예전 선택(일반 아이디어)이 남은 브라우저도 메모로 쓰기로 연다."""
+    def old_browser() -> None:
+        app.storage.user.update({"create_content_type": "ideas"})  # 이관 전 스토리지
+        build_workspace()
+
+    async with user_simulation(old_browser) as user:
+        await user.open("/")
+        await user.should_see(marker="create-memo-submit")
+        assert app.storage.user["create_content_type"] == "memo"
+        assert app.storage.user["create_default_version"] == 4

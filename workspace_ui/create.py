@@ -43,7 +43,7 @@ LENGTH_OPTIONS = (0, 200, 280, 500, 800)
 
 # 이 영역이 쓰는 사용자 스토리지. 새어 나가도 무해한 값만 둔다.
 STORAGE_DEFAULTS = {
-    "create_content_type": CONTENT_TYPE_IDEAS,
+    "create_content_type": CONTENT_TYPE_MEMO,
     "create_category": TIP_CATEGORIES[0],
     "create_references": "",
     "create_length": 0,
@@ -587,10 +587,18 @@ def _finish_post(store, repaint: Callable[[], None]) -> None:
     repaint()
 
 
+# 기본 선택을 메모로 쓰기로 바꾼 버전(2026-09-30). 이미 쓰던 브라우저는
+# 예전 선택이 스토리지에 남아 있어 setdefault 로는 안 바뀐다 — 한 번만 옮긴다.
+CONTENT_TYPE_DEFAULT_VERSION = 4
+
+
 def _init_storage():
     store = app.storage.user
     for key, value in STORAGE_DEFAULTS.items():
         store.setdefault(key, value)
+    if store.get("create_default_version") != CONTENT_TYPE_DEFAULT_VERSION:
+        store["create_content_type"] = CONTENT_TYPE_MEMO
+        store["create_default_version"] = CONTENT_TYPE_DEFAULT_VERSION
     return store
 
 
