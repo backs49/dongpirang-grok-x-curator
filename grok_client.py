@@ -122,6 +122,22 @@ class GrokClient:
         self.model = model
         self.client = getattr(self.provider, "client", None)
 
+    def _write_json(self, system_prompt: str, user_prompt: str, **kwargs) -> dict:
+        """글을 쓰는 호출. Grok 은 추론 강도를 low 로 낮춘다.
+
+        ~/.grok/config.toml 기본값(xhigh)으로는 짧은 글에 2~6분이 걸리고, 깊게
+        생각할수록 다듬어져 AI 같아졌다(2026-09-30 실측: 메모 5편 xhigh 5.2점·
+        2~6분, low 5.8점·약 15초). 조사·분석 호출은 기본값을 그대로 쓴다.
+        """
+        if not hasattr(self.provider, "reasoning_effort"):
+            return self.provider.generate_json(system_prompt, user_prompt, **kwargs)
+        previous = self.provider.reasoning_effort
+        self.provider.reasoning_effort = "low"
+        try:
+            return self.provider.generate_json(system_prompt, user_prompt, **kwargs)
+        finally:
+            self.provider.reasoning_effort = previous
+
     def optimize_post(
         self,
         text: str,
@@ -137,7 +153,7 @@ class GrokClient:
 
         # language 를 주면 세션 상태 없이 도는 워커에서도 출력 언어가 고정된다.
         # 주지 않으면 기존처럼 Streamlit 세션의 언어를 따른다.
-        return self.provider.generate_json(
+        return self._write_json(
             OPTIMIZER_SYSTEM_PROMPT + _style_guide(language) + get_lang_instruction(language),
             user_content,
         )
@@ -171,7 +187,7 @@ class GrokClient:
         # 5분을 자주 넘긴다(2026-09-29 실측 340~900초, 병렬 부하 시 1314초).
         # 무제한으로 두면 멈춘 CLI 가 워커와 running 잡을 영원히 붙잡으므로
         # 이 호출만 넉넉한 상한을 준다. 다른 호출은 provider 기본값(300초).
-        result = self.provider.generate_json(
+        result = self._write_json(
             system_prompt, f"관심사/키워드: {keywords}", timeout=IDEAS_TIMEOUT_SECONDS
         )
         if "error" in result:
@@ -241,7 +257,7 @@ class GrokClient:
             + _style_guide(lang)
             + get_lang_instruction(lang)
         )
-        result = self.provider.generate_json(writer_system, fact_sheet)
+        result = self._write_json(writer_system, fact_sheet)
         if not isinstance(result, dict):
             return {"error": "응답 형식 오류: 유효한 아이디어가 없습니다"}
         if "error" in result:
@@ -343,7 +359,7 @@ class GrokClient:
             + get_lang_instruction(lang)
         )
         try:
-            retry = self.provider.generate_json(rewrite_system, listing)
+            retry = self._write_json(rewrite_system, listing)
             rewrites = retry.get("rewrites", [])
             returned_indexes = [int(rw.get("index", 0)) - 1 for rw in rewrites]
             # 반환된 인덱스 중 하나라도 이번에 보낸 flagged 집합 밖이면
@@ -390,7 +406,7 @@ class GrokClient:
             + writing_modes.build_mode_block(mode)
             + get_lang_instruction(language)
         )
-        result = self.provider.generate_json(system_prompt, f"관심사/키워드: {keywords}")
+        result = self._write_json(system_prompt, f"관심사/키워드: {keywords}")
         if not isinstance(result, dict):
             return {"error": "invalid_directions"}
         if "error" in result:
@@ -435,7 +451,7 @@ class GrokClient:
             "사용자가 고른 방향:\n"
             f"{json.dumps(selected, ensure_ascii=False, indent=2)}"
         )
-        result = self._normalize_post(self.provider.generate_json(system_prompt, user_prompt))
+        result = self._normalize_post(self._write_json(system_prompt, user_prompt))
         if "error" in result:
             return result
 
@@ -498,7 +514,7 @@ class GrokClient:
             + voice_card.build_voice_block()
             + get_lang_instruction(language)
         )
-        result = self._normalize_post(self.provider.generate_json(writer_system, fact_sheet))
+        result = self._normalize_post(self._write_json(writer_system, fact_sheet))
         if "error" in result:
             return result
 
@@ -532,15 +548,7 @@ class GrokClient:
             + stance_archive.build_stance_block(text)
             + get_lang_instruction(lang)
         )
-        # 짧은 글은 깊게 생각할수록 다듬어져 AI 같아진다 — Grok 은 추론 강도를 낮춘다
-        previous = getattr(self.provider, "reasoning_effort", None)
-        if hasattr(self.provider, "reasoning_effort"):
-            self.provider.reasoning_effort = "low"
-        try:
-            result = self.provider.generate_json(system_prompt, f"메모:\n{text}")
-        finally:
-            if hasattr(self.provider, "reasoning_effort"):
-                self.provider.reasoning_effort = previous
+        result = self._write_json(system_prompt, f"메모:\n{text}")
         if not isinstance(result, dict):
             return {"error": "응답 형식 오류: 유효한 글이 없습니다"}
         if "error" in result:
@@ -593,7 +601,7 @@ class GrokClient:
             f"원문:\n{post.get('content', '')}"
         )
         try:
-            retry = self.provider.generate_json(rewrite_system, listing)
+            retry = self._write_json(rewrite_system, listing)
             new_content = (retry.get("content") or "").strip() if isinstance(retry, dict) else ""
             if not new_content:
                 return
@@ -724,7 +732,7 @@ class GrokClient:
         )
 
     def draft_from_material(self, material_text: str) -> dict:
-        return self.provider.generate_json(
+        return self._write_json(
             DRAFT_FROM_MATERIAL_SYSTEM_PROMPT
             + _style_guide()
             + voice_card.build_voice_block()

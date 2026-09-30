@@ -93,3 +93,21 @@ def test_memo_uses_low_reasoning_effort_on_grok_only_for_that_call(tmp_path, mon
     assert seen[0][-2:] == ["--effort", "low"]
     assert provider.reasoning_effort is None
     assert "--effort" not in provider._json_command("s", "u")
+
+
+def test_writing_calls_use_low_effort_but_analysis_keeps_default(monkeypatch):
+    from providers.grok_cli import GrokCliProvider
+
+    provider = GrokCliProvider()
+    seen = []
+
+    def fake_run(cmd, *, timeout):
+        seen.append(cmd)
+        return 0, '{"post": {"content": "본문"}}', ""
+
+    monkeypatch.setattr(provider, "_run", fake_run)
+    client = GrokClient(provider=provider)
+    client.write_post("AI", {"title": "t", "hook": "h", "angle": "a", "core_message": "c"}, language="ko")
+    client.check_risk("본문")
+    assert seen[0][-2:] == ["--effort", "low"]
+    assert "--effort" not in seen[-1]
