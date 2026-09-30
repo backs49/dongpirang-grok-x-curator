@@ -475,6 +475,8 @@ class TestOptimizePostLanguage:
         client.optimize_post("본문")
         client.optimize_post("본문", language=None)
 
-        expected = OPTIMIZER_SYSTEM_PROMPT + NATURAL_STYLE_GUIDE + get_lang_instruction()
+        import voice_card
+
+        expected = OPTIMIZER_SYSTEM_PROMPT + NATURAL_STYLE_GUIDE + voice_card.build_voice_block() + get_lang_instruction()
         assert provider.calls[0][0] == expected
         assert provider.calls[1][0] == expected
