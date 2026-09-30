@@ -12,6 +12,7 @@ from grounded_tips import (
     validate_request,
 )
 import ideas_history
+import stance_archive
 import style_lint
 import voice_card
 import writing_modes
@@ -528,6 +529,7 @@ class GrokClient:
         system_prompt = (
             MEMO_SYSTEM_PROMPT.format(length_instruction=_length_instruction(length))
             + voice_card.build_voice_block()
+            + stance_archive.build_stance_block(text)
             + get_lang_instruction(lang)
         )
         result = self.provider.generate_json(system_prompt, f"메모:\n{text}")
@@ -535,13 +537,21 @@ class GrokClient:
             return {"error": "응답 형식 오류: 유효한 글이 없습니다"}
         if "error" in result:
             return result
+        # 계정 주인 실제 글에도 걸리는 S2 규칙은 이 사람 말투라서 배지에서 뺀다
+        # (줄바꿈 짧은 문장, 이모지 등 — 보이스 카드 6편 중 5편이 '짧은 문장 4연속').
+        own_style = {
+            hit
+            for example in voice_card.load_voice_card()["examples"]
+            for hit in style_lint.lint(example, allow_polite=True, lang=lang).s2_hits
+        }
         posts = []
         for item in result.get("posts") or []:
             content = (item.get("content") if isinstance(item, dict) else item) or ""
             content = str(content).strip()
             if content:
                 lr = style_lint.lint(content, allow_polite=True, lang=lang)
-                posts.append({"content": content, "_lint": {"s1": lr.s1_hits, "s2": lr.s2_hits}})
+                s2 = [h for h in lr.s2_hits if h not in own_style]
+                posts.append({"content": content, "_lint": {"s1": lr.s1_hits, "s2": s2}})
         if not posts:
             return {"error": "응답 형식 오류: 유효한 글이 없습니다"}
         return {"posts": posts[:5]}

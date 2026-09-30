@@ -81,6 +81,12 @@ _KO_DIGIT_RE = re.compile(r"\d[\d,.]*")
 _KO_FADE_OUT_RE = re.compile(r"한 박자 늦|에서 멈췄다|그걸로 충분하다")
 _KO_SHORT_FADE_RE = re.compile(r"^\S+[은는] (?:없었다|그대로다)$")
 _KO_STAGED_RE = re.compile(r"목덜미|어깨에 파고|식은 커피|커피는 (?:이미 )?식|형광등|간판이 먼저")
+# 자기 성향 요약 — 생각 한 줄을 늘리려다 "~하는 편입니다", "~쪽이네요"로 자기를
+# 설명한다. 계정 주인 실제 글 331편에는 한 번도 없다.
+_KO_SELF_TYPING_RE = re.compile(
+    r"(?:하는|는|은|인|한) (?:편|쪽)(?:이에요|이네요|입니다|이다|이야|임)"
+    r"|(?:나는|저는) [^.\n]{0,20}(?:사람|타입)(?:이에요|입니다|이다|이네요)"
+)
 
 
 def _ko_sentences(text: str) -> list[str]:
@@ -106,6 +112,8 @@ def _ko_second_order_hits(text: str) -> list[str]:
         hits.append("여운 결말 공식")
     if _KO_STAGED_RE.search(text):
         hits.append("배경 연출 묘사")
+    if _KO_SELF_TYPING_RE.search(text):
+        hits.append("자기 성향 요약")
     return hits
 
 
