@@ -43,9 +43,9 @@ def test_optimizer_and_compare_follow_voice_card(tmp_path, monkeypatch):
 
     import voice_card
     from grok_client import GrokClient
-    from xalgo_prompts import AB_COMPARE_SYSTEM_PROMPT, OPTIMIZER_SYSTEM_PROMPT
+    from xalgo_prompts import AB_COMPARE_SYSTEM_PROMPT, OPTIMIZER_SYSTEM_PROMPT, THREAD_SYSTEM_PROMPT
 
-    for prompt in (OPTIMIZER_SYSTEM_PROMPT, AB_COMPARE_SYSTEM_PROMPT):
+    for prompt in (OPTIMIZER_SYSTEM_PROMPT, AB_COMPARE_SYSTEM_PROMPT, THREAD_SYSTEM_PROMPT):
         assert "담백한 평어체" not in prompt
         assert "계정 주인의 실제 목소리" in prompt
 
@@ -65,4 +65,6 @@ def test_optimizer_and_compare_follow_voice_card(tmp_path, monkeypatch):
     client = GrokClient(provider=cap)
     client.optimize_post("본문", language="ko")
     client.compare_posts("a", "b")
+    client.optimize_thread("첫 트윗\n---\n둘째 트윗")
+    assert len(cap.systems) == 3
     assert all("해피밀 생수가 왔네요" in s for s in cap.systems)

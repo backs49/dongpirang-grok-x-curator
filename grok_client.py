@@ -702,7 +702,7 @@ class GrokClient:
         user_content = f"스레드 분석 요청 (총 {len(tweets)}개 트윗):\n\n" + "\n\n".join(parts)
 
         return self.provider.generate_json(
-            THREAD_SYSTEM_PROMPT + _style_guide() + get_lang_instruction(),
+            THREAD_SYSTEM_PROMPT + _style_guide() + voice_card.build_voice_block() + get_lang_instruction(),
             user_content,
         )
 
