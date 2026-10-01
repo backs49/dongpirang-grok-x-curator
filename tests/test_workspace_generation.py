@@ -509,3 +509,23 @@ def test_grounded_post_researches_with_grok_and_writes_with_selected_engine(monk
     system = provider.calls[0][0]
     assert GROUNDED_POST_V2_SYSTEM_PROMPT in system
     assert NATURAL_STYLE_GUIDE not in system
+
+
+def test_legacy_grounded_tips_use_v2_in_my_voice(monkeypatch):
+    from providers.base import ProviderStatus
+    from providers.grok_cli import GrokCliProvider
+    from xalgo_prompts import GROUNDED_TIPS_V2_SYSTEM_PROMPT, NATURAL_STYLE_GUIDE
+
+    packet = {
+        "facts": [{"statement": "0세 월 100만 원", "source_urls": ["https://a.go.kr/1", "https://b.kr/2"]}],
+        "sources": [{"url": "https://a.go.kr/1"}, {"url": "https://b.kr/2"}],
+    }
+    monkeypatch.setattr(GrokCliProvider, "is_available", lambda self: ProviderStatus(True, "ok"))
+    monkeypatch.setattr(GrokCliProvider, "research_json", lambda self, s, u, **kw: packet)
+    provider = FakeProvider([{"ideas": [{"title": "t", "content": "부모급여 정리해요", "evidence_urls": ["https://a.go.kr/1"]}]}])
+
+    result = GrokClient(provider=provider).generate_grounded_tips("부모급여", category="daily", language="ko")
+
+    assert result["ideas"][0]["content"] == "부모급여 정리해요"
+    assert GROUNDED_TIPS_V2_SYSTEM_PROMPT in provider.calls[0][0]
+    assert NATURAL_STYLE_GUIDE not in provider.calls[0][0]

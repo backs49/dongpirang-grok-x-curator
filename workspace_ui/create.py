@@ -92,6 +92,21 @@ def normalize_direction(direction: object) -> dict | None:
     return selected
 
 
+def grounded_summary_direction(keywords: str) -> dict:
+    """근거 기반 팁은 방향 카드 없이 이 고정 방향 하나로 바로 조사·정리한다.
+
+    방향 카드는 조사 전에 만들어져 사실과 어긋날 수 있었고, 제도 정리에는 어차피
+    '한 번에 정리' 하나면 됐다(2026-10-01).
+    """
+    topic = str(keywords or "").strip()
+    return {
+        "title": "한 번에 정리",
+        "hook": f"{topic} 핵심 정리",
+        "angle": "대상, 금액·시기, 신청 방법, 놓치기 쉬운 점을 사실표만으로 정리",
+        "core_message": "누가 무엇을 언제 어떻게 받는지",
+    }
+
+
 def submit_directions(
     request: dict,
     *,
@@ -307,6 +322,7 @@ def _render_composer(
         grounded = ui.column().classes("w-full gap-2")
         grounded.bind_visibility_from(content_type, "value", value=CONTENT_TYPE_GROUNDED_TIP)
         with grounded:
+            ui.label(copy("create_grounded_help")).classes("workspace-hint")
             ui.label(copy("ideas_tip_category_label")).classes("workspace-hint")
             ui.toggle({
                 category: copy(f"ideas_tip_category_{category}")
@@ -358,9 +374,22 @@ def _render_composer(
             topic, "value",
             backward=lambda value: bool((value or "").strip()) and not busy,
         )
-        submit.bind_visibility_from(
-            content_type, "value", backward=lambda value: value != CONTENT_TYPE_MEMO
+        submit.bind_visibility_from(content_type, "value", value=CONTENT_TYPE_IDEAS)
+
+        # 근거 기반 팁은 방향 카드를 건너뛰고 바로 조사·정리한다.
+        grounded_submit = ui.button(
+            copy("create_grounded_cta"),
+            on_click=lambda: _select_direction(
+                grounded_summary_direction(topic.value or ""),
+                store, settings, repaint, submitting, topic.value or "",
+            ),
+        ).props(f'{filled_button_props(settings["theme"])} size=lg') \
+            .classes("w-full").mark("create-grounded-submit")
+        grounded_submit.bind_enabled_from(
+            topic, "value",
+            backward=lambda value: bool((value or "").strip()) and not busy,
         )
+        grounded_submit.bind_visibility_from(content_type, "value", value=CONTENT_TYPE_GROUNDED_TIP)
 
         memo_submit = ui.button(
             copy("create_memo_cta"),

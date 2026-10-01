@@ -120,6 +120,16 @@ _W = {
         "en": "Auto",
         "ja": "自動",
     },
+    "create_grounded_cta": {
+        "ko": "근거 찾아 정리하기",
+        "en": "Research and summarize",
+        "ja": "根拠を調べてまとめる",
+    },
+    "create_grounded_help": {
+        "ko": "제도·정책 이름만 넣으면 공식 자료를 찾아 대상·금액·신청 방법·놓치기 쉬운 점을 한 편으로 정리한다. 4~5분 걸린다.",
+        "en": "Enter just the program or policy name. It finds official sources and summarizes who qualifies, how much, how to apply and what people miss. Takes 4–5 minutes.",
+        "ja": "制度・政策の名前だけ入れれば、公式資料を探して対象・金額・申請方法・見落としやすい点を1本にまとめる。4〜5分かかる。",
+    },
     "create_directions_cta": {
         "ko": "방향 3개 보기",
         "en": "See three directions",

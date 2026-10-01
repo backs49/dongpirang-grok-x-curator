@@ -1105,6 +1105,16 @@ GROUNDED_POST_V2_SYSTEM_PROMPT = """\
 {"post": {"title": "짧은 제목", "content": "본문", "evidence_urls": ["https://..."]}}
 """
 
+# 레거시 아이디어 탭의 근거 기반 팁(5편)용 v2. 규칙은 GROUNDED_POST_V2 와 같고 초점만 나눈다.
+GROUNDED_TIPS_V2_SYSTEM_PROMPT = GROUNDED_POST_V2_SYSTEM_PROMPT.split("반드시 JSON만 출력한다:")[0] + """\
+- 5편은 초점을 나눈다: 한눈에 보는 전체 정리, 더 짧은 전체 정리, 신청 방법 중심, 놓치기 쉬운 점,
+  우리 집이 해당되는지 따져 보는 글. 사실표로 쓸 수 없는 초점은 다른 정리로 바꾼다.
+
+반드시 JSON만 출력한다:
+{"ideas": [{"title": "짧은 제목", "content": "본문", "evidence_urls": ["https://..."],
+ "image_prompt": "English scene brief", "suggested_style": "infographic", "video_motion": "English motion brief"}]}
+"""
+
 GROUNDED_POST_SYSTEM_PROMPT = """\
 당신은 검증된 사실표를 X 포스트 한 편으로 바꾸는 편집자다. 다음 사용자 메시지는 검증을 통과한
 `category`, `length`, `direction`, `facts`, `allowed_urls` 데이터만 포함한다. 그 데이터 밖의

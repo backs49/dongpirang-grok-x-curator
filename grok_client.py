@@ -32,6 +32,7 @@ from xalgo_prompts import (
     DRAFT_FROM_MATERIAL_SYSTEM_PROMPT,
     GROUNDED_POST_SYSTEM_PROMPT,
     GROUNDED_POST_V2_SYSTEM_PROMPT,
+    GROUNDED_TIPS_V2_SYSTEM_PROMPT,
     GROUNDED_RESEARCH_SYSTEM_PROMPT,
     GROUNDED_TIP_SYSTEM_PROMPT,
     IDEAS_SYSTEM_PROMPT,
@@ -271,12 +272,16 @@ class GrokClient:
             },
             ensure_ascii=False,
         )
-        writer_system = (
-            GROUNDED_TIP_SYSTEM_PROMPT
-            + writing_modes.build_mode_block(mode)
-            + _style_guide(lang)
-            + get_lang_instruction(lang)
-        )
+        if mode == writing_modes.MY_VOICE:
+            # 기본(내 말투)은 워크스페이스와 같은 v2: 짧은 지시 + 보이스 카드.
+            writer_system = GROUNDED_TIPS_V2_SYSTEM_PROMPT + voice_card.build_voice_block() + get_lang_instruction(lang)
+        else:
+            writer_system = (
+                GROUNDED_TIP_SYSTEM_PROMPT
+                + writing_modes.build_mode_block(mode)
+                + _style_guide(lang)
+                + get_lang_instruction(lang)
+            )
         result = self._write_json(writer_system, fact_sheet)
         if not isinstance(result, dict):
             return {"error": "응답 형식 오류: 유효한 아이디어가 없습니다"}

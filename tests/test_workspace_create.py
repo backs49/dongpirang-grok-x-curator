@@ -623,3 +623,25 @@ async def test_memo_is_the_default_and_old_browsers_move_to_it_once(monkeypatch)
         await user.should_see(marker="create-memo-submit")
         assert app.storage.user["create_content_type"] == "memo"
         assert app.storage.user["create_default_version"] == 4
+
+
+async def test_grounded_tip_skips_directions_and_summarizes_directly(monkeypatch, tmp_path):
+    """근거 기반 팁은 방향 카드 없이 '한 번에 정리' 완성 글 작업 하나를 바로 보낸다."""
+    calls = []
+    monkeypatch.setattr(editor, "QUEUE_PATH", tmp_path / "queue.json")
+    monkeypatch.setattr(workspace_job_runner, "submit_job", _recording_submitter(calls, "post-9"))
+    monkeypatch.setattr(workspace_jobs, "get_job", lambda job_id, **kw: _job(job_id, "post", "running"))
+
+    page = _seeded_page(create_input="부모급여", create_content_type="grounded_tip", create_category="daily")
+    async with user_simulation(page) as user:
+        await user.open("/")
+        await user.should_see(marker="create-grounded-submit")
+        user.find(marker="create-grounded-submit").click()
+        await _wait_until(lambda: calls)
+
+    assert len(calls) == 1
+    assert calls[0]["kind"] == "post"
+    request = calls[0]["request"]
+    assert request["content_type"] == "grounded_tip"
+    assert request["keywords"] == "부모급여"
+    assert request["direction"]["title"] == "한 번에 정리"
