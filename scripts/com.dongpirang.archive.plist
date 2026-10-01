@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dongpirang.archive</string>
+
+    <!-- 매일 07:20: 과거 글 아카이브(my_posts.json)에 새 글·답글을 덧붙인다. -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>7</integer><key>Minute</key><integer>20</integer></dict>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/manggo-chaltteog/antigravity-workspace/dongpirang-grok-x-curator</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/manggo-chaltteog/antigravity-workspace/dongpirang-grok-x-curator/venv/bin/python</string>
+        <string>scripts/refresh_archive.py</string>
+    </array>
+
+    <!-- codex/claude CLI 가 PATH 에서 발견되도록 로그인 셸 PATH 를 지정 -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/manggo-chaltteog/.npm-global/bin:/Users/manggo-chaltteog/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/dongpirang-archive.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/dongpirang-archive.err</string>
+</dict>
+</plist>

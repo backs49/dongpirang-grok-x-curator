@@ -13,15 +13,20 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 from nicegui import app, run, ui
 
+import content_queue
+import memo_feedback
 import workspace_job_runner
 import writing_modes
 from grounded_tips import CONTENT_TYPE_GROUNDED_TIP, CONTENT_TYPE_IDEAS, TIP_CATEGORIES
 from workspace_ui import editor, job_view
 from workspace_ui.copy import copy
+
+logger = logging.getLogger(__name__)
 
 
 # 방향 카드가 들고 다니는 전부. grok_client 의 정규화와 같은 네 필드다 —
@@ -570,8 +575,28 @@ def _select_memo(index: int, store, repaint: Callable[[], None]) -> None:
     repaint()
 
 
+def _record_memo_feedback(store) -> None:
+    """고른 초안과 발행한 최종본을 memo_feedback 에 남긴다. 실패해도 발행은 끝난 것이다."""
+    try:
+        job = job_view.load_job(store.get("active_memo_job_id"))
+        choice = store.get("memo_choice")
+        if not job or not isinstance(choice, int):
+            return
+        source_id = f"{job.get('id')}-{choice}"
+        data = content_queue.load_queue(editor.QUEUE_PATH)
+        published = [
+            d for d in data.get("drafts", [])
+            if d.get("source_job_id") == source_id and d.get("status") == "published"
+        ]
+        if published:
+            memo_feedback.record_publish(job, choice, published[-1].get("text", ""))
+    except Exception:  # noqa: BLE001 — 기록은 부가 기능이라 화면을 막지 않는다
+        logger.exception("memo feedback record failed")
+
+
 def _finish_memo(store, repaint: Callable[[], None]) -> None:
     """발행을 기록한 뒤 메모 결과와 에디터를 닫는다(_finish_post 와 같은 이유)."""
+    _record_memo_feedback(store)
     store["active_memo_job_id"] = None
     store["memo_choice"] = None
     repaint()
