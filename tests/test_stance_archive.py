@@ -123,3 +123,25 @@ def test_claude_writing_calls_use_low_effort(monkeypatch):
     provider.generate_json("s", "u")
     assert seen[0][-2:] == ["--effort", "low"]
     assert "--effort" not in seen[1]
+
+
+def test_curator_reply_drafts_follow_owner_reply_register(tmp_path, monkeypatch):
+    _archive(tmp_path, monkeypatch, [
+        {"text": "@a 와우 축하드립니다!!\n고생많으셨어요", "referenced_tweets": [{"type": "replied_to", "id": "1"}]},
+        {"text": "오늘 점심은 김치찌개였어요"},  # 답글 아님
+    ])
+    assert stance_archive.reply_examples() == ["와우 축하드립니다!! / 고생많으셨어요"]
+
+    from xalgo_prompts import CURATOR_SYSTEM_PROMPT
+
+    assert "담백한 평어체" not in CURATOR_SYSTEM_PROMPT
+
+    class Capture:
+        def generate_json(self, system, user, **kw):
+            self.system = system
+            return {"recommendations": []}
+
+    cap = Capture()
+    GrokClient(provider=cap).curate_feed("테슬라")
+    assert "OWNER REPLY EXAMPLES" in cap.system
+    assert "와우 축하드립니다!!" in cap.system

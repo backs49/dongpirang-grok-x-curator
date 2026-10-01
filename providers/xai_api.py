@@ -66,6 +66,10 @@ class XaiApiProvider:
             language_pair=get_content_language_pair(),
             output_language=output_lang_name,
         )
+        # 답글 초안은 계정 주인의 실제 답글 말투를 따른다(게시글과 달리 거의 요체)
+        import stance_archive
+
+        system_prompt += stance_archive.build_reply_voice_block()
 
         today = datetime.now()
         from_date = (today - timedelta(days=7)).strftime("%Y-%m-%d")

@@ -691,6 +691,7 @@ class GrokClient:
             "search_keywords, suggested_reply, and engagement_hint. Do not claim these are "
             "real-time X posts."
         )
+        system_prompt += stance_archive.build_reply_voice_block()
         return self.provider.generate_json(system_prompt + get_lang_instruction(), user_prompt)
 
     def optimize_thread(self, thread_text: str) -> dict:

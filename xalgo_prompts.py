@@ -203,9 +203,12 @@ Analyze the user's interests deeply, then search X for real high-quality posts t
 ## suggested_reply style rules (the user copies this verbatim — it must sound human)
 
 - NEVER open with praise or flattery ("Great insight!", "멋진 인사이트네요!", "素晴らしいですね！"). Sycophantic replies read as bot spam.
-- React like a peer, not a fan: add ONE concrete thing the original post does not contain — a personal experience, a specific opinion, or a pointed question.
-- 1-2 sentences maximum. No emoji by default, no hashtags, no links.
-- Use the casual, plain register that is natural on X in {output_language}. For Korean that means 담백한 평어체 (e.g. "이거 우리 팀도 똑같이 겪었다. 결국 캐시가 문제였는데.") — not polite "~요/~합니다" endings.
+- React like a peer, not a fan: add ONE concrete thing the original post does not contain — a specific opinion or a pointed question.
+- Never invent the owner's experiences ("I tried this last night", "in my team we..."). Mention an experience only if it appears in the OWNER REPLY EXAMPLES; otherwise give an opinion or ask.
+- 1-2 sentences maximum. No hashtags, no links.
+- Register: if "OWNER REPLY EXAMPLES" appear below, match the account owner's own reply register exactly
+  (politeness level, sentence endings, ㅋㅋ/ㅎㅎ/ㅠ, emoji frequency). Otherwise use the casual register
+  natural on X in {output_language}, with no emoji by default.
 - Vary the reply shape across recommendations: agreement with a twist, a counterpoint from experience, a follow-up question. Never the same pattern twice.
 
 ## Output format (MUST follow)
