@@ -304,7 +304,11 @@ class TestGenerateGroundedTips:
         assert result["verified_at"]
         assert result["ideas"][0]["mode"] == "한강체"
 
-    def test_requires_grok_cli_research_transport(self):
+    def test_requires_grok_cli_research_transport(self, monkeypatch):
+        from providers.base import ProviderStatus
+        from providers.grok_cli import GrokCliProvider
+
+        monkeypatch.setattr(GrokCliProvider, "is_available", lambda self: ProviderStatus(False, "x"))
         result = GrokClient(provider=_CaptureProvider([])).generate_grounded_tips(
             "수면", category="health"
         )

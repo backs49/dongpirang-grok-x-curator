@@ -51,10 +51,18 @@ def _iter_source_metadata(value: Any) -> Iterator[dict[str, str]]:
         yield from _iter_source_metadata(nested)
 
 
+def _is_web_tool(event: dict) -> bool:
+    name = str(event.get("toolName") or event.get("title") or "").strip().rstrip(":").lower().replace(" ", "_")
+    return name in {"web_search", "web_fetch"} or event.get("kind") in {"search", "fetch"}
+
+
 def _parse_research_stream(stdout: str) -> dict:
     """Grok streaming-json의 텍스트와 웹 도구가 실제 반환한 출처를 분리한다."""
     text_chunks: list[str] = []
     sources_by_url: dict[str, dict[str, str]] = {}
+    # 2026-10 Grok CLI 는 도구 이름을 tool_call 에만 싣고("Web search:", "web_fetch")
+    # tool_call_update 에는 toolCallId 만 남긴다. 예전 형식(update 에 toolName)도 받는다.
+    web_call_ids: set[str] = set()
 
     for line in stdout.splitlines():
         try:
@@ -67,9 +75,11 @@ def _parse_research_stream(stdout: str) -> dict:
         if event.get("type") == "text" and isinstance(event.get("data"), str):
             text_chunks.append(event["data"])
 
+        if event.get("type") == "tool_call" and _is_web_tool(event):
+            web_call_ids.add(str(event.get("toolCallId")))
         if event.get("type") != "tool_call_update":
             continue
-        if event.get("toolName") not in {"web_search", "web_fetch"}:
+        if not (_is_web_tool(event) or str(event.get("toolCallId")) in web_call_ids):
             continue
         for source in _iter_source_metadata(event.get("rawOutput")):
             sources_by_url.setdefault(source["url"], source)

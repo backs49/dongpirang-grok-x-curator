@@ -325,7 +325,11 @@ class TestWriteGroundedPost:
         assert provider.research_calls == []
         assert provider.calls == []
 
-    def test_requires_grok_cli_research_transport(self):
+    def test_requires_grok_cli_research_transport(self, monkeypatch):
+        from providers.base import ProviderStatus
+        from providers.grok_cli import GrokCliProvider
+
+        monkeypatch.setattr(GrokCliProvider, "is_available", lambda self: ProviderStatus(False, "x"))
         provider = FakeProvider([])
 
         result = GrokClient(provider=provider).write_grounded_post(
@@ -480,3 +484,28 @@ class TestOptimizePostLanguage:
         expected = OPTIMIZER_SYSTEM_PROMPT + NATURAL_STYLE_GUIDE + voice_card.build_voice_block() + get_lang_instruction()
         assert provider.calls[0][0] == expected
         assert provider.calls[1][0] == expected
+
+
+
+def test_grounded_post_researches_with_grok_and_writes_with_selected_engine(monkeypatch):
+    """조사는 Grok CLI, 글은 선택한 엔진. 기본 모드는 v2 짧은 프롬프트를 쓴다."""
+    from providers.base import ProviderStatus
+    from providers.grok_cli import GrokCliProvider
+    from xalgo_prompts import GROUNDED_POST_V2_SYSTEM_PROMPT, NATURAL_STYLE_GUIDE
+
+    packet = {
+        "facts": [{"statement": "지급 연령이 9세 미만으로 늘었다", "source_urls": ["https://a.go.kr/1", "https://b.kr/2"]}],
+        "sources": [{"url": "https://a.go.kr/1", "title": "", "excerpt": ""}, {"url": "https://b.kr/2"}],
+    }
+    monkeypatch.setattr(GrokCliProvider, "is_available", lambda self: ProviderStatus(True, "ok"))
+    monkeypatch.setattr(GrokCliProvider, "research_json", lambda self, s, u, **kw: packet)
+    provider = FakeProvider([{"post": {"title": "t", "content": "아동수당 바뀐 거 정리해요", "evidence_urls": ["https://a.go.kr/1"]}}])
+
+    result = GrokClient(provider=provider).write_grounded_post(
+        keywords="아동수당", direction=_direction(), category="daily", language="ko"
+    )
+
+    assert result["post"]["content"] == "아동수당 바뀐 거 정리해요"
+    system = provider.calls[0][0]
+    assert GROUNDED_POST_V2_SYSTEM_PROMPT in system
+    assert NATURAL_STYLE_GUIDE not in system

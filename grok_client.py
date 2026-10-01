@@ -31,6 +31,7 @@ from xalgo_prompts import (
     DIRECTIONS_SYSTEM_PROMPT,
     DRAFT_FROM_MATERIAL_SYSTEM_PROMPT,
     GROUNDED_POST_SYSTEM_PROMPT,
+    GROUNDED_POST_V2_SYSTEM_PROMPT,
     GROUNDED_RESEARCH_SYSTEM_PROMPT,
     GROUNDED_TIP_SYSTEM_PROMPT,
     IDEAS_SYSTEM_PROMPT,
@@ -121,6 +122,20 @@ class GrokClient:
         self.provider = provider or XaiApiProvider(api_key=api_key, model=model)
         self.model = model
         self.client = getattr(self.provider, "client", None)
+
+    def _research(self):
+        """웹 조사 함수. 선택한 엔진에 없으면 Grok CLI 로 조사한다.
+
+        조사(웹 검색)는 Grok CLI 만 할 수 있지만, 글은 선택한 엔진(Claude 등)이 쓰는 편이
+        낫다(2026-09-30 실측). 그래서 조사만 Grok 에 맡기고 글쓰기는 그대로 둔다.
+        """
+        research = getattr(self.provider, "research_json", None)
+        if callable(research):
+            return research
+        from providers.grok_cli import GrokCliProvider
+
+        grok = GrokCliProvider()
+        return grok.research_json if grok.is_available().available else None
 
     def _write_json(self, system_prompt: str, user_prompt: str, **kwargs) -> dict:
         """글을 쓰는 호출. reasoning_effort 가 있는 CLI 는 이 호출만 low 로 낮춘다.
@@ -230,8 +245,8 @@ class GrokClient:
         if error := validate_request(request):
             return {"error": error}
 
-        research = getattr(self.provider, "research_json", None)
-        if not callable(research):
+        research = self._research()
+        if research is None:
             return {"error": "grounded_tips_require_grok_cli"}
 
         research_input = (
@@ -483,8 +498,8 @@ class GrokClient:
         if selected is None:
             return {"error": "invalid_direction"}
 
-        research = getattr(self.provider, "research_json", None)
-        if not callable(research):
+        research = self._research()
+        if research is None:
             return {"error": "grounded_tips_require_grok_cli"}
 
         research_input = (
@@ -512,13 +527,19 @@ class GrokClient:
             },
             ensure_ascii=False,
         )
-        writer_system = (
-            GROUNDED_POST_SYSTEM_PROMPT
-            + writing_modes.build_mode_block(mode)
-            + _style_guide(language)
-            + voice_card.build_voice_block()
-            + get_lang_instruction(language)
-        )
+        if mode == writing_modes.MY_VOICE:
+            # 기본(내 말투)은 짧은 지시 + 보이스 카드. 긴 가이드는 에세이 말투를 만든다.
+            writer_system = (
+                GROUNDED_POST_V2_SYSTEM_PROMPT + voice_card.build_voice_block() + get_lang_instruction(language)
+            )
+        else:
+            writer_system = (
+                GROUNDED_POST_SYSTEM_PROMPT
+                + writing_modes.build_mode_block(mode)
+                + _style_guide(language)
+                + voice_card.build_voice_block()
+                + get_lang_instruction(language)
+            )
         result = self._normalize_post(self._write_json(writer_system, fact_sheet))
         if "error" in result:
             return result

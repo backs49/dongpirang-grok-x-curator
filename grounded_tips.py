@@ -91,16 +91,17 @@ def validate_request(request: GroundedTipRequest) -> str | None:
 def _normalized_source(raw_source: Any) -> dict[str, str] | None:
     if not isinstance(raw_source, dict):
         return None
-    title = raw_source.get("title")
-    excerpt = raw_source.get("excerpt")
     url = raw_source.get("url")
-    if not all(isinstance(value, str) and value.strip() for value in (title, excerpt, url)):
-        return None
-    normalized_url = normalize_url(url)
+    normalized_url = normalize_url(url) if isinstance(url, str) else ""
     if not normalized_url:
         return None
+    # 2026-10 Grok CLI 의 검색 결과는 URL 만 싣는다. 제목이 없으면 도메인으로 대신한다.
+    title = raw_source.get("title")
+    excerpt = raw_source.get("excerpt")
+    title = title.strip() if isinstance(title, str) and title.strip() else source_host(normalized_url)
+    excerpt = excerpt if isinstance(excerpt, str) else ""
     return {
-        "title": title.strip(),
+        "title": title,
         "url": normalized_url,
         "publisher": str(raw_source.get("publisher") or "").strip(),
         "published_at": str(raw_source.get("published_at") or "").strip(),
@@ -121,31 +122,34 @@ def validate_research_packet(packet: Any) -> dict[str, Any]:
     sources_by_url: dict[str, dict[str, str]] = {}
     for raw_source in raw_sources:
         source = _normalized_source(raw_source)
-        if source is None:
-            return {"error": "insufficient_sources"}
-        sources_by_url.setdefault(source["url"], source)
+        if source is not None:
+            sources_by_url.setdefault(source["url"], source)
 
     if len({source_host(url) for url in sources_by_url}) < 2:
         return {"error": "insufficient_sources"}
 
+    # 도구가 실제로 열어 본 URL 을 인용한 사실만 남긴다. 예전에는 사실 하나라도 못 연
+    # URL 을 인용하면 조사 전체를 버려서, 멀쩡한 사실까지 잃고 자주 실패했다.
     normalized_facts: list[dict[str, Any]] = []
     for raw_fact in raw_facts:
         if not isinstance(raw_fact, dict):
-            return {"error": "insufficient_sources"}
+            continue
         statement = raw_fact.get("statement")
         raw_urls = raw_fact.get("source_urls")
         if not isinstance(statement, str) or not statement.strip() or not isinstance(raw_urls, list):
-            return {"error": "insufficient_sources"}
+            continue
         fact_urls: list[str] = []
         for raw_url in raw_urls:
             normalized_url = normalize_url(raw_url) if isinstance(raw_url, str) else ""
-            if not normalized_url or normalized_url not in sources_by_url:
-                return {"error": "insufficient_sources"}
-            if normalized_url not in fact_urls:
+            if normalized_url in sources_by_url and normalized_url not in fact_urls:
                 fact_urls.append(normalized_url)
-        if not fact_urls:
-            return {"error": "insufficient_sources"}
-        normalized_facts.append({"statement": statement.strip(), "source_urls": fact_urls})
+        if fact_urls:
+            normalized_facts.append({"statement": statement.strip(), "source_urls": fact_urls})
+
+    cited = {url for fact in normalized_facts for url in fact["source_urls"]}
+    if not normalized_facts or len({source_host(url) for url in cited}) < 2:
+        return {"error": "insufficient_sources"}
+    sources_by_url = {url: src for url, src in sources_by_url.items() if url in cited}
 
     return {"facts": normalized_facts, "sources": list(sources_by_url.values())}
 
