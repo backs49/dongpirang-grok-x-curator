@@ -445,13 +445,8 @@ def render_ideas_tab(grok, image_client=None, video_client=None):
                 source_bits = _grounded_source_bits(idea.get("sources"))
                 if source_bits:
                     with st.expander(t("ideas_sources")):
-                        for source_index, (title, url, published_at) in enumerate(source_bits):
-                            st.link_button(
-                                title,
-                                url,
-                                key=f"idea_source_{i}_{source_index}",
-                                use_container_width=True,
-                            )
+                        for title, url, published_at in source_bits:
+                            st.link_button(title, url, use_container_width=True)
                             if published_at:
                                 st.caption(published_at)
 
