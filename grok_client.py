@@ -40,6 +40,7 @@ from xalgo_prompts import (
     OPTIMIZER_SYSTEM_PROMPT,
     PERFORMANCE_SYSTEM_PROMPT,
     POST_FROM_DIRECTION_SYSTEM_PROMPT,
+    REPLY_SEED_SYSTEM_PROMPT,
     RISK_CHECK_SYSTEM_PROMPT,
     SCHEDULER_SYSTEM_PROMPT,
     THREAD_SYSTEM_PROMPT,
@@ -771,6 +772,38 @@ class GrokClient:
             + get_lang_instruction(),
             f"소재 메모:\n{material_text}",
         )
+
+    def draft_from_reply(self, reply: str, parent: str = "") -> dict:
+        """계정 주인이 단 답글 하나를 혼자 서는 원글 초안으로 (REPLY_SEED_SYSTEM_PROMPT).
+
+        반환: {"post", "pillar", "image_prompt"} / 혼자 설 수 없으면 {"skip": True,
+        "reason"} / 실패하면 {"error"}. 답글은 한국어라 언어를 ko 로 고정한다
+        (배치에는 세션 언어가 없다).
+        """
+        text = (reply or "").strip()
+        if not text:
+            return {"error": "reply_required"}
+        system_prompt = (
+            REPLY_SEED_SYSTEM_PROMPT
+            + voice_card.build_voice_block()
+            + stance_archive.build_stance_block(text, exclude=text)
+            + get_lang_instruction("ko")
+        )
+        user_prompt = (
+            f"원글:\n{(parent or '').strip() or '(원글을 가져오지 못했다)'}\n\n"
+            f"이 사람이 단 답글:\n{text}"
+        )
+        result = self._write_json(system_prompt, user_prompt)
+        if not isinstance(result, dict):
+            return {"error": "응답 형식 오류: 유효한 글이 없습니다"}
+        if "error" in result:
+            return result
+        if result.get("skip") is True:
+            return {"skip": True, "reason": str(result.get("reason") or "")}
+        post = str(result.get("post") or "").strip()
+        if not post:
+            return {"error": "empty post"}
+        return {"post": post, "pillar": "curation", "image_prompt": ""}
 
     def analyze_performance(self, summary: dict) -> dict:
         def _fmt_posts(posts: list, label: str) -> str:

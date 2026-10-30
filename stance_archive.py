@@ -127,8 +127,13 @@ def related_posts(memo: str, posts: list[str], *, limit: int = 5) -> list[str]:
     return [x[-1] for x in scored[:limit]]
 
 
-def build_stance_block(memo: str, *, limit: int = 6) -> str:
-    found = related_posts(memo, load_posts(), limit=limit)
+def build_stance_block(memo: str, *, limit: int = 6, exclude: str | None = None) -> str:
+    """exclude 와 같은 글은 근거에서 뺀다(답글 씨앗이 자기 자신을 '전에 한 말'로 받지 않게)."""
+    posts = load_posts()
+    if exclude:
+        skip = _norm(exclude)
+        posts = [p for p in posts if _norm(p) != skip]
+    found = related_posts(memo, posts, limit=limit)
     if not found:
         return ""
     body = "\n".join(f"- {p}" for p in found)

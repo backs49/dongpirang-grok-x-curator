@@ -21,6 +21,7 @@ class _FakeGrok:
     def __init__(self):
         self.material_calls = []
         self.idea_calls = []
+        self.reply_calls = []
 
     def draft_from_material(self, text):
         self.material_calls.append(text)
@@ -29,6 +30,12 @@ class _FakeGrok:
             "pillar": "build_in_public",
             "image_prompt": "desk, no text",
         }
+
+    def draft_from_reply(self, text, parent=""):
+        self.reply_calls.append((text, parent))
+        if "스킵" in text:
+            return {"skip": True, "reason": "원글 없이 뜻이 안 통함"}
+        return {"post": f"[답글글] {text}", "pillar": "curation", "image_prompt": ""}
 
     def generate_ideas(self, keywords, length=0):
         self.idea_calls.append(keywords)
@@ -51,13 +58,21 @@ class _FakeNotify:
         return self.ok
 
 
-def _run(tmp_path, data, grok=None, notify=None, now=None):
+def _no_seeds(after_id, now):
+    return [], None
+
+
+def _run(tmp_path, data, grok=None, notify=None, now=None, seed_source=None):
     path = tmp_path / "queue.json"
     save_queue(path, data)
     grok = grok or _FakeGrok()
     # notify 를 항상 주입해 테스트가 실제 텔레그램을 건드리지 않게 한다.
     notify = notify if notify is not None else _FakeNotify()
-    summary = generate_drafts.run(grok=grok, queue_path=path, notify=notify, now=now)
+    # 씨앗 소스도 항상 주입해 X API 를 건드리지 않게 한다.
+    summary = generate_drafts.run(
+        grok=grok, queue_path=path, notify=notify, now=now,
+        seed_source=seed_source or _no_seeds,
+    )
     return summary, load_queue(path), grok
 
 
@@ -306,3 +321,67 @@ class TestStaleDraftReminder:
         assert summary["from_materials"] == 1
         assert len(notify.messages) == 1
         assert saved["reminders"]["stale_drafts_at"] == NOW.isoformat(timespec="seconds")
+
+
+def _seed(rid, text, parent="원글 본문"):
+    return {"reply_id": rid, "parent_id": "p" + rid, "text": text, "parent_text": parent}
+
+
+class TestReplySeeds:
+    def test_reply_seed_becomes_draft_via_reply_prompt(self, tmp_path):
+        source = lambda after, now: ([_seed("101", "그록 한도가 통합되면 줄어드는건지 모르겠네요")], "105")
+
+        summary, saved, grok = _run(tmp_path, empty_queue(), seed_source=source)
+
+        assert summary["reply_seeds_added"] == 1
+        assert summary["from_materials"] == 1
+        assert grok.reply_calls == [("그록 한도가 통합되면 줄어드는건지 모르겠네요", "원글 본문")]
+        assert grok.material_calls == [] and grok.idea_calls == []
+        assert saved["drafts"][0]["text"].startswith("[답글글]")
+        assert saved["drafts"][0]["status"] == "draft"
+        assert saved["materials"][0]["origin"] == "reply"
+        assert saved["reply_seeds"]["last_seen_id"] == "105"
+
+    def test_watermark_passed_and_duplicates_not_readded(self, tmp_path):
+        data = empty_queue()
+        data["reply_seeds"] = {"last_seen_id": "100"}
+        add_material(data, "이미 넣은 답글", extra={"origin": "reply", "reply_id": "101"})
+        data["materials"][0]["used"] = True
+        seen_after = []
+
+        def source(after, now):
+            seen_after.append(after)
+            return [_seed("101", "이미 넣은 답글")], "101"
+
+        summary, saved, _ = _run(tmp_path, data, seed_source=source)
+
+        assert seen_after == ["100"]
+        assert summary["reply_seeds_added"] == 0
+        assert len(saved["materials"]) == 1
+
+    def test_skipped_seed_is_marked_used_without_draft(self, tmp_path):
+        source = lambda after, now: ([_seed("101", "스킵될 답글")], "101")
+
+        summary, saved, _ = _run(tmp_path, empty_queue(), seed_source=source)
+
+        assert summary["reply_seeds_skipped"] == 1
+        assert saved["drafts"] == []
+        assert saved["materials"][0]["used"] is True
+        assert saved["materials"][0]["skipped"] == "원글 없이 뜻이 안 통함"
+
+    def test_seed_source_failure_does_not_stop_batch(self, tmp_path):
+        def boom(after, now):
+            raise RuntimeError("x api down")
+
+        summary, saved, grok = _run(tmp_path, empty_queue(), seed_source=boom)
+
+        assert summary["reply_seeds_added"] == 0
+        assert summary["tip_drafts"] == 1  # 기존 팁 흐름은 그대로
+
+    def test_no_seeding_when_stock_full(self, tmp_path):
+        data = empty_queue()
+        for i in range(generate_drafts.STOCK_TARGET):
+            add_draft(data, text=f"초안 {i}", pillar="tip")
+        called = []
+        _run(tmp_path, data, seed_source=lambda a, n: called.append(1) or ([], None))
+        assert called == []

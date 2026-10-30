@@ -4,7 +4,9 @@
 로컬 JSON 파일 기반 큐. 스키마:
 
 {
-  "materials": [{"id", "text", "created_at", "used"}],
+  "materials": [{"id", "text", "created_at", "used",
+                 # 선택 필드 — 답글 씨앗(scripts/generate_drafts.py)만 쓴다
+                 "origin", "reply_id", "parent_text", "skipped"}],
   "drafts": [{"id", "text", "pillar", "status", "slot",
                "image_prompt", "material_id", "created_at",
                # 아래는 전부 선택 필드 — 과거 기록엔 없을 수 있으니
@@ -15,7 +17,8 @@
                # publish_worker.py 가 API 발행 시에만 쓰는 필드
                "tweet_id"}],
   "settings": {"tip_keywords"},              # 사용자가 손으로 고치는 값
-  "reminders": {"stale_drafts_at"}           # 배치가 쓰는 운영 상태
+  "reminders": {"stale_drafts_at"},          # 배치가 쓰는 운영 상태
+  "reply_seeds": {"last_seen_id"}            # 배치가 쓰는 운영 상태(답글 씨앗 워터마크)
 }
 
 status 는 여섯 가지다.
@@ -189,11 +192,13 @@ def _new_id() -> str:
     return uuid.uuid4().hex[:12]
 
 
-def add_material(data: dict, text: str) -> dict | None:
+def add_material(data: dict, text: str, *, extra: dict | None = None) -> dict | None:
+    """extra 는 선택 필드(예: 답글 씨앗의 origin/reply_id/parent_text). 기본 키는 덮지 않는다."""
     text = (text or "").strip()
     if not text:
         return None
     material = {
+        **(extra or {}),
         "id": _new_id(),
         "text": text,
         "created_at": datetime.now().isoformat(timespec="seconds"),

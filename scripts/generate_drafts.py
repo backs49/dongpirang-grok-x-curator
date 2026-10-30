@@ -11,6 +11,9 @@ launchd 가 매일 밤 23시에 실행한다. 절제형 설계:
    승인 큐가 얇게 유지되는 편이 낫다.
 2. 소재 인박스에 미사용 소재가 있으면 최대 MAX_MATERIALS_PER_NIGHT 개를
    초안으로 변환한다 (진정성 원칙이 담긴 draft_from_material 프롬프트 사용).
+   그 전에 최근 답글 중 생각이 담긴 것을 최대 2개 골라 소재로 넣는다(답글 씨앗,
+   reply_seeds.py). 답글 소재는 draft_from_reply 로 혼자 서는 글로 옮기고, 모델이
+   혼자 설 수 없다고 하면(skip) 초안 없이 사용 처리만 한다.
 3. 소재가 하나도 없을 때만 팁(tip) 초안 1개를 키워드 기반으로 보충한다.
    키워드는 queue.json 의 settings.tip_keywords 로 바꿀 수 있다.
 
@@ -19,7 +22,9 @@ launchd 가 매일 밤 23시에 실행한다. 절제형 설계:
 쌓여 재고 목표를 채우자 이 배치는 매일 '재고 충분'만 찍고, 발행 워커는
 approved 가 없어 헛돌았다. 33일간 발행 0건인 걸 아무도 알려주지 않았다.
 
-엔진은 로컬 CLI(Codex → Claude 순서로 가용한 것)라 생성 비용이 없다.
+엔진은 로컬 CLI(Claude → Codex 순서로 가용한 것)라 생성 비용이 없다.
+Claude 가 먼저인 이유: 메모·답글 글쓰기 실측에서 Claude 가 더 나았고(2026-09-30),
+2026-10-30 시험에서 Codex 는 답글 6건 전부 300초 타임아웃이었다.
 생성된 초안은 전부 'draft' 상태 — 발행되려면 앱에서 사용자의 승인이 필요하다.
 
 사용:
@@ -41,6 +46,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from content_queue import (  # noqa: E402
     QUEUE_PATH,
     add_draft,
+    add_material,
     load_queue,
     queue_transaction,
     unused_materials,
@@ -72,10 +78,10 @@ def log_event(event: dict) -> None:
 
 
 def _build_cli_grok():
-    """가용한 로컬 CLI 엔진으로 GrokClient 를 만든다 (Codex 우선)."""
+    """가용한 로컬 CLI 엔진으로 GrokClient 를 만든다 (Claude 우선)."""
     from provider_selection import build_provider
 
-    for engine in ("Codex CLI", "Claude CLI"):
+    for engine in ("Claude CLI", "Codex CLI"):
         grok, status = build_provider(engine)
         if grok is not None:
             log_event({"event": "engine_selected", "engine": engine})
@@ -164,7 +170,70 @@ def _remind_stale_drafts(
     return True
 
 
-def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None) -> dict:
+def _default_seed_source(after_id: str | None, now: datetime) -> tuple[list[dict], str | None]:
+    """아카이브를 최신으로 당겨 답글 씨앗을 고르고 원글 본문을 붙인다.
+
+    반환: (씨앗 목록, 이번에 본 가장 최근 글 id). X API 가 실패해도 배치는
+    계속된다 — 갱신 실패면 07:20 에 받은 아카이브로, 원글 조회 실패면 원글
+    없이(모델이 skip 할 가능성이 커질 뿐) 진행한다.
+    """
+    import archive_refresh
+    import publisher
+    import reply_seeds
+
+    env = publisher.load_env()
+    try:
+        archive_refresh.refresh(env=env)
+    except Exception as e:  # noqa: BLE001 — 네트워크·API 오류 전부 비치명적
+        log_event({"event": "reply_seed_refresh_failed", "error": str(e)[:200]})
+    rows = reply_seeds.load_rows()
+    seeds = reply_seeds.pick_seeds(rows, after_id=after_id, now=now)
+    parent_ids = [s["parent_id"] for s in seeds if s.get("parent_id")]
+    parents: dict[str, str] = {}
+    if parent_ids:
+        try:
+            parents = archive_refresh.fetch_texts(env, parent_ids)
+        except Exception as e:  # noqa: BLE001
+            log_event({"event": "reply_seed_parent_failed", "error": str(e)[:200]})
+    for seed in seeds:
+        seed["parent_text"] = parents.get(seed.get("parent_id") or "", "")
+    return seeds, reply_seeds.newest_id(rows)
+
+
+def _add_reply_seeds(seed_source, *, now: datetime, queue_path: Path) -> int:
+    """답글 씨앗을 소재 인박스에 넣는다. 같은 답글은 두 번 넣지 않는다."""
+    data = load_queue(queue_path)
+    after_id = (data.get("reply_seeds") or {}).get("last_seen_id")
+    try:
+        seeds, newest = seed_source(after_id, now)
+    except Exception as e:  # noqa: BLE001 — 씨앗이 없어도 기존 소재·팁 흐름은 돈다
+        log_event({"event": "reply_seed_failed", "error": str(e)[:200]})
+        return 0
+    added = 0
+    with queue_transaction(queue_path) as tx_data:
+        seen = {m.get("reply_id") for m in tx_data["materials"] if m.get("reply_id")}
+        for seed in seeds:
+            if seed["reply_id"] in seen:
+                continue
+            material = add_material(
+                tx_data,
+                seed["text"],
+                extra={
+                    "origin": "reply",
+                    "reply_id": seed["reply_id"],
+                    "parent_text": seed.get("parent_text", ""),
+                },
+            )
+            if material:
+                added += 1
+                log_event({"event": "reply_seed_added", "material_id": material["id"],
+                           "reply_id": seed["reply_id"]})
+        if newest:
+            tx_data.setdefault("reply_seeds", {})["last_seen_id"] = newest
+    return added
+
+
+def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None, seed_source=None) -> dict:
     # 읽기 전용 스냅샷 — 리마인더 판단과 재고 계산에만 쓴다. 실제 저장은
     # 아래에서 각각 짧은 트랜잭션으로 재로드-수정한다 (LLM 호출 중 락을
     # 쥐고 있지 않기 위해서다).
@@ -190,14 +259,34 @@ def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None) -> dict:
         log_event({"event": "no_engine_available"})
         return {"from_materials": 0, "tip_drafts": 0, "skipped": True}
 
+    # 재고가 빌 때만 씨앗을 넣는다 — 승인이 멈춘 동안 인박스에 식은 답글이
+    # 쌓이지 않게. 넣은 뒤 스냅샷을 다시 읽어 아래 변환 대상에 포함시킨다.
+    seeds_added = _add_reply_seeds(
+        seed_source or _default_seed_source, now=now, queue_path=queue_path
+    )
+    if seeds_added:
+        data = load_queue(queue_path)
+
     # LLM 호출 구간 — 락을 쥐지 않는다. 결과만 모아뒀다가 호출이 모두
     # 끝난 뒤 한 트랜잭션 안에서 add_draft 를 실행한다.
     from_materials = 0
     materials_snapshot = unused_materials(data)
     materials = materials_snapshot[:MAX_MATERIALS_PER_NIGHT]
     material_drafts = []
+    skipped_seeds: dict[str, str] = {}
     for material in materials:
-        result = grok.draft_from_material(material["text"])
+        if material.get("origin") == "reply":
+            result = grok.draft_from_reply(material["text"], material.get("parent_text", ""))
+            if result.get("skip"):
+                skipped_seeds[material["id"]] = result.get("reason", "")
+                log_event({
+                    "event": "reply_seed_skipped",
+                    "material_id": material["id"],
+                    "reason": result.get("reason", ""),
+                })
+                continue
+        else:
+            result = grok.draft_from_material(material["text"])
         if "error" in result or not result.get("post"):
             log_event({
                 "event": "draft_failed",
@@ -231,8 +320,14 @@ def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None) -> dict:
             tip_drafts = 1
 
     # LLM 호출이 모두 끝난 뒤에만 락을 쥔다 — 짧은 트랜잭션 하나로 확정한다.
-    if material_drafts or tip_draft_kwargs is not None:
+    if material_drafts or tip_draft_kwargs is not None or skipped_seeds:
         with queue_transaction(queue_path) as tx_data:
+            # 혼자 설 수 없다고 판정된 답글은 초안 없이 사용 처리 — 매일 밤 다시
+            # 시도하지 않게. 이유는 인박스에서 볼 수 있게 남긴다.
+            for m in tx_data["materials"]:
+                if m["id"] in skipped_seeds:
+                    m["used"] = True
+                    m["skipped"] = skipped_seeds[m["id"]] or "skip"
             for kwargs in material_drafts:
                 draft = add_draft(tx_data, **kwargs)
                 log_event({
@@ -245,7 +340,13 @@ def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None) -> dict:
                 draft = add_draft(tx_data, **tip_draft_kwargs)
                 log_event({"event": "draft_created", "draft_id": draft["id"], "source": "tip"})
 
-    summary = {"from_materials": from_materials, "tip_drafts": tip_drafts, "skipped": False}
+    summary = {
+        "from_materials": from_materials,
+        "tip_drafts": tip_drafts,
+        "skipped": False,
+        "reply_seeds_added": seeds_added,
+        "reply_seeds_skipped": len(skipped_seeds),
+    }
     log_event({"event": "run_summary", **summary})
     return summary
 

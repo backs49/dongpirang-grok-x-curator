@@ -45,3 +45,17 @@ def test_refresh_fetches_since_latest_and_merges(tmp_path):
 
 def test_refresh_without_keys_does_nothing(tmp_path):
     assert archive_refresh.refresh(tmp_path / "x.json", env={}) == {"error": "x_api_not_configured"}
+
+
+def test_fetch_texts_prefers_note_tweet_and_skips_missing():
+    class S:
+        def get(self, url, params=None, **kw):
+            self.params = params
+            return _Resp({"data": [{"id": "1", "text": "짧", "note_tweet": {"text": "긴 원글"}},
+                                   {"id": "2", "text": "원글 둘"}],
+                          "errors": [{"resource_id": "3"}]})
+
+    s = S()
+    assert archive_refresh.fetch_texts(ENV, ["1", "2", "3"], session=s) == {"1": "긴 원글", "2": "원글 둘"}
+    assert s.params["ids"] == "1,2,3"
+    assert archive_refresh.fetch_texts(ENV, [], session=s) == {}

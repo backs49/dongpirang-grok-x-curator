@@ -58,6 +58,25 @@ def fetch_new(env: dict, since_id: str | None, *, session=requests) -> list[dict
     return rows
 
 
+def fetch_texts(env: dict, ids: list[str], *, session=requests) -> dict[str, str]:
+    """트윗 id → 본문(긴 글은 note_tweet). 삭제·비공개 글은 결과에서 빠진다."""
+    ids = [str(i) for i in ids if i]
+    if not ids:
+        return {}
+    r = session.get(
+        f"{API}/tweets",
+        params={"ids": ",".join(ids[:100]), "tweet.fields": "note_tweet"},
+        auth=_auth(env),
+        timeout=30,
+    )
+    r.raise_for_status()
+    out = {}
+    for row in r.json().get("data") or []:
+        note = (row.get("note_tweet") or {}).get("text")
+        out[str(row["id"])] = note or row.get("text", "")
+    return out
+
+
 def refresh(path: Path | None = None, *, env: dict | None = None, session=requests) -> dict:
     target = stance_archive.ARCHIVE_PATH if path is None else path
     env = env if env is not None else publisher.load_env()
