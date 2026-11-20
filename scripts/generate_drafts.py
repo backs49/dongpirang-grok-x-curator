@@ -6,16 +6,22 @@ launchd 가 매일 밤 23시에 실행한다. 절제형 설계:
 0. 승인 대기 초안이 STALE_DRAFT_DAYS 일 넘게 방치돼 있으면 관리자에게
    리마인드한다 (생성 여부와 무관하게 매일 밤 확인).
 1. 초안 재고(draft+approved+publishing+error)가 STOCK_TARGET 개 이상이면
-   아무것도 하지 않는다. error 를 빼면 해소되지 않은 에러가 쌓인 채로
-   계속 새 초안을 찍어내 문제를 가린다 — 억지로 콘텐츠를 늘리는 것보다
-   승인 큐가 얇게 유지되는 편이 낫다.
-2. 소재 인박스에 미사용 소재가 있으면 최대 MAX_MATERIALS_PER_NIGHT 개를
+   직접 넣은 소재 변환과 팁 보충(3·4번)을 하지 않는다. error 를 빼면 해소되지
+   않은 에러가 쌓인 채로 계속 새 초안을 찍어내 문제를 가린다 — 억지로
+   콘텐츠를 늘리는 것보다 승인 큐가 얇게 유지되는 편이 낫다.
+2. 답글 씨앗(reply_seeds.py)은 전체 재고와 별개로, 답글에서 나온 초안의 대기
+   수가 REPLY_STOCK_TARGET 개 미만이면 돈다. 최근 답글 중 생각이 담긴 것을 최대
+   2개 골라 소재로 넣고 draft_from_reply 로 혼자 서는 글로 옮긴다. 모델이 혼자
+   설 수 없다고 하면(skip) 초안 없이 사용 처리만 한다.
+3. 소재 인박스에 미사용 소재가 있으면 최대 MAX_MATERIALS_PER_NIGHT 개를
    초안으로 변환한다 (진정성 원칙이 담긴 draft_from_material 프롬프트 사용).
-   그 전에 최근 답글 중 생각이 담긴 것을 최대 2개 골라 소재로 넣는다(답글 씨앗,
-   reply_seeds.py). 답글 소재는 draft_from_reply 로 혼자 서는 글로 옮기고, 모델이
-   혼자 설 수 없다고 하면(skip) 초안 없이 사용 처리만 한다.
-3. 소재가 하나도 없을 때만 팁(tip) 초안 1개를 키워드 기반으로 보충한다.
+4. 변환할 소재가 하나도 없을 때만 팁(tip) 초안 1개를 키워드 기반으로 보충한다.
    키워드는 queue.json 의 settings.tip_keywords 로 바꿀 수 있다.
+
+2번을 1번에서 떼어낸 이유: 2026-11-04~19 에 승인 안 된 팁 초안 4건이 재고
+목표를 채워 답글 씨앗이 16일 동안 한 번도 돌지 못했다. 팁은 소재가 없을 때의
+보충이고 답글은 계정 주인이 실제로 쓴 생각인데, 보충이 본래 소재를 막고 있었다.
+1번과 2번이 둘 다 찼을 때만 배치 전체를 건너뛴다.
 
 0번이 있는 이유: 승인은 사람이 해야 하는데(진정성 원칙, 풀오토 금지) 안 해도
 아무 일이 일어나지 않는 구조였다. 2026-07-08 이후 초안 4건이 draft 상태로
@@ -49,11 +55,19 @@ from content_queue import (  # noqa: E402
     add_material,
     load_queue,
     queue_transaction,
+    skip_material,
     unused_materials,
 )
 
 MAX_MATERIALS_PER_NIGHT = 3
 STOCK_TARGET = 4
+# 답글에서 나온 초안이 이만큼 승인을 기다리면 새 씨앗을 넣지 않는다. 씨앗은
+# 하룻밤에 최대 2개라 이 값은 하룻밤 분량이다 — 승인이 멈춘 동안 식은 답글이
+# 계속 쌓이지 않게 하는 상한이고, 전체 재고(STOCK_TARGET)와는 따로 센다.
+REPLY_STOCK_TARGET = 2
+# 재고로 세는 상태. approved·publishing 은 슬롯을 기다리는 중이고, error 는
+# 사람이 X 에서 확인해 재승인해야 풀린다.
+STOCK_STATUSES = ("draft", "approved", "publishing", "error")
 DEFAULT_TIP_KEYWORDS = "AI 사이드프로젝트, 솔로 개발자, 빌드 인 퍼블릭"
 LOG_PATH = QUEUE_PATH.parent / "draft_log.jsonl"
 
@@ -233,6 +247,20 @@ def _add_reply_seeds(seed_source, *, now: datetime, queue_path: Path) -> int:
     return added
 
 
+def _is_reply(material: dict) -> bool:
+    return material.get("origin") == "reply"
+
+
+def _reply_stock(data: dict) -> int:
+    """답글 씨앗에서 나와 아직 재고로 남아 있는 초안 수."""
+    reply_material_ids = {m["id"] for m in data["materials"] if _is_reply(m)}
+    return sum(
+        1
+        for d in data["drafts"]
+        if d["status"] in STOCK_STATUSES and d.get("material_id") in reply_material_ids
+    )
+
+
 def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None, seed_source=None) -> dict:
     # 읽기 전용 스냅샷 — 리마인더 판단과 재고 계산에만 쓴다. 실제 저장은
     # 아래에서 각각 짧은 트랜잭션으로 재로드-수정한다 (LLM 호출 중 락을
@@ -246,11 +274,22 @@ def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None, seed_source=Non
     # _remind_stale_drafts 안에서 자체 트랜잭션으로 처리된다.
     _remind_stale_drafts(data, now=now, notify=notify, queue_path=queue_path)
 
-    stock = sum(
-        1 for d in data["drafts"] if d["status"] in ("draft", "approved", "publishing", "error")
-    )
-    if stock >= STOCK_TARGET:
-        log_event({"event": "skipped_stock_sufficient", "stock": stock})
+    # 문이 둘이다. stock_open 은 직접 넣은 소재와 팁 보충을, reply_open 은 답글
+    # 씨앗을 연다. 팁 초안이 재고를 채워도 답글 씨앗은 막지 않는다.
+    stock = sum(1 for d in data["drafts"] if d["status"] in STOCK_STATUSES)
+    reply_stock = _reply_stock(data)
+    stock_open = stock < STOCK_TARGET
+    reply_open = reply_stock < REPLY_STOCK_TARGET
+    if not stock_open:
+        # 답글 씨앗만 도는 밤에도 남긴다 — 이 이벤트가 매일 밤 이어지면 승인이
+        # 멈춰 있다는 뜻이다.
+        log_event({
+            "event": "skipped_stock_sufficient",
+            "stock": stock,
+            "reply_stock": reply_stock,
+            "reply_seeds": "open" if reply_open else "full",
+        })
+    if not stock_open and not reply_open:
         return {"from_materials": 0, "tip_drafts": 0, "skipped": True}
 
     if grok is None:
@@ -259,23 +298,28 @@ def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None, seed_source=Non
         log_event({"event": "no_engine_available"})
         return {"from_materials": 0, "tip_drafts": 0, "skipped": True}
 
-    # 재고가 빌 때만 씨앗을 넣는다 — 승인이 멈춘 동안 인박스에 식은 답글이
+    # 답글 재고가 빌 때만 씨앗을 넣는다 — 승인이 멈춘 동안 인박스에 식은 답글이
     # 쌓이지 않게. 넣은 뒤 스냅샷을 다시 읽어 아래 변환 대상에 포함시킨다.
-    seeds_added = _add_reply_seeds(
-        seed_source or _default_seed_source, now=now, queue_path=queue_path
-    )
-    if seeds_added:
-        data = load_queue(queue_path)
+    seeds_added = 0
+    if reply_open:
+        seeds_added = _add_reply_seeds(
+            seed_source or _default_seed_source, now=now, queue_path=queue_path
+        )
+        if seeds_added:
+            data = load_queue(queue_path)
 
     # LLM 호출 구간 — 락을 쥐지 않는다. 결과만 모아뒀다가 호출이 모두
     # 끝난 뒤 한 트랜잭션 안에서 add_draft 를 실행한다.
     from_materials = 0
-    materials_snapshot = unused_materials(data)
+    # 오늘 밤 열린 문에 해당하는 소재만 변환 대상이다.
+    materials_snapshot = [
+        m for m in unused_materials(data) if (reply_open if _is_reply(m) else stock_open)
+    ]
     materials = materials_snapshot[:MAX_MATERIALS_PER_NIGHT]
     material_drafts = []
     skipped_seeds: dict[str, str] = {}
     for material in materials:
-        if material.get("origin") == "reply":
+        if _is_reply(material):
             result = grok.draft_from_reply(material["text"], material.get("parent_text", ""))
             if result.get("skip"):
                 skipped_seeds[material["id"]] = result.get("reason", "")
@@ -304,7 +348,7 @@ def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None, seed_source=Non
 
     tip_draft_kwargs = None
     tip_drafts = 0
-    if from_materials == 0 and not materials_snapshot:
+    if stock_open and from_materials == 0 and not materials_snapshot:
         keywords = (data.get("settings") or {}).get("tip_keywords") or DEFAULT_TIP_KEYWORDS
         result = grok.generate_ideas(keywords, length=0)
         ideas = result.get("ideas") or []
@@ -324,10 +368,8 @@ def run(grok=None, queue_path=QUEUE_PATH, notify=None, now=None, seed_source=Non
         with queue_transaction(queue_path) as tx_data:
             # 혼자 설 수 없다고 판정된 답글은 초안 없이 사용 처리 — 매일 밤 다시
             # 시도하지 않게. 이유는 인박스에서 볼 수 있게 남긴다.
-            for m in tx_data["materials"]:
-                if m["id"] in skipped_seeds:
-                    m["used"] = True
-                    m["skipped"] = skipped_seeds[m["id"]] or "skip"
+            for material_id, reason in skipped_seeds.items():
+                skip_material(tx_data, material_id, reason)
             for kwargs in material_drafts:
                 draft = add_draft(tx_data, **kwargs)
                 log_event({

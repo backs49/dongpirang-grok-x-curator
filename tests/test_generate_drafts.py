@@ -7,6 +7,8 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import pytest
+
 from content_queue import add_draft, add_material, empty_queue, load_queue, save_queue
 
 _spec = importlib.util.spec_from_file_location(
@@ -15,6 +17,19 @@ _spec = importlib.util.spec_from_file_location(
 generate_drafts = importlib.util.module_from_spec(_spec)
 sys.modules["generate_drafts"] = generate_drafts
 _spec.loader.exec_module(generate_drafts)
+
+_REAL_LOG_PATH = generate_drafts.LOG_PATH
+
+
+@pytest.fixture(autouse=True)
+def _isolated_log(tmp_path, monkeypatch):
+    """log_event 가 실제 content_queue/draft_log.jsonl 에 쓰지 않게 한다.
+
+    LOG_PATH 는 임포트 시점의 QUEUE_PATH 에서 만들어져서 run(queue_path=...) 로
+    큐만 임시 경로로 돌려도 로그는 운영 파일에 붙었다. 그 로그가 운영 상태를
+    보는 정본인데 2026-11-20 기준 2,609줄 중 약 2,300줄이 테스트 흔적이었다.
+    """
+    monkeypatch.setattr(generate_drafts, "LOG_PATH", tmp_path / "draft_log.jsonl")
 
 
 class _FakeGrok:
@@ -76,6 +91,15 @@ def _run(tmp_path, data, grok=None, notify=None, now=None, seed_source=None):
     return summary, load_queue(path), grok
 
 
+class TestLogIsolation:
+    def test_events_go_to_the_temp_log_not_the_live_one(self, tmp_path):
+        _run(tmp_path, empty_queue())
+
+        assert generate_drafts.LOG_PATH != _REAL_LOG_PATH
+        assert generate_drafts.LOG_PATH.parent == tmp_path
+        assert "run_summary" in generate_drafts.LOG_PATH.read_text(encoding="utf-8")
+
+
 class TestGenerateDrafts:
     def test_materials_become_drafts(self, tmp_path):
         data = empty_queue()
@@ -111,18 +135,32 @@ class TestGenerateDrafts:
         assert saved["drafts"][0]["pillar"] == "tip"
         assert grok.idea_calls  # generate_ideas 사용
 
-    def test_skips_entirely_when_stock_sufficient(self, tmp_path):
+    def test_full_stock_blocks_materials_and_tips(self, tmp_path):
         data = empty_queue()
         for i in range(generate_drafts.STOCK_TARGET):
             add_draft(data, text=f"재고 {i}", pillar="tip")
-        add_material(data, "소재")  # 소재가 있어도 재고 충분하면 스킵
+        add_material(data, "소재")  # 소재가 있어도 재고 충분하면 변환하지 않는다
 
         summary, saved, grok = _run(tmp_path, data)
 
-        assert summary == {"from_materials": 0, "tip_drafts": 0, "skipped": True}
-        assert not grok.material_calls
+        assert summary["from_materials"] == 0 and summary["tip_drafts"] == 0
+        assert not grok.material_calls and not grok.idea_calls
+        assert len(saved["drafts"]) == generate_drafts.STOCK_TARGET
         # 소재는 소모되지 않고 남는다
         assert not saved["materials"][0]["used"]
+
+    def test_full_stock_without_materials_adds_no_tip(self, tmp_path):
+        # 답글 씨앗은 재고가 차도 돌지만(TestReplySeeds), 씨앗이 없는 밤에
+        # 팁 보충까지 따라 돌면 재고 목표가 무의미해진다.
+        data = empty_queue()
+        for i in range(generate_drafts.STOCK_TARGET):
+            add_draft(data, text=f"재고 {i}", pillar="tip")
+
+        summary, saved, grok = _run(tmp_path, data)
+
+        assert summary["tip_drafts"] == 0
+        assert not grok.idea_calls
+        assert len(saved["drafts"]) == generate_drafts.STOCK_TARGET
 
     def test_error_status_counts_toward_stock(self, tmp_path):
         # error 상태(발행 결과 불명 등)를 재고에서 빼면 해소되지 않은 에러가
@@ -135,8 +173,9 @@ class TestGenerateDrafts:
 
         summary, saved, grok = _run(tmp_path, data)
 
-        assert summary == {"from_materials": 0, "tip_drafts": 0, "skipped": True}
-        assert not grok.material_calls
+        assert summary["from_materials"] == 0 and summary["tip_drafts"] == 0
+        assert not grok.material_calls and not grok.idea_calls
+        assert len(saved["drafts"]) == generate_drafts.STOCK_TARGET
 
     def test_generation_error_leaves_material_unused(self, tmp_path):
         class _ErrorGrok(_FakeGrok):
@@ -190,7 +229,8 @@ class TestStaleDraftReminder:
         summary, saved, _ = _run(tmp_path, data, notify=notify, now=NOW)
 
         # 재고가 충분해 생성은 건너뛰지만, 리마인드는 나가야 한다.
-        assert summary["skipped"] is True
+        assert summary["from_materials"] == 0 and summary["tip_drafts"] == 0
+        assert len(saved["drafts"]) == generate_drafts.STOCK_TARGET
         assert len(notify.messages) == 1
         message = notify.messages[0]
         assert str(generate_drafts.STOCK_TARGET) in message
@@ -378,10 +418,98 @@ class TestReplySeeds:
         assert summary["reply_seeds_added"] == 0
         assert summary["tip_drafts"] == 1  # 기존 팁 흐름은 그대로
 
-    def test_no_seeding_when_stock_full(self, tmp_path):
+
+
+def _full_tip_stock(data):
+    for i in range(generate_drafts.STOCK_TARGET):
+        add_draft(data, text=f"팁 초안 {i}", pillar="tip")
+
+
+def _full_reply_stock(data):
+    for i in range(generate_drafts.REPLY_STOCK_TARGET):
+        material = add_material(
+            data, f"대기 중인 답글 {i}", extra={"origin": "reply", "reply_id": f"w{i}"}
+        )
+        add_draft(data, text=f"답글 초안 {i}", pillar="curation", material_id=material["id"])
+
+
+class TestReplySeedGate:
+    """답글 씨앗은 전체 재고가 아니라 답글 초안 대기 수로 따로 막는다.
+
+    2026-11-04~19 에는 승인 안 된 팁 초안 4건이 재고 목표를 채워 답글 씨앗이
+    16일 동안 한 번도 돌지 못했다. 보충용인 팁이 본래 소재인 답글을 막은 셈이다.
+    """
+
+    def test_tip_stock_does_not_block_reply_seeds(self, tmp_path):
         data = empty_queue()
-        for i in range(generate_drafts.STOCK_TARGET):
-            add_draft(data, text=f"초안 {i}", pillar="tip")
+        _full_tip_stock(data)
+        source = lambda after, now: ([_seed("101", "재고가 차도 올라와야 하는 답글")], "101")
+
+        summary, saved, grok = _run(tmp_path, data, seed_source=source)
+
+        assert summary["skipped"] is False
+        assert summary["reply_seeds_added"] == 1 and summary["from_materials"] == 1
+        assert len(grok.reply_calls) == 1
+        assert not grok.material_calls and not grok.idea_calls
+        assert len(saved["drafts"]) == generate_drafts.STOCK_TARGET + 1
+        assert saved["drafts"][-1]["text"].startswith("[답글글]")
+
+    def test_full_stock_converts_only_the_reply_material(self, tmp_path):
+        data = empty_queue()
+        _full_tip_stock(data)
+        add_material(data, "직접 넣은 소재")
+        source = lambda after, now: ([_seed("101", "답글 소재")], "101")
+
+        summary, saved, grok = _run(tmp_path, data, seed_source=source)
+
+        assert summary["from_materials"] == 1
+        assert not grok.material_calls
+        plain = next(m for m in saved["materials"] if m.get("origin") != "reply")
+        assert plain["used"] is False
+
+    def test_no_seeding_when_reply_stock_full(self, tmp_path):
+        data = empty_queue()
+        _full_reply_stock(data)
         called = []
+
         _run(tmp_path, data, seed_source=lambda a, n: called.append(1) or ([], None))
+
         assert called == []
+
+    def test_reply_stock_full_leaves_materials_and_tips_to_the_stock_gate(self, tmp_path):
+        assert generate_drafts.REPLY_STOCK_TARGET < generate_drafts.STOCK_TARGET
+        data = empty_queue()
+        _full_reply_stock(data)
+        add_material(data, "직접 넣은 소재")
+
+        summary, saved, grok = _run(tmp_path, data)
+
+        assert grok.material_calls == ["직접 넣은 소재"]
+        assert summary["from_materials"] == 1
+
+    def test_leftover_reply_material_does_not_block_tip(self, tmp_path):
+        # 변환에 실패해 남은 답글 소재가, 답글 재고가 찬 동안 팁 보충까지 막으면 안 된다.
+        data = empty_queue()
+        _full_reply_stock(data)
+        add_material(data, "남은 답글", extra={"origin": "reply", "reply_id": "left"})
+
+        summary, saved, grok = _run(tmp_path, data)
+
+        assert not grok.reply_calls
+        assert summary["tip_drafts"] == 1
+
+    def test_skips_entirely_when_both_stocks_full(self, tmp_path):
+        data = empty_queue()
+        _full_reply_stock(data)
+        for i in range(generate_drafts.STOCK_TARGET - generate_drafts.REPLY_STOCK_TARGET):
+            add_draft(data, text=f"팁 초안 {i}", pillar="tip")
+        add_material(data, "직접 넣은 소재")
+        called = []
+
+        summary, saved, grok = _run(
+            tmp_path, data, seed_source=lambda a, n: called.append(1) or ([], None)
+        )
+
+        assert summary == {"from_materials": 0, "tip_drafts": 0, "skipped": True}
+        assert called == []
+        assert not grok.material_calls and not grok.reply_calls and not grok.idea_calls

@@ -10,6 +10,7 @@ from content_queue import (
     reject_draft,
     remove_draft,
     remove_material,
+    skip_material,
     unused_materials,
     update_draft_text,
 )
@@ -93,6 +94,13 @@ def _cb_remove_draft(draft_id: str):
         remove_draft(data, draft_id)
 
 
+def _draft_for_material(grok, material: dict) -> dict:
+    """소재를 초안으로. 답글 씨앗은 밤 배치와 같은 답글용 경로를 탄다."""
+    if material.get("origin") == "reply":
+        return grok.draft_from_reply(material["text"], material.get("parent_text", ""))
+    return grok.draft_from_material(material["text"])
+
+
 def _process_pending_draft(grok):
     """초안 만들기 요청을 렌더링 전에 처리한다 (스피너 표시 가능)."""
     material_id = st.session_state.pop("pq_pending_draft", None)
@@ -110,10 +118,18 @@ def _process_pending_draft(grok):
         return
 
     with st.spinner(t("pq_draft_spinner")):
-        result = grok.draft_from_material(material["text"])
+        result = _draft_for_material(grok, material)
 
     if "error" in result:
         st.error(result["error"])
+        return
+
+    if result.get("skip"):
+        # 답글이 혼자 설 수 없다는 판정 — 초안 없이 인박스에서 내린다 (배치와 동일).
+        reason = result.get("reason", "")
+        with queue_transaction(QUEUE_PATH) as tx_data:
+            skip_material(tx_data, material["id"], reason)
+        st.info(t("pq_reply_skipped", reason=reason or "-"))
         return
 
     with queue_transaction(QUEUE_PATH) as tx_data:

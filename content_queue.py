@@ -44,6 +44,8 @@ mark_manual_published 로 수동 발행 표시를 하면 슬롯은 다시 None �
     origin 을 가리지 않고 status=="draft" 전부를 센다 — 워크스페이스에서
     만든 초안도 사람이 승인해야 할 재고로 그대로 잡히는 것은 의도된
     설계다(결정 사항, 바꾸려면 두 카운트를 함께 손봐야 한다).
+    답글 씨앗용 재고(REPLY_STOCK_TARGET)는 이 필드가 아니라 material_id 가
+    가리키는 소재의 origin=="reply" 로 센다.
   - source_job_id / source_kind: 초안이 나온 워크스페이스·아이디어 작업의
     id/kind (idea_jobs.py, workspace_jobs.py 의 job 레코드를 가리킨다).
     예외 하나: source_kind="reuse"(workspace_ui.publish 의 히스토리 재사용)
@@ -210,6 +212,17 @@ def add_material(data: dict, text: str, *, extra: dict | None = None) -> dict | 
 
 def unused_materials(data: dict) -> list[dict]:
     return [m for m in data["materials"] if not m.get("used")]
+
+
+def skip_material(data: dict, material_id: str, reason: str = "") -> None:
+    """초안 없이 소재를 사용 처리한다 — 답글이 혼자 설 수 없다고 판정됐을 때.
+
+    다시 시도하지 않게 used 로 돌리고, 왜 초안이 없는지 skipped 에 남긴다.
+    """
+    for m in data["materials"]:
+        if m["id"] == material_id:
+            m["used"] = True
+            m["skipped"] = reason or "skip"
 
 
 def remove_material(data: dict, material_id: str) -> None:

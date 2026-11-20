@@ -309,9 +309,14 @@ _T = {
         "ja": "𝕏 今すぐ投稿",
     },
     "pq_worker_note": {
-        "ko": "승인된 초안 {n}개가 슬롯에 배정돼 있어요. 자동 발행 워커(4c)가 연결되면 이 시각에 자동으로 올라갑니다. 그 전까지는 '지금 올리기'로 수동 발행하세요.",
-        "en": "{n} approved draft(s) assigned to slots. Once the auto-publish worker (4c) is connected they'll go out at those times. Until then, use 'Post now' to publish manually.",
-        "ja": "承認済み下書き{n}件がスロットに割り当てられています。自動発行ワーカー(4c)が接続されると、その時刻に自動投稿されます。それまでは「今すぐ投稿」で手動投稿してください。",
+        "ko": "승인된 초안 {n}개가 슬롯에 배정돼 있어요. 그 시각에 자동으로 올라갑니다. '지금 올리기'로 먼저 올렸다면 그 초안은 반려하거나 지워 주세요. 그대로 두면 슬롯 시각에 워커가 한 번 더 올리려고 해요.",
+        "en": "{n} approved draft(s) assigned to slots. They'll be posted automatically at those times. If you post one early with 'Post now', reject or delete that draft — otherwise the worker will try to post it again at its slot.",
+        "ja": "承認済み下書き{n}件がスロットに割り当てられています。その時刻に自動投稿されます。「今すぐ投稿」で先に投稿した場合は、その下書きを却下するか削除してください。そのままにすると、スロットの時刻にワーカーがもう一度投稿しようとします。",
+    },
+    "pq_reply_skipped": {
+        "ko": "이 답글은 혼자 서는 글로 옮기기 어려워서 초안을 만들지 않았어요. 인박스에서는 내렸습니다. (이유: {reason})",
+        "en": "This reply doesn't work as a standalone post, so no draft was made. It's been cleared from the inbox. (Reason: {reason})",
+        "ja": "この返信は単独の投稿にしにくいため、下書きを作りませんでした。インボックスからは外しました。(理由: {reason})",
     },
     "pq_error_note": {
         "ko": "⚠️ 발행 결과를 알 수 없어요 (처리 중 중단됨). X에 이미 올라갔는지 확인한 뒤 다시 승인하세요.",

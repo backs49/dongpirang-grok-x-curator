@@ -21,6 +21,7 @@ from content_queue import (
     remove_draft,
     remove_material,
     save_queue,
+    skip_material,
     unused_materials,
     update_draft_text,
     upsert_workspace_draft,
@@ -104,6 +105,25 @@ class TestMaterials:
         data = empty_queue()
         assert add_material(data, "   ") is None
         assert data["materials"] == []
+
+    def test_skip_marks_used_and_keeps_the_reason(self):
+        data = empty_queue()
+        kept = add_material(data, "남는 소재")
+        skipped = add_material(data, "혼자 설 수 없는 답글")
+
+        skip_material(data, skipped["id"], "원글 없이 뜻이 안 통함")
+
+        assert unused_materials(data) == [kept]
+        assert skipped["skipped"] == "원글 없이 뜻이 안 통함"
+        assert "skipped" not in kept
+
+    def test_skip_without_reason_still_leaves_a_marker(self):
+        data = empty_queue()
+        material = add_material(data, "답글")
+
+        skip_material(data, material["id"])
+
+        assert material["used"] is True and material["skipped"] == "skip"
 
 
 class TestDrafts:
