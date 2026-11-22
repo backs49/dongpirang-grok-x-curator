@@ -19,6 +19,7 @@
 | 답글 씨앗(D-008, D-009) | RELEASED / INCONCLUSIVE / PENDING | 분리 후 11-20·11-21 `reply_seeds_added: 0`은 조건 맞는 답글이 없어서였다(결함 아님). 실제로 씨앗이 들어간 밤은 아직 없다 (`TEST`, [조사](tasks/archive/2026-11-22-reply-seeds-zero.md)) |
 | 자동 발행 워커(live) | RELEASED / PASS / NOT_REQUIRED | publish_log 11-22 run_summary `live: true, posted: 0` (`TEST`) |
 | 실제 발행 실적 | BLOCKED (승인 대기) | 워커 경유 마지막 발행 2026-07-08. queue.json: published 4, rejected 10, draft 0 — 11-22 대기 2건 반려 (`TEST`) |
+| agy CLI 엔진(사이드바, Gemini 4 Neon, D-012) | RELEASED / PASS / APPROVED | 722 passed, 평가에서 Neon 채택·야간 배치 기준 미충족 ([task](tasks/archive/2026-11-22-agy-cli-provider.md)) (`TEST`) |
 | 4d 주간 피드백 루프 | PLANNED (보류, D-004) | 발행 데이터 없음 |
 
 ## 알려진 결함과 위험
@@ -39,7 +40,7 @@
 
 이 저장소는 main에 직접 커밋하므로 task 파일 이름은 브랜치가 아니라 작업 식별자(`YYYY-MM-DD-<주제>`)를 쓴다. `docs/tasks/`에서 `archive/`를 뺀 파일이 진행 중인 작업이다.
 
-- [2026-11-22-agy-cli-provider.md](tasks/2026-11-22-agy-cli-provider.md) — DONE / PASS / PENDING(커밋 승인)
+- 없음
 
 ## 점검 방법
 

@@ -168,3 +168,19 @@ def test_lock_wait_is_bounded_by_timeout(tmp_path, monkeypatch):
     assert "다른 agy 호출" in result["error"]
     assert elapsed < 3
     assert called == []
+
+
+@patch("providers.cli.subprocess.run")
+def test_logged_out_error_tells_how_to_log_in_again(mock_run):
+    # 2026-11-22 실측 출력: 종료 코드 0이 아니고 stderr 에 인증 안내, stdout 에 ERROR 봉투.
+    envelope = json.dumps({"conversation_id": "", "status": "ERROR", "response": "",
+                           "error": "authentication failed or timed out"})
+    mock_run.return_value = MagicMock(
+        returncode=1,
+        stdout=envelope,
+        stderr="Error: authentication required. Run 'agy' to log in, then retry.",
+    )
+    error = AgyCliProvider().generate_json("S", "U")["error"]
+    assert "터미널에서 agy" in error and "로그인" in error
+    mock_run.return_value = MagicMock(returncode=0, stdout=envelope, stderr="")
+    assert "터미널에서 agy" in AgyCliProvider().generate_text("S", "U")

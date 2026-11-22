@@ -96,4 +96,4 @@
 - 결정: `--mode plan --sandbox`, 매 호출 새 빈 임시 폴더를 cwd로 쓴다. 실측상 명령 실행·폴더 밖 읽기가 거부되고 웹 읽기는 관찰되지 않았다. 남는 차이(도구 목록 노출, agy 쪽 대화 저장, 호출당 약 2만 토큰, `~/.gemini/antigravity-cli/brain/`의 계획 파일)는 수용한다.
 - 선택지: CliProvider 방식 / `agy acp` 프로토콜 / 도입 보류 → CliProvider 방식. acp는 사이드바 선택지 하나에 과하다.
 - 범위: 사이드바 선택 엔진만. 야간 배치 사용은 평가 점수가 확실히 높을 때 별도 승인.
-- 근거 실측: [tasks/2026-11-22-agy-cli-provider.md](tasks/2026-11-22-agy-cli-provider.md)
+- 근거 실측: [tasks/2026-11-22-agy-cli-provider.md](tasks/archive/2026-11-22-agy-cli-provider.md)

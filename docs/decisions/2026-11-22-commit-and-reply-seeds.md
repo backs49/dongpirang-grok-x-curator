@@ -42,7 +42,7 @@
 
 > 채택할게.  2.agy 작업 시작하자. gemini 4 하이드로젠도 평가에 포함하자.
 
-승인 범위: 팁 프롬프트 보강(내 말투 블록) 채택과 커밋(직전 제안 "채택하시면 커밋할게요"에 대한 답). push는 범위 밖. agy CLI 엔진 추가 작업 착수 — 평가 대상에 Gemini 4 Neon과 Gemini 4 Hydrogen 포함. 기록: [../tasks/2026-11-22-agy-cli-provider.md](../tasks/2026-11-22-agy-cli-provider.md)
+승인 범위: 팁 프롬프트 보강(내 말투 블록) 채택과 커밋(직전 제안 "채택하시면 커밋할게요"에 대한 답). push는 범위 밖. agy CLI 엔진 추가 작업 착수 — 평가 대상에 Gemini 4 Neon과 Gemini 4 Hydrogen 포함. 기록: [../tasks/2026-11-22-agy-cli-provider.md](../tasks/archive/2026-11-22-agy-cli-provider.md)
 
 ## 후속 원문 5 (같은 날)
 

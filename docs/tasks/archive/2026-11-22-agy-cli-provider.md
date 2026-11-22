@@ -1,7 +1,7 @@
 # Task: agy CLI(Gemini 4 Neon·Hydrogen) 글쓰기 엔진 추가
 
-상태: `DONE / PASS / PENDING` — 구현·평가·최종 리뷰 수정 완료, 커밋 승인 대기
-근거 지시: [../decisions/2026-11-22-commit-and-reply-seeds.md](../decisions/2026-11-22-commit-and-reply-seeds.md) (후속 원문 4)
+상태: `DONE / PASS / APPROVED` — 구현·평가·리뷰 수정·로그인 안내 완료, 커밋·push(2026-11-22 Owner 지시)
+근거 지시: [../../decisions/2026-11-22-commit-and-reply-seeds.md](../decisions/2026-11-22-commit-and-reply-seeds.md) (후속 원문 4)
 
 ## 왜
 
@@ -70,8 +70,9 @@ Owner: "agy neon이 글을 잘 쓴다고하더라. 그래서 agy CLI도 추가 �
 ## 최종 리뷰 (opus 리뷰어 1회, With fixes)
 
 - 고침: 잠금 대기를 timeout 안으로 제한(넘으면 "다른 agy 호출이 끝나지 않아…" 오류), effort는 모델 id 접미사(-low)만 쓰고 `--effort`는 넘기지 않음(분석 호출도 low), agy 자체 시간 제한은 프로세스 타임아웃보다 10초 짧게. 각각 실패 테스트 먼저 확인. 전체 721 passed, 실제 호출 1회 정상.
-- 미룬 것(Minor): 손자 프로세스 정리, 문자열 아닌 response 방어, 잠금 경로 TMPDIR 의존, 로그인 풀림 시 재로그인 안내 문구, 직렬화 테스트를 프로세스 간으로.
+- 미룬 것(Minor): 손자 프로세스 정리, 문자열 아닌 response 방어, 잠금 경로 TMPDIR 의존, 직렬화 테스트를 프로세스 간으로.
+- 추가(Owner 지시 "로그인 안내 문구도 넣자"): 로그인이 풀리면 "agy 로그인이 풀렸어요. 터미널에서 agy 를 실행해 다시 로그인한 뒤 재시도하세요" 오류. 테스트 먼저 실패 확인, 전체 722 passed.
 
 ## 다음 작업
 
-- Owner 커밋 승인. push는 별도.
+- 없음. 커밋·push 완료.

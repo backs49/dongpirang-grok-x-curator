@@ -16,6 +16,10 @@ DEFAULT_AGY_MODEL = "gemini-4-neon-low"
 # 도중에 로그인이 풀렸고, 다시 로그인하려면 터미널에서 직접 agy 를 띄워야 했다.
 # 아이디어·워크스페이스 워커는 작업마다 따로 뜨는 프로세스라 파일 잠금으로 막는다.
 AGY_LOCK_PATH = Path(tempfile.gettempdir()) / "dongpirang-agy.lock"
+# 로그인이 풀리면 앱 안에서는 복구할 수 없다. agy 로그인 화면은 진짜 터미널(TTY)이
+# 있어야 뜬다 — Claude Code 의 `! agy` 로도 안 된다(2026-11-22 실측).
+_LOGGED_OUT_MARKERS = ("authentication required", "authentication failed", "not logged in")
+LOGIN_HINT = "agy 로그인이 풀렸어요. 터미널에서 agy 를 실행해 다시 로그인한 뒤 재시도하세요"
 
 
 class AgyCliProvider(CliProvider):
@@ -86,6 +90,8 @@ class AgyCliProvider(CliProvider):
                 code, stdout, stderr = self._run(
                     self._command(prompt, remaining), timeout=remaining, cwd=cwd
                 )
+        if any(m in f"{stdout}\n{stderr}".lower() for m in _LOGGED_OUT_MARKERS):
+            return None, LOGIN_HINT
         if code != 0:
             return None, (stderr or stdout or "unknown provider error").strip()
         env = self._envelope(stdout)
