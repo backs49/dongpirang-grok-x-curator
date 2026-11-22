@@ -18,8 +18,9 @@ from datetime import datetime, timedelta, timezone
 
 import stance_archive
 
-# 최근 며칠 안 답글만 본다. 지난 소재는 이미 식은 얘기다.
-WINDOW_DAYS = 2
+# 최근 며칠 안 답글만 본다. 지난 소재는 이미 식은 얘기다. 2일이던 것을 답글이
+# 하루 0~1건으로 줄어든 11월에 3일로 늘렸다(D-011).
+WINDOW_DAYS = 3
 MAX_SEEDS = 2
 # @멘션·링크·기호를 뺀 글자 수. 10월 답글 135개 중 15자 이상은 약 60개였다.
 MIN_CORE_CHARS = 15

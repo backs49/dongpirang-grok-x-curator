@@ -20,6 +20,7 @@
 | D-008 | 2026-10-30 | 답글 씨앗: 본인 최근 답글을 원글 초안 소재로 | 기존 규칙 |
 | D-009 | 2026-11-20 | 답글 씨앗 재고를 팁 재고와 분리(상한 2) | PENDING (CHAT) |
 | D-010 | 2026-11-22 | 연속성 프로토콜 도입(claude-mem 대체) | APPROVED |
+| D-011 | 2026-11-22 | 답글 씨앗 창 2일 → 3일 | APPROVED |
 
 운영 지식(결정은 아니지만 재발 시 먼저 볼 것): venv는 저장소 안 `venv/` 고정(AGENTS.md), grok CLI 영상 400은 계정 `/privacy` opt-out이 원인(2026-08-11 opt-in 복구, `CHAT`).
 
@@ -81,3 +82,9 @@
 - 결정: 프로젝트 기억은 커밋된 문서(AGENTS.md, docs/)와 Git으로 관리한다. 프로토콜 전문은 [CONTINUITY_PROTOCOL.md](CONTINUITY_PROTOCOL.md).
 - 선택지: claude-mem 유지 / 연동 축소 / 프로토콜로 대체 → 대체. claude-mem의 decision·bugfix 기록은 저장소 밖 `~/claude-mem-archive/`에 추출해 두었다.
 - 범위: 문서만. 커밋과 claude-mem 삭제는 별도 승인.
+
+## D-011 답글 씨앗 창 2일 → 3일
+- 일자: 2026-11-22 · 출처: `APPROVAL` [decisions/2026-11-22-commit-and-reply-seeds.md](decisions/2026-11-22-commit-and-reply-seeds.md)
+- 배경: 11-14 이후 답글이 3건으로 줄었고, 필터를 통과한 유일한 후보(11-18)가 2일 창을 1.5시간 차로 놓쳤다([조사](tasks/archive/2026-11-22-reply-seeds-zero.md)).
+- 결정: `reply_seeds.WINDOW_DAYS = 3`. Owner는 3~4일을 승인했고 에이전트가 3일을 골랐다 — 놓친 사례를 잡기에 충분하고, 4일보다 식은 얘기가 덜 섞인다.
+- 함께: Owner가 답글 활동을 늘리기로 했다. 창만 늘려서는 소재가 생기지 않는다.

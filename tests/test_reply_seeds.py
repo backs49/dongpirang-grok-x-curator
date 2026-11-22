@@ -37,10 +37,19 @@ def test_skips_social_private_originals_old_and_seen():
         _row("20", "@a 삼가 고인의 명복을 빕니다 마음이 너무 아픕니다 정말로"),
         _row("21", "@a 찰떡이가 오늘 처음으로 걸음마를 했는데 너무 신기하네요"),
         _row("22", "원글이라서 빠져야 하는 충분히 긴 문장입니다 정말로요", parent=None),
-        _row("23", "@a 이틀보다 오래된 답글이라 식은 얘기라서 빠집니다 정말", created="2026-10-27T10:00:00.000Z"),
+        _row("23", "@a 사흘보다 오래된 답글이라 식은 얘기라서 빠집니다 정말", created="2026-10-27T10:00:00.000Z"),
         _row("5", "@a 이미 본 답글이라 워터마크 뒤로 빠져야 하는 문장입니다"),
     ]
     assert _pick(rows, after_id="9") == []
+
+
+def test_window_keeps_replies_up_to_three_days_old():
+    # 2026-11-18 답글이 2일 창을 1.5시간 차로 놓친 뒤 3일로 늘렸다(D-011).
+    rows = [
+        _row("40", "@a 이틀 반 전에 단 답글인데 아직 식지 않은 얘기라서 남습니다", created="2026-10-28T11:00:00.000Z"),
+        _row("41", "@a 사흘이 넘은 답글이라 이제는 식은 얘기라서 빠져야 합니다", created="2026-10-27T22:00:00.000Z"),
+    ]
+    assert [s["reply_id"] for s in _pick(rows)] == ["40"]
 
 
 def test_ranks_by_length_and_impressions_with_limit():
