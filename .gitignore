@@ -22,3 +22,6 @@ logs/
 
 # 지식 그래프 빌드 산출물 (graphify)
 graphify-out/
+
+# 개인용 Claude 지침 (연속성 프로토콜)
+CLAUDE.local.md

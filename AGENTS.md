@@ -1,43 +1,16 @@
 # AGENTS.md
 
-Codex should use this file as the durable project guidance for this repository.
+Shared operating rules for every coding agent (Claude Code, Codex, Grok). Detail lives in `docs/`; read only the section your task touches.
 
 ## Project Overview
 
-This is a Streamlit app for X post optimization and curation. It started as a Grok/xAI API-key based app and now supports a local provider mode. Sidebar engine order is `ENGINE_OPTIONS` in `provider_selection.py`, and the **first entry is the default**:
+Korean-first X post optimization and curation app (en/ja via `i18n.py`). Two front ends: NiceGUI mobile workspace (`nicegui_app.py`, :8081, primary) and legacy Streamlit (`app.py`, :8501). Engine order is `ENGINE_OPTIONS` in `provider_selection.py`; the **first entry is the default**: Grok CLI (also default image/video backend), Claude CLI, Codex CLI, xAI API, demo mode.
 
-- **Grok CLI (default)** for local Grok Build workflows and Grok-specific curation; also the default image and video backend.
-- Claude CLI for local subscription-backed writing and analysis.
-- Codex CLI for local subscription-backed generation, including `$imagegen` images.
-- xAI API for direct Grok API usage, X Search, and the image/video APIs.
-- Demo mode when no provider is configured.
+## Where to Read
 
-The app is Korean-first, with English and Japanese i18n support in `i18n.py`.
-
-## Important Files
-
-- `app.py`: Streamlit entrypoint, sidebar, provider selection, tab wiring.
-- `provider_selection.py`: maps sidebar engine choices to provider-backed `GrokClient` instances.
-- `grok_client.py`: compatibility facade preserving existing tab method names.
-- `providers/`: provider implementations.
-  - `base.py`: provider protocol, `ProviderStatus`, `ProviderError`, JSON extraction.
-  - `cli.py`: shared subprocess wrapper for local CLI text providers.
-  - Text: `claude_cli.py`, `grok_cli.py`, `codex_cli.py`, `xai_api.py`.
-  - Media: `grok_cli_media.py` (image + video), `codex_cli_image.py`, `xai_image.py`, `xai_video.py`.
-  - Text providers return error dicts; media providers raise `ProviderError`. See Error Conventions.
-- `image_client.py`: `ImageClient`/`VideoClient` facades, backend selection, X-spec post-processing, `gen_log.jsonl`.
-- `publisher.py`: OAuth 1.0a X publishing client.
-- `content_queue.py`: JSON-file draft/material queue with publish slots.
-- `ideas_history.py`: JSONL persistence for idea generation results (survives browser session loss).
-- `design.py`: token-based CSS variable system, light/dark themes.
-- `utils.py`: analytics CSV parsing, follower comparison, shared helpers.
-- `tabs/`: Streamlit tab renderers.
-- `scripts/`: launchd-driven batch jobs (publish worker, nightly drafts, tunnel watchdog, admin notifier).
-- `xalgo_prompts.py`: system prompts and expected JSON output contracts.
-- `i18n.py`: UI copy and language instructions.
-- `demo_data.py`: preset demo outputs for API-key-free use.
-- `assets/`: brand assets — mascot reference images used to keep generated images on-character.
-- `tests/`: pytest suite.
+- Editing `providers/`, `grok_client.py`, `image_client.py`, `publisher.py`, tabs, or scripts → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (files, error conventions, provider pins, image/video, publish pipeline, remote access).
+- Why something is the way it is → [docs/DECISIONS.md](docs/DECISIONS.md) index first, then only the relevant entry.
+- Current state, risks, active tasks → [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md). Work handoff → `docs/tasks/<task-id>.md`.
 
 ## Development Rules
 
@@ -50,97 +23,44 @@ The app is Korean-first, with English and Japanese i18n support in `i18n.py`.
 - Do not expose API keys to analytics. `app.py` intentionally uses the untracked `st.text_input` reference for API-key input.
 - Avoid broad UI rewrites unless the user asks for design work.
 - Keep Korean copy natural and friendly; update English and Japanese keys when adding new UI labels.
-
-## Error Conventions
-
-Two conventions coexist. Match whichever the layer you are editing already uses — do not convert one to the other as a drive-by change.
-
-- **Text generation** (`providers/cli.py`, `providers/xai_api.py` → `grok_client.py` → tabs): failures come back as `{"error": "..."}` dicts. Tab renderers check `if "error" in result` and call `st.error`. These paths do not raise, and the tabs do not wrap them in try/except.
-- **Media generation and publishing** (`providers/grok_cli_media.py`, `codex_cli_image.py`, `xai_image.py`, `xai_video.py`, `publisher.py`): failures raise `ProviderError` from `providers/base.py`. The only handlers that terminate it are `tabs/tab_ideas.py` (image and video generation) and `scripts/publish_worker.py`. Handlers inside the providers themselves are re-raise guards, not terminal.
-
-`image_client.py` does not catch `ProviderError` — it passes straight through the `ImageClient`/`VideoClient` facade to the caller. Any new caller must handle it. `tabs/tab_publish_queue.py` has no `ProviderError` handling because it never calls `publisher.post_text`; it only consumes the dict convention from `grok.draft_from_material` and `grok.draft_from_reply` (reply-seed materials; a `skip` result marks the material used via `content_queue.skip_material`, no draft).
-
-## Local Setup
-
-The virtual environment lives at **`venv/` inside the repository** (already present on this machine; gitignored by its own auto-generated `venv/.gitignore`). The global Python does not have project dependencies installed. Run every command in this file from the repository root.
-
-```bash
-python3 -m venv venv
-venv/bin/python -m pip install -U pip
-venv/bin/python -m pip install -r requirements.txt pytest
-```
-
-Do **not** relocate the venv to `/tmp` or `/private/tmp` — macOS clears those on reboot, and all three launchd jobs hard-code the repo-local interpreter (`scripts/tunnel_watch.sh` sets `PYTHON="$REPO/venv/bin/python"`; the drafts and publish plists name it outright). A venv anywhere else leaves the batch jobs pointing at a missing binary.
-
-## Test Commands
-
-Run the full suite:
-
-```bash
-venv/bin/python -m pytest -q
-```
-
-Compile smoke check for app/provider edits:
-
-```bash
-venv/bin/python -m py_compile app.py provider_selection.py grok_client.py image_client.py providers/*.py tabs/*.py i18n.py
-```
-
-Run the app locally:
-
-```bash
-venv/bin/python -m streamlit run app.py --server.headless true --server.port 8503
-```
-
-Port map on this machine: **8501 is this app** (held by the launchd-managed instance that `scripts/tunnel_watch.sh` keeps alive), 8502 is the ai-trader dashboard. Use a free port such as 8503 for ad-hoc runs so you do not fight the managed instance.
-
-If the sandbox blocks local port binding, rerun with appropriate approval.
-
-## Provider Notes
-
-- `ClaudeCliProvider` should use `claude -p` with no tools and no session persistence where possible.
-- `GrokCliProvider` should use `grok -p` with plain output and no unnecessary tools.
-- `CodexCliProvider` should use `codex exec` with `--ephemeral`, a read-only sandbox, and `--output-last-message` to read the final answer cleanly (stdout carries progress logs).
-- `XaiApiProvider` should remain OpenAI SDK compatible with `base_url="https://api.x.ai/v1"`. `grok_client.py` instantiates it as the default provider when none is injected.
-- Model tiers are pinned deliberately — this is copywriting, not frontier reasoning. `ClaudeCliProvider` pins `--model sonnet` (`DEFAULT_CLAUDE_MODEL`). `CodexCliProvider` pins `-m gpt-6-luna` (`DEFAULT_CODEX_MODEL`) with `model_reasoning_effort="medium"` for analysis calls; writing calls go through `GrokClient._write_json`, which switches Grok, Claude and Codex CLIs to `low` (`DEFAULT_CODEX_EFFORT`): a 2026-09-30 blind score of memo drafts ranked Luna low above every other Codex effort and above Sol at every effort. `CodexCliImageProvider` pins `model_reasoning_effort="medium"` and leaves the model unset, because image quality comes from `$imagegen`. `GrokCliProvider` passes no model flag because the Grok CLI exposes only one model. Do not raise these without a quality reason.
+- Text generation returns `{"error": ...}` dicts; media generation and publishing raise `ProviderError`. Match the layer you edit; do not convert one to the other as a drive-by change (ARCHITECTURE.md › Error Conventions).
 - Curator real-time X search should only be claimed when using a Grok-capable provider.
 - Claude-only curator fallback may generate search keywords and reply drafts, but must not claim live X search.
+- Local CLI providers keep their invocation invariants (`claude -p` no tools/no session persistence, `codex exec --ephemeral` read-only, `grok -p` plain output) — ARCHITECTURE.md › Provider Notes.
+- Model tiers are pinned deliberately (D-006). Do not raise them without a quality reason.
 
-## Image Workflow
+## Safety Boundaries
 
-The image feature has two layers:
+- All generated posts stay `draft`; publishing always needs the owner's approval in the queue (D-001). `scripts/publish_worker.py` is dry-run unless `--live` (or `X_PUBLISH_LIVE=1`); install its launchd plist only after a manual `--live` test succeeds.
+- X API keys live in `.env` (gitignored). Never print or log key values. The xAI key input is session-only and untracked.
+- **Never run `tailscale serve reset` or `tailscale funnel reset`** — other services use Funnel on :443 and :8443. Per-port commands only (D-003).
+- `scripts/notify_admin.py` messages the single admin `TELEGRAM_CHAT_ID` only. Never add guest fan-out.
+- Use `venv/` inside the repo. Do **not** relocate the venv to `/tmp` or `/private/tmp` — launchd jobs hard-code the repo-local interpreter.
 
-- Scene brief + style assembly: each idea's `image_prompt` is a short scene brief (no style baked in). `image_modes.build_image_prompt(scene_brief, style_key)` combines it with a fixed per-style block — style chosen via `st.pills` in `tabs/tab_ideas.py` from `auto`/`mascot`/`comic`/`doodle`/`editorial`/`cinematic`/`infographic`/`retro_anime` (`auto` rotates/uses the idea's `suggested_style`) — into the final prompt, standardized to portrait 3:4 (post-processed down to 1080×1440). That assembled prompt is shown as a paste-ready copy fallback and is also what gets sent to the image backend.
-- Direct generation: `image_client.build_image_client` tries the engine picked in the sidebar first (**default Grok CLI**), then falls back Grok CLI → Codex CLI → xAI API. The CLI paths are subscription-backed (`providers/grok_cli_media.py` uses Grok Build CLI's Imagine `image_gen` tool; `providers/codex_cli_image.py` uses Codex CLI's built-in `$imagegen`), so neither bills a separate API. `providers/xai_image.py` (`images.generate` with `b64_json`) is the last resort and needs an xAI key. With no backend at all, the tab shows only the copy prompt.
-- Video: `image_client.build_video_client` prefers the local Grok CLI (`GrokCliVideoProvider`, Imagine video tool; `image_to_video` when a source image is supplied), and falls back to `providers/xai_video.py` (async `POST /videos/generations` + polling; downloads the temporary mp4 URL immediately) when an xAI key is set. The ideas tab offers image-to-video from a generated image.
-- Generated PNGs/MP4s are written to `generated_images/` (gitignored), with prompt and engine metadata appended to `generated_images/gen_log.jsonl` so past generations stay traceable after the UI session ends.
-- Fixed brand mascot: `image_client.MASCOT_PATH` (`assets/mascot_dongpi.jpg`) anchors character consistency. Mascot is a style mode, not a flag — picking `mascot` in the style pills selects `image_modes.IMAGE_MODES["mascot"]`'s style block and passes `MASCOT_PATH` as the reference image, and `ImageClient.generate(prompt, reference=...)` forwards it **only** to providers declaring `supports_reference` (currently Grok CLI). Other backends silently drop it, so mascot fidelity is engine-dependent; `gen_log.jsonl` records `mascot_ref` per generation.
+## Commands
 
-Codex CLI image generation is a verified official path (`codex exec` + `$imagegen`, gpt-image-2). Still do not scrape or automate the ChatGPT/Claude/Grok web UIs, and do not treat chat subscriptions as raw API keys.
+Run from the repository root.
 
-## Publish Pipeline (stage 4)
+- Tests: `venv/bin/python -m pytest -q`
+- Compile smoke: `venv/bin/python -m py_compile app.py provider_selection.py grok_client.py image_client.py providers/*.py tabs/*.py i18n.py`
+- Ad-hoc app: `venv/bin/python -m streamlit run app.py --server.headless true --server.port 8503`
 
-- `content_queue.py`: JSON-file queue (`content_queue/queue.json`, gitignored) shared by the 발행 큐 tab and batch scripts. Slots: weekdays 08:00/19:00, Sat 10:00, Sunday off.
-- `publisher.py`: OAuth 1.0a client for `POST /2/tweets`. Keys live in `.env` (gitignored) as X_API_KEY / X_API_KEY_SECRET / X_ACCESS_TOKEN / X_ACCESS_TOKEN_SECRET. Never print or log key values.
-- `scripts/publish_worker.py`: idempotent worker run by launchd at slot times. Dry-run by default; `--live` (or X_PUBLISH_LIVE=1) actually posts. Missed slots (>90min overdue) are reassigned, never force-posted.
-- `scripts/com.dongpirang.publish.plist`: launchd template. Install only after a manual `--live` test succeeds:
-  `cp scripts/com.dongpirang.publish.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.dongpirang.publish.plist`
-- `scripts/generate_drafts.py`: nightly draft batch (launchd 23:00 via `scripts/com.dongpirang.drafts.plist`). Two gates: total stock (draft+approved+publishing+error) ≥ `STOCK_TARGET` (4) closes user-material conversion and the tip fallback; reply seeds have their own gate (next bullet). The batch skips entirely only when both are closed. With stock open it converts up to 3 unused materials into drafts; only when the inbox is empty does it add one tip draft from `settings.tip_keywords` in queue.json (default AI/솔로개발 keywords). Uses local CLI engines (Claude → Codex; Codex timed out on every call in a 2026-10-30 trial), so generation is free. All output stays in 'draft' status — publishing always requires user approval in the 발행 큐 tab.
-- Reply seeds (same script, gated separately from total stock): they run while fewer than `REPLY_STOCK_TARGET` (2, one night's worth) reply-origin drafts are waiting — a draft is reply-origin when its `material_id` points at an `origin: "reply"` material. Tip drafts filling `STOCK_TARGET` must not block them: on 2026-11-04–19 four unapproved tip drafts kept reply seeds from running for 16 nights. The separate cap still stops cold replies piling up while approval stalls. On an open night `reply_seeds.py` picks up to 2 of the owner's own recent replies (last 2 days, after `reply_seeds.last_seen_id` in queue.json, ≥15 core chars, no greetings/condolences/family) from `content_queue/my_posts.json` after a best-effort `archive_refresh.refresh()`, fetches each parent post's text (`archive_refresh.fetch_texts`), and adds them as materials with `origin: "reply"`, `reply_id`, `parent_text`. Those materials go through `GrokClient.draft_from_reply` (`REPLY_SEED_SYSTEM_PROMPT`, a minimal voice-card prompt) instead of `draft_from_material`; when the model returns `skip` the material is marked used with a `skipped` reason and no draft. Why: in 2026-10 the owner wrote 135 replies and 1 original, and the replies already carry the lived stance that prompt rules could not supply. X API failures never stop the batch.
-- Stalled-approval reminder (same script, runs **before** the stock check so the skip path is still covered): when the oldest `draft`-status item has waited past `STALE_DRAFT_DAYS`, it telegrams the admin via `scripts/notify_admin.py` and stamps `reminders.stale_drafts_at` in queue.json. Re-sends are throttled to `REMINDER_INTERVAL_DAYS`; a failed send is deliberately **not** stamped so the next night retries. Only `draft` counts as waiting — `approved` items publish themselves on their slot, so they are not a human bottleneck. This exists because the approval gate used to fail silently: publishing stopped 2026-07-08 and nothing surfaced it for 33 days while the batch logged `skipped_stock_sufficient` every night. Keep queue.json's `reminders` (batch-owned operational state) separate from `settings` (user-edited).
+Port map on this machine: **8501 is this app** (held by the launchd-managed instance that `scripts/tunnel_watch.sh` keeps alive), 8502 is the ai-trader dashboard. Use a free port such as 8503 for ad-hoc runs so you do not fight the managed instance. If the sandbox blocks local port binding, rerun with appropriate approval.
 
-## Remote Access (Tailscale Serve, private)
+## Continuity (development sessions only)
 
-- `scripts/tunnel_watch.sh` (launchd `com.dongpirang.tunnel`, hourly + at load): self-heals **two** local apps — the NiceGUI workspace (`nicegui_app.py`, :8081; :8080 belongs to VercelPulse `dashboard.py`) and legacy Streamlit (:8501; :8502 belongs to ai-trader) — then ensures **private Tailscale Serve** endpoints `https :10000 → 127.0.0.1:8081` (workspace, primary URL) and `https :10001 → 127.0.0.1:8501` (legacy tools). URLs recorded in `logs/workspace.url` / `logs/legacy.url`; Telegram notify on change via `scripts/notify_admin.py`. Sleep window 00–07 KST skips checks.
-- **Funnel is retired for this app** (2026-08-17 cutover): access is tailnet-membership-only, so the app password gate was removed from `app.py`. This node still runs Funnel on :443 (another service) and :8443 (ai-trader) — **never run `tailscale serve reset` or `tailscale funnel reset` here**; per-port commands only. The script's guarded `funnel --https=10000 off` only fires if a public :10000 ever reappears.
-- Known quirk: curling the `*.ts.net` serve URLs **from this machine itself** times out (macOS tailscaled self-hairpin); the script logs a WARN and continues. Verify reachability from another tailnet device (e.g. the phone).
-- `scripts/notify_admin.py` sends Telegram messages to the single admin `TELEGRAM_CHAT_ID` in `.env` ONLY. Never add guest fan-out here (ai-trader's notify_telegram.py has guests — do not reuse it for tunnel URLs).
-- The xAI API key input in `app.py` is session-only (no cookie persistence); keep it untracked by analytics.
+These rules apply to agent development sessions. They do **not** apply when the app itself calls a CLI to generate copy (those calls also run with this repo as cwd) — for those, ignore this section and answer only in the requested format.
+
+- **Start:** `git status`, `git log --oneline -10`. Open the active task file listed in PROJECT_STATE (this repo commits on main, so task files are named `YYYY-MM-DD-<topic>`, not by branch). If the request carries a new instruction or approval, save it verbatim to `docs/decisions/` before working.
+- **Update on events, not every tool call:** work unit done or test/review result → task file; design decision → new `D-NNN` in DECISIONS (never rewrite old ones; use `Supersedes:`); risk that affects main or merge/deploy confirmed → PROJECT_STATE; pausing or `/clear` → task file first.
+- **Status** is three independent axes `progress / verification / approval` (e.g. `DONE / PASS / PENDING`). No `PASS` without a command and evidence; no `APPROVED` without a human approval record.
+- **Finish:** report work done, verification, open issues, docs touched, next step and approvals needed. List uncommitted docs with a proposed message.
+- Full protocol: [docs/CONTINUITY_PROTOCOL.md](docs/CONTINUITY_PROTOCOL.md).
 
 ## Git Hygiene
 
+- Git commit, push, merge require the owner's approval (added 2026-11-22 with the continuity protocol).
 - The repo may contain untracked `.DS_Store` files. Do not remove or stage them unless the user asks.
 - `docs/superpowers/` is gitignored; use `git add -f` only for approved spec/plan files that must be committed.
 - Prefer small commits by task.
 - Do not reset or revert user changes without explicit instruction.
-
