@@ -102,3 +102,8 @@ class TestMyVoiceMode:
         block = wm.build_mode_block(wm.MY_VOICE)
         assert "장르" in block and "각도" in block
         assert "모드 카드" not in block  # 장르 카드를 붙이지 않는다
+
+    def test_my_voice_block_forbids_invented_habits_and_plans(self):
+        # 2026-11-22 야간 팁: 일화 금지만으로는 습관·결심·숫자를 지어냈다.
+        block = wm.build_mode_block(wm.MY_VOICE)
+        assert "습관" in block and "결심" in block and "숫자" in block
