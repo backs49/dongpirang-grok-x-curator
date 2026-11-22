@@ -68,6 +68,19 @@ class TestBuildProvider:
         assert status.available is True
         provider_cls.assert_called_once()
 
+    @patch("provider_selection.AgyCliProvider")
+    def test_builds_agy_cli_provider(self, provider_cls):
+        provider = MagicMock()
+        provider.is_available.return_value.available = True
+        provider.is_available.return_value.message = "ready"
+        provider_cls.return_value = provider
+
+        client, status = build_provider("agy CLI", api_key="", model="")
+
+        assert client is not None
+        assert status.available is True
+        provider_cls.assert_called_once()
+
     def test_demo_returns_no_client(self):
         client, status = build_provider("Demo", api_key="", model="")
         assert client is None
@@ -79,3 +92,8 @@ class TestBuildProvider:
         assert client is None
         assert status.available is False
         assert "api key" in status.message.lower()
+
+
+def test_agy_cli_listed_after_codex_and_default_unchanged():
+    assert ENGINE_OPTIONS[0] == "Grok CLI"
+    assert ENGINE_OPTIONS.index("agy CLI") == ENGINE_OPTIONS.index("Codex CLI") + 1

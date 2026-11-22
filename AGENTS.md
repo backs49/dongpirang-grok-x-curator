@@ -4,7 +4,7 @@ Shared operating rules for every coding agent (Claude Code, Codex, Grok). Detail
 
 ## Project Overview
 
-Korean-first X post optimization and curation app (en/ja via `i18n.py`). Two front ends: NiceGUI mobile workspace (`nicegui_app.py`, :8081, primary) and legacy Streamlit (`app.py`, :8501). Engine order is `ENGINE_OPTIONS` in `provider_selection.py`; the **first entry is the default**: Grok CLI (also default image/video backend), Claude CLI, Codex CLI, xAI API, demo mode.
+Korean-first X post optimization and curation app (en/ja via `i18n.py`). Two front ends: NiceGUI mobile workspace (`nicegui_app.py`, :8081, primary) and legacy Streamlit (`app.py`, :8501). Engine order is `ENGINE_OPTIONS` in `provider_selection.py`; the **first entry is the default**: Grok CLI (also default image/video backend), Claude CLI, Codex CLI, agy CLI (Gemini 4, sidebar only), xAI API, demo mode.
 
 ## Where to Read
 
@@ -26,7 +26,7 @@ Korean-first X post optimization and curation app (en/ja via `i18n.py`). Two fro
 - Text generation returns `{"error": ...}` dicts; media generation and publishing raise `ProviderError`. Match the layer you edit; do not convert one to the other as a drive-by change (ARCHITECTURE.md › Error Conventions).
 - Curator real-time X search should only be claimed when using a Grok-capable provider.
 - Claude-only curator fallback may generate search keywords and reply drafts, but must not claim live X search.
-- Local CLI providers keep their invocation invariants (`claude -p` no tools/no session persistence, `codex exec --ephemeral` read-only, `grok -p` plain output) — ARCHITECTURE.md › Provider Notes.
+- Local CLI providers keep their invocation invariants (`claude -p` no tools/no session persistence, `codex exec --ephemeral` read-only, `grok -p` plain output, `agy -p --mode plan --sandbox` in an empty temp dir per D-012) — ARCHITECTURE.md › Provider Notes.
 - Model tiers are pinned deliberately (D-006). Do not raise them without a quality reason.
 
 ## Safety Boundaries

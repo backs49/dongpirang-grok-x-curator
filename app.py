@@ -174,7 +174,7 @@ with st.sidebar:
             )
         else:
             model = ""
-            if engine in ("Claude CLI", "Grok CLI", "Codex CLI"):
+            if engine in ("Claude CLI", "Grok CLI", "Codex CLI", "agy CLI"):
                 st.caption(t("cli_default_model_note"))
 
         if engine == "xAI API" and get_lang() == "ja" and model == "grok-4.1-fast-reasoning":

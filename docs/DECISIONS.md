@@ -21,6 +21,7 @@
 | D-009 | 2026-11-20 | 답글 씨앗 재고를 팁 재고와 분리(상한 2) | PENDING (CHAT) |
 | D-010 | 2026-11-22 | 연속성 프로토콜 도입(claude-mem 대체) | APPROVED |
 | D-011 | 2026-11-22 | 답글 씨앗 창 2일 → 3일 | APPROVED |
+| D-012 | 2026-11-22 | agy CLI 엔진: 도구 완전 차단 불가를 수용, plan+sandbox+빈 폴더로 제한 | APPROVED |
 
 운영 지식(결정은 아니지만 재발 시 먼저 볼 것): venv는 저장소 안 `venv/` 고정(AGENTS.md), grok CLI 영상 400은 계정 `/privacy` opt-out이 원인(2026-08-11 opt-in 복구, `CHAT`).
 
@@ -88,3 +89,11 @@
 - 배경: 11-14 이후 답글이 3건으로 줄었고, 필터를 통과한 유일한 후보(11-18)가 2일 창을 1.5시간 차로 놓쳤다([조사](tasks/archive/2026-11-22-reply-seeds-zero.md)).
 - 결정: `reply_seeds.WINDOW_DAYS = 3`. Owner는 3~4일을 승인했고 에이전트가 3일을 골랐다 — 놓친 사례를 잡기에 충분하고, 4일보다 식은 얘기가 덜 섞인다.
 - 함께: Owner가 답글 활동을 늘리기로 했다. 창만 늘려서는 소재가 생기지 않는다.
+
+## D-012 agy CLI 엔진의 도구 제한 수준
+- 일자: 2026-11-22 · 출처: `APPROVAL` [decisions/2026-11-22-commit-and-reply-seeds.md](decisions/2026-11-22-commit-and-reply-seeds.md) (후속 원문 6)
+- 배경: 다른 로컬 CLI 엔진은 "도구 없음·세션 무저장"(AGENTS.md, ARCHITECTURE Provider Notes)인데 agy에는 도구를 끄는 설정과 무저장 플래그가 없다. `--settings` deny 규칙은 실측에서 아무것도 막지 못했다.
+- 결정: `--mode plan --sandbox`, 매 호출 새 빈 임시 폴더를 cwd로 쓴다. 실측상 명령 실행·폴더 밖 읽기가 거부되고 웹 읽기는 관찰되지 않았다. 남는 차이(도구 목록 노출, agy 쪽 대화 저장, 호출당 약 2만 토큰, `~/.gemini/antigravity-cli/brain/`의 계획 파일)는 수용한다.
+- 선택지: CliProvider 방식 / `agy acp` 프로토콜 / 도입 보류 → CliProvider 방식. acp는 사이드바 선택지 하나에 과하다.
+- 범위: 사이드바 선택 엔진만. 야간 배치 사용은 평가 점수가 확실히 높을 때 별도 승인.
+- 근거 실측: [tasks/2026-11-22-agy-cli-provider.md](tasks/2026-11-22-agy-cli-provider.md)

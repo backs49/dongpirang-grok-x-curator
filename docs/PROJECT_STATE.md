@@ -39,7 +39,7 @@
 
 이 저장소는 main에 직접 커밋하므로 task 파일 이름은 브랜치가 아니라 작업 식별자(`YYYY-MM-DD-<주제>`)를 쓴다. `docs/tasks/`에서 `archive/`를 뺀 파일이 진행 중인 작업이다.
 
-- [2026-11-22-agy-cli-provider.md](tasks/2026-11-22-agy-cli-provider.md) — IN_PROGRESS
+- [2026-11-22-agy-cli-provider.md](tasks/2026-11-22-agy-cli-provider.md) — DONE / PASS / PENDING(커밋 승인)
 
 ## 점검 방법
 

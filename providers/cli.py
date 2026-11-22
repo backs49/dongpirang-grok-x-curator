@@ -19,7 +19,7 @@ class CliProvider:
     def _prompt(self, system_prompt: str, user_prompt: str) -> str:
         return f"{system_prompt.strip()}\n\nUser request:\n{user_prompt.strip()}".strip()
 
-    def _run(self, cmd: list[str], *, timeout: int) -> tuple[int, str, str]:
+    def _run(self, cmd: list[str], *, timeout: int, cwd: str | None = None) -> tuple[int, str, str]:
         try:
             completed = subprocess.run(
                 cmd,
@@ -27,6 +27,7 @@ class CliProvider:
                 text=True,
                 timeout=timeout,
                 check=False,
+                cwd=cwd,
             )
         except subprocess.TimeoutExpired:
             return 124, "", f"{self.name} timed out after {timeout} seconds"

@@ -90,7 +90,7 @@ def test_user_storage_defaults_carry_no_credentials():
 
 
 def test_engine_options_are_local_clis_plus_demo_only():
-    assert ENGINE_OPTIONS == ("Grok CLI", "Claude CLI", "Codex CLI", "Demo")
+    assert ENGINE_OPTIONS == ("Grok CLI", "Claude CLI", "Codex CLI", "agy CLI", "Demo")
 
 
 def test_copy_uses_the_workspace_mapping_and_falls_back_to_i18n():

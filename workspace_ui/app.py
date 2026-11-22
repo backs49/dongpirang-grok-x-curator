@@ -32,7 +32,7 @@ AREA_ICONS = {
 }
 
 # 로컬 CLI 와 데모만. xAI API 는 키를 받아야 하므로 레거시 Streamlit 앱에 남긴다.
-ENGINE_OPTIONS = ("Grok CLI", "Claude CLI", "Codex CLI", "Demo")
+ENGINE_OPTIONS = ("Grok CLI", "Claude CLI", "Codex CLI", "agy CLI", "Demo")
 DEFAULT_ENGINE = "Grok CLI"
 
 # 서명된 사용자 스토리지의 초기값. 여기 없는 키는 각 영역이 직접 만든다.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from grok_client import GrokClient
+from providers.agy_cli import AgyCliProvider
 from providers.base import ProviderStatus
 from providers.claude_cli import ClaudeCliProvider
 from providers.codex_cli import CodexCliProvider
@@ -9,7 +10,7 @@ from providers.xai_api import XaiApiProvider
 
 
 # 첫 항목이 사이드바 기본값이다. Grok CLI 가 기본 (구독 한도가 넉넉).
-ENGINE_OPTIONS = ["Grok CLI", "Claude CLI", "Codex CLI", "xAI API", "Demo"]
+ENGINE_OPTIONS = ["Grok CLI", "Claude CLI", "Codex CLI", "agy CLI", "xAI API", "Demo"]
 API_MODEL_OPTIONS = [
     "grok-4.3",
     "grok-build-0.1",
@@ -35,6 +36,8 @@ def build_provider(
         provider = GrokCliProvider()
     elif engine == "Codex CLI":
         provider = CodexCliProvider()
+    elif engine == "agy CLI":
+        provider = AgyCliProvider()
     elif engine == "xAI API":
         if not api_key:
             return None, ProviderStatus(False, "xAI API key required")

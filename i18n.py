@@ -115,9 +115,9 @@ _T = {
         "ja": "grok-4.1-fast-reasoning: 高速 / grok-4.20-reasoning: 深い分析",
     },
     "cli_default_model_note": {
-        "ko": "비용 효율 모델로 고정: Grok=CLI 설정 모델 · Claude=Sonnet · Codex=Luna. 글쓰기 호출은 모두 추론 low",
-        "en": "Cost-efficient models pinned: Grok=CLI configured model · Claude=Sonnet · Codex=Luna. Writing calls all use low reasoning",
-        "ja": "コスト効率モデルに固定: Grok=CLI設定モデル・Claude=Sonnet・Codex=Luna。執筆の呼び出しはすべて推論low",
+        "ko": "비용 효율 모델로 고정: Grok=CLI 설정 모델 · Claude=Sonnet · Codex=Luna · agy=Gemini 4 Neon. 글쓰기 호출은 모두 추론 low",
+        "en": "Cost-efficient models pinned: Grok=CLI configured model · Claude=Sonnet · Codex=Luna · agy=Gemini 4 Neon. Writing calls all use low reasoning",
+        "ja": "コスト効率モデルに固定: Grok=CLI設定モデル・Claude=Sonnet・Codex=Luna・agy=Gemini 4 Neon。執筆の呼び出しはすべて推論low",
     },
     "ja_model_warning": {
         "ko": "💡 일본어는 **grok-4.20-reasoning** 모델을 권장합니다. grok-4.1-fast-reasoning 은 간혹 큐레이터의 추천 리플이 한국어로 섞여 나올 수 있어요.",
