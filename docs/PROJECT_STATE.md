@@ -33,13 +33,13 @@
 
 1. 대기 초안 2건 처리(승인 또는 반려) — Owner 행동
 2. 답글 씨앗 0건 원인 확인
-3. 연속성 프로토콜 정착 — [tasks/2026-11-22-continuity-protocol.md](tasks/2026-11-22-continuity-protocol.md)
+3. Owner 확인 대기: AGENTS.md에 "`docs/` 상태 문서 한정 커밋 사전 승인" 문구를 넣을지, DECISIONS의 `PENDING`(D-004, D-005, D-009). 연속성 프로토콜 설치는 끝났다([archive](tasks/archive/2026-11-22-continuity-protocol.md), DONE / PASS / PENDING)
 
 ## 진행 중인 task 파일
 
 이 저장소는 main에 직접 커밋하므로 task 파일 이름은 브랜치가 아니라 작업 식별자(`YYYY-MM-DD-<주제>`)를 쓴다. `docs/tasks/`에서 `archive/`를 뺀 파일이 진행 중인 작업이다.
 
-- [2026-11-22-continuity-protocol.md](tasks/2026-11-22-continuity-protocol.md) — IN_PROGRESS
+- 없음
 
 ## 점검 방법
 

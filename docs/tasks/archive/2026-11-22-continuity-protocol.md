@@ -1,12 +1,11 @@
 # Task: 연속성 프로토콜 설치 (claude-mem 대체)
 
-상태: `IN_PROGRESS / NOT_RUN / PENDING` — 문서 커밋 완료(638d42a), claude-mem 삭제 완료, 새 세션 재개 테스트 대기
-근거 지시: [../decisions/2026-11-22-continuity-protocol.md](../decisions/2026-11-22-continuity-protocol.md) · 결정 D-010
+상태: `DONE / PASS / PENDING` — 문서 커밋 완료(638d42a), claude-mem 삭제 완료, 새 세션 재개 테스트 통과(2026-11-22). 승인 대기 항목은 아래에 남김
+근거 지시: [../../decisions/2026-11-22-continuity-protocol.md](../../decisions/2026-11-22-continuity-protocol.md) · 결정 D-010
 
 ## 다음 작업
 
-1. (Owner) 새 Claude Code 세션에서 `/memory`로 CLAUDE.md → AGENTS.md 로드 확인, 이어서 "이어서 진행해" 재개 테스트(F). 결과를 이 파일 검증 표에 기록
-2. F 통과 후 이 파일을 `docs/tasks/archive/`로 옮기고 PROJECT_STATE의 진행 중 목록에서 뺀다
+- 없음. A·F 통과 후 `docs/tasks/archive/`로 옮김. 남은 승인 항목은 PROJECT_STATE 우선순위로 넘김
 
 ## 범위
 
@@ -32,8 +31,8 @@
 | 금지 규칙 AGENTS.md 잔류(E) | PASS | 원본의 never/do not/must not/only 줄을 대조. 실시간 X 검색 주장 규칙 2줄, 발행 워커 live 조건, 키 비노출, tailscale reset 금지, 관리자 전용 알림, venv 위치는 AGENTS.md에 인라인. 나머지(Provider 호출 세부, 이미지 폴백 등)는 ARCHITECTURE.md로 이동하고 AGENTS.md에서 절 링크 |
 | AGENTS.md 경로 고정 여부 | PASS | `*.py *.sh *.plist *.toml *.yml`와 README.md에서 AGENTS.md 참조 없음(grep) |
 | 앱 글쓰기 호출(새 AGENTS.md·CLAUDE.md 적용 상태) | Claude CLI PASS / Grok CLI INCONCLUSIVE | 2026-11-22 `GrokClient.optimize_post` 직접 호출(큐·로그 미기록). Claude 1/1 정상 JSON, 운영 규칙 문구 유출 없음. Grok 4/5 정상, 1회 `JSON 파싱 실패`(재현 안 됨, 변경 전 실패율 기준선 없음). 야간 배치는 Claude CLI라 영향 없음 |
-| CLAUDE.md import 실제 로드(A) | NOT_RUN | 현재 세션에서 확인 불가. 새 세션 `/memory`로 확인 필요 |
-| 새 세션 재개(F) | NOT_RUN | 커밋 후 Owner 수행 |
+| CLAUDE.md import 실제 로드(A) | PASS | 2026-11-22 새 세션. Owner가 `/memory` 실행, 세션 컨텍스트에 `CLAUDE.md`(`@AGENTS.md`) 아래 AGENTS.md 본문이 그대로 펼쳐져 들어옴 |
+| 새 세션 재개(F) | PASS | 같은 세션, 대화 기록 없이 "이어서 진행해"만 받음. 에이전트가 `git status`·`git log`·PROJECT_STATE·task 파일만 읽고 다음 작업(이 검증 기록과 아카이브)을 찾아 수행. claude-mem 없이 동작 |
 
 ## 승인 대기
 
