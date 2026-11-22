@@ -1,13 +1,12 @@
 # Task: 연속성 프로토콜 설치 (claude-mem 대체)
 
-상태: `IN_PROGRESS / NOT_RUN / PENDING` — 문서 작성 완료, 커밋·새 세션 재개 테스트 대기
+상태: `IN_PROGRESS / NOT_RUN / PENDING` — 문서 커밋 완료(638d42a), claude-mem 삭제 완료, 새 세션 재개 테스트 대기
 근거 지시: [../decisions/2026-11-22-continuity-protocol.md](../decisions/2026-11-22-continuity-protocol.md) · 결정 D-010
 
 ## 다음 작업
 
-1. (Owner) 미커밋 문서 커밋 승인 여부 결정 — 제안 메시지: `docs: 연속성 프로토콜 설치, AGENTS.md를 운영 규칙과 ARCHITECTURE로 분리`
-2. (Owner) 커밋 후 새 Claude Code 세션에서 `/memory`로 CLAUDE.md → AGENTS.md 로드 확인, "이어서 진행해" 재개 테스트(F)
-3. (Owner 승인 후) claude-mem 삭제: Claude Code 플러그인 → Codex config/캐시 → Grok 훅 → launchd `com.gongmox.claude-mem-hooks` → 워커 종료 → `~/.claude-mem`
+1. (Owner) 새 Claude Code 세션에서 `/memory`로 CLAUDE.md → AGENTS.md 로드 확인, 이어서 "이어서 진행해" 재개 테스트(F). 결과를 이 파일 검증 표에 기록
+2. F 통과 후 이 파일을 `docs/tasks/archive/`로 옮기고 PROJECT_STATE의 진행 중 목록에서 뺀다
 
 ## 범위
 
@@ -22,6 +21,7 @@
 - `docs/DECISIONS.md`: D-001~D-010. 2026-11-22 이전 결정은 승인 원문이 없어 `기존 규칙` 또는 `PENDING`.
 - `docs/PROJECT_STATE.md`, `docs/CONTINUITY_PROTOCOL.md`(원문), `docs/decisions/2026-11-22-continuity-protocol.md`, `CLAUDE.md`(`@AGENTS.md`), `.gitignore`에 `CLAUDE.local.md`.
 - 저장소 밖: claude-mem DB의 decision·bugfix 3,214건을 `~/claude-mem-archive/`에 추출(DB는 읽기 전용, 무변경).
+- claude-mem 삭제(2026-11-22, Owner 지시 "커밋 다음 진행하자"): launchd `com.gongmox.claude-mem-hooks`, Claude Code 플러그인·마켓플레이스·캐시, Codex config 블록·캐시·스테이징 클론, Grok 훅·disabled-hooks·마켓 캐시, Gemini CLI 훅 8개, `~/.local/bin/claude-mem`, 워커·chroma·MCP·고아 observer 프로세스, `~/.claude-mem`(3.4G). 약 4.8G 확보. 설정 파일 원본은 `~/claude-mem-archive/removal-backup-20261122/`에 백업. 남긴 것: `~/.claude.json`·`~/.gemini/projects.json`·`~/.codex/external_agent_session_imports.json`의 무해한 기록, `~/.cache/uv` 캐시.
 
 ## 검증
 
@@ -37,7 +37,5 @@
 
 ## 승인 대기
 
-- 문서 커밋(위 메시지)
 - AGENTS.md에 "`docs/` 상태 문서 한정 커밋 사전 승인" 문구를 넣을지
 - DECISIONS의 `PENDING` 항목(D-004, D-005, D-009) 확인
-- claude-mem 삭제 진행
